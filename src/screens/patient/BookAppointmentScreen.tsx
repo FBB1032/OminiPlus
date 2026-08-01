@@ -721,7 +721,7 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
                     {consentChecked && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
                   </View>
                   <Text style={styles.consentText}>
-                    I consent to receive virtual medical care, agree to OminiPlus's{' '}
+                    I consent to receive virtual medical care, agree to Omini Pulse's{' '}
                     <Text style={styles.consentHighlight}>Telehealth Agreement</Text>, and acknowledge that virtual consultations are not for emergencies.
                   </Text>
                 </TouchableOpacity>

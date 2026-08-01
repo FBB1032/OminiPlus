@@ -17,8 +17,8 @@ export default function SettingsPage() {
   const [successMsg, setSuccessMsg] = useState('');
 
   // General Settings states
-  const [platformName, setPlatformName] = useState('OminiPlus');
-  const [supportEmail, setSupportEmail] = useState('operations@ominiplus.ai');
+  const [platformName, setPlatformName] = useState('Omini Pulse');
+  const [supportEmail, setSupportEmail] = useState('operations@ominipulse.ai');
   const [commission, setCommission] = useState('15');
   const [duration, setDuration] = useState('30');
 
@@ -101,7 +101,7 @@ export default function SettingsPage() {
           {activeTab === 'general' && (
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <Card padding="lg">
-                <CardHeader title="General Configuration" subtitle="Core settings for OminiPlus dashboard operations" />
+                <CardHeader title="General Configuration" subtitle="Core settings for Omini Pulse dashboard operations" />
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 12 }}>
                   <div>
@@ -234,7 +234,7 @@ export default function SettingsPage() {
 
           {activeTab === 'appearance' && (
             <Card padding="lg">
-              <CardHeader title="Platform Visual Identity" subtitle="Theme colors matching OminiPlus workspace design tokens" />
+              <CardHeader title="Platform Visual Identity" subtitle="Theme colors matching Omini Pulse workspace design tokens" />
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 12 }}>
                 <div>
@@ -284,7 +284,7 @@ export default function SettingsPage() {
                 }}>
                   <Server size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
                   <p style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.5 }}>
-                    OminiPlus administrative servers operate in <strong>strict HIPAA-compliance mode</strong>. No patient identifiers are stored directly in dashboard log databases.
+                    Omini Pulse administrative servers operate in <strong>strict HIPAA-compliance mode</strong>. No patient identifiers are stored directly in dashboard log databases.
                   </p>
                 </div>
 

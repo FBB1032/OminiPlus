@@ -1,5 +1,5 @@
 /**
- * OminiPlus AI — Offline / Development Mock Response Engine
+ * Omini Pulse AI — Offline / Development Mock Response Engine
  *
  * This file contains ALL mock fixtures for every API endpoint. It is the
  * single place to update when adding new endpoints or changing data shapes.
@@ -31,7 +31,7 @@ const MOCK_DOCTOR_1 = {
   avatarUrl: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150',
   rating: 4.8,
   experienceYears: 12,
-  clinicName: 'OminiPlus Wellness Clinic',
+  clinicName: 'Omini Pulse Wellness Clinic',
   consultationFee: 150,
   isAvailable: true,
   workingHours: MOCK_AVAILABILITY,
@@ -45,7 +45,7 @@ const MOCK_DOCTOR_2 = {
   avatarUrl: 'https://images.unsplash.com/photo-1594824813573-246434e33963?w=150',
   rating: 4.9,
   experienceYears: 15,
-  clinicName: 'OminiPlus Heart & Vascular',
+  clinicName: 'Omini Pulse Heart & Vascular',
   consultationFee: 200,
   isAvailable: true,
   workingHours: MOCK_AVAILABILITY,
@@ -167,7 +167,7 @@ const routes: Array<{
     test: (p) => p === '/auth/login',
     handle: (config) => {
       const payload = parsePayload(config.data);
-      const email = (payload.email as string) || 'patient@ominiplus.ai';
+      const email = (payload.email as string) || 'patient@ominipulse.ai';
       const role = email.toLowerCase().includes('doctor') ? 'doctor' : 'patient';
       return {
         user: {
@@ -206,7 +206,7 @@ const routes: Array<{
       return {
         user: {
           id: `mock-user-${Date.now()}`,
-          email: payload.email || 'user@ominiplus.ai',
+          email: payload.email || 'user@ominipulse.ai',
           firstName: payload.firstName || 'User',
           lastName: payload.lastName || 'Name',
           role,
@@ -249,7 +249,7 @@ const routes: Array<{
       const payload = parsePayload(config.data);
       return {
         id: 'mock-user-123',
-        email: 'patient@ominiplus.ai',
+        email: 'patient@ominipulse.ai',
         firstName: 'Alex',
         lastName: 'Opara',
         role: 'patient',
@@ -303,7 +303,7 @@ const routes: Array<{
     test: (p) => p === '/auth/me',
     handle: () => ({
       id: 'mock-user-123',
-      email: 'patient@ominiplus.ai',
+      email: 'patient@ominipulse.ai',
       firstName: 'Alex',
       lastName: 'Opara',
       role: 'patient',
@@ -740,6 +740,188 @@ const routes: Array<{
     },
   },
 ];
+
+// ─── Blood Donors Fixtures ───────────────────────────────────────────────────
+
+export const MOCK_BLOOD_DONORS = [
+  {
+    id: 'bd-1',
+    name: 'Samuel Okon',
+    bloodGroup: 'O-',
+    genotype: 'AA',
+    city: 'Lagos (Ikeja)',
+    latitude: 6.6018,
+    longitude: 3.3515,
+    distanceKm: 1.2,
+    phone: '+234 802 345 6789',
+    availabilityStatus: 'Available Anytime',
+    isVerified: true,
+    lastDonationDate: '2025-11-10',
+    donationsCount: 6,
+    gender: 'Male',
+  },
+  {
+    id: 'bd-2',
+    name: 'Grace Nwosu',
+    bloodGroup: 'O+',
+    genotype: 'AA',
+    city: 'Lagos (Victoria Island)',
+    latitude: 6.4281,
+    longitude: 3.4219,
+    distanceKm: 3.8,
+    phone: '+234 803 987 6543',
+    availabilityStatus: 'Available Anytime',
+    isVerified: true,
+    lastDonationDate: '2025-12-01',
+    donationsCount: 4,
+    gender: 'Female',
+  },
+  {
+    id: 'bd-3',
+    name: 'Emmanuel Adebayo',
+    bloodGroup: 'A+',
+    genotype: 'AS',
+    city: 'Lagos (Yaba)',
+    latitude: 6.5095,
+    longitude: 3.3711,
+    distanceKm: 4.5,
+    phone: '+234 812 444 5555',
+    availabilityStatus: 'On-Call Emergency',
+    isVerified: true,
+    lastDonationDate: '2025-09-15',
+    donationsCount: 9,
+    gender: 'Male',
+  },
+  {
+    id: 'bd-4',
+    name: 'Kemi Fatimah',
+    bloodGroup: 'B+',
+    genotype: 'AA',
+    city: 'Lagos (Surulere)',
+    latitude: 6.4969,
+    longitude: 3.3533,
+    distanceKm: 6.1,
+    phone: '+234 809 111 2233',
+    availabilityStatus: 'Available Anytime',
+    isVerified: true,
+    lastDonationDate: '2025-10-20',
+    donationsCount: 3,
+    gender: 'Female',
+  },
+  {
+    id: 'bd-5',
+    name: 'David Chidi',
+    bloodGroup: 'AB+',
+    genotype: 'AA',
+    city: 'Lagos (Lekki)',
+    latitude: 6.4698,
+    longitude: 3.5852,
+    distanceKm: 8.4,
+    phone: '+234 701 555 7788',
+    availabilityStatus: 'Available Anytime',
+    isVerified: false,
+    lastDonationDate: '2025-08-05',
+    donationsCount: 2,
+    gender: 'Male',
+  },
+  {
+    id: 'bd-6',
+    name: 'Chinedu Eze',
+    bloodGroup: 'O-',
+    genotype: 'AA',
+    city: 'Abuja (Maitama)',
+    latitude: 9.0882,
+    longitude: 7.4934,
+    distanceKm: 2.1,
+    phone: '+234 805 777 8899',
+    availabilityStatus: 'Available Anytime',
+    isVerified: true,
+    lastDonationDate: '2025-12-14',
+    donationsCount: 11,
+    gender: 'Male',
+  },
+  {
+    id: 'bd-7',
+    name: 'Aisha Bello',
+    bloodGroup: 'A-',
+    genotype: 'AA',
+    city: 'Abuja (Garki)',
+    latitude: 9.0343,
+    longitude: 7.4878,
+    distanceKm: 4.0,
+    phone: '+234 818 222 3344',
+    availabilityStatus: 'On-Call Emergency',
+    isVerified: true,
+    lastDonationDate: '2025-11-28',
+    donationsCount: 5,
+    gender: 'Female',
+  },
+  {
+    id: 'bd-8',
+    name: 'Tunde Olawale',
+    bloodGroup: 'B-',
+    genotype: 'AS',
+    city: 'Ibadan (Bodija)',
+    latitude: 7.4216,
+    longitude: 3.9056,
+    distanceKm: 3.2,
+    phone: '+234 803 333 4455',
+    availabilityStatus: 'Available Anytime',
+    isVerified: true,
+    lastDonationDate: '2025-10-10',
+    donationsCount: 7,
+    gender: 'Male',
+  },
+  {
+    id: 'bd-9',
+    name: 'Ngozi Okafor',
+    bloodGroup: 'AB-',
+    genotype: 'AA',
+    city: 'Port Harcourt (GRA)',
+    latitude: 4.8156,
+    longitude: 7.0498,
+    distanceKm: 5.3,
+    phone: '+234 806 666 9988',
+    availabilityStatus: 'On-Call Emergency',
+    isVerified: true,
+    lastDonationDate: '2025-07-30',
+    donationsCount: 8,
+    gender: 'Female',
+  },
+];
+
+routes.push(
+  {
+    method: 'get',
+    test: (p) => p === '/blood-donors',
+    handle: () => MOCK_BLOOD_DONORS,
+  },
+  {
+    method: 'post',
+    test: (p) => p === '/blood-donors/register',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      const newDonor = {
+        id: `bd-${Date.now()}`,
+        name: (payload.name as string) || 'Anonymous Donor',
+        bloodGroup: (payload.bloodGroup as string) || 'O+',
+        genotype: (payload.genotype as string) || 'AA',
+        city: (payload.city as string) || 'Lagos',
+        latitude: 6.5244,
+        longitude: 3.3792,
+        distanceKm: 0.5,
+        phone: (payload.phone as string) || '+234 800 000 0000',
+        availabilityStatus: (payload.availabilityStatus as string) || 'Available Anytime',
+        isVerified: true,
+        lastDonationDate: new Date().toISOString().split('T')[0],
+        donationsCount: 1,
+        gender: (payload.gender as string) || 'Male',
+      };
+      MOCK_BLOOD_DONORS.unshift(newDonor);
+      return newDonor;
+    },
+  }
+);
 
 // ─── Public Entry Point ───────────────────────────────────────────────────────
 

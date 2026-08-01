@@ -74,6 +74,9 @@ export default function PatientHomeScreen({ navigation }: any) {
   const [inputTemp, setInputTemp] = useState('');
   const [localTemp, setLocalTemp] = useState<number | null>(null);
 
+  // Quick Access See All modal state
+  const [isSeeAllQuickAccessOpen, setIsSeeAllQuickAccessOpen] = useState(false);
+
   // Filter modal state
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
@@ -199,12 +202,23 @@ export default function PatientHomeScreen({ navigation }: any) {
     bmiColor = '#EF4444'; // red
   }
 
-  const quickActions = [
-    { label: 'Pharmacy',     icon: 'medical',        bg: '#EFF6FF', color: '#2563EB', action: () => navigation.navigate('Pharmacy') },
-    { label: 'Hospitals',    icon: 'business',       bg: '#F5F3FF', color: '#7C3AED', action: () => navigation.navigate('Hospitals') },
-    { label: 'Records',      icon: 'document-text',  bg: '#ECFDF5', color: '#059669', action: () => navigation.navigate('PatientRecords') },
-    { label: 'Reminders',    icon: 'alarm',          bg: '#FFF1F2', color: '#E11D48', action: () => navigation.navigate('MedicationReminders') },
-    { label: 'Check Vitals', icon: 'heart-half',     bg: '#FEF3C7', color: '#D97706', action: () => handleOpenVitalsEdit() },
+  // Top 3 Main Features for un-crowded dashboard
+  const mainQuickActions = [
+    { label: 'Pharmacy',     icon: 'medical',        bg: '#EFF6FF', color: '#2563EB', desc: 'Prescriptions & Drugs', action: () => navigation.navigate('Pharmacy') },
+    { label: 'Hospitals',    icon: 'business',       bg: '#F5F3FF', color: '#7C3AED', desc: 'Partner Centers', action: () => navigation.navigate('Hospitals') },
+    { label: 'Blood Donors', icon: 'water',          bg: '#FEF2F2', color: '#DC2626', desc: 'GPS Proximity Match', action: () => navigation.navigate('BloodDonors') },
+  ];
+
+  // Full Quick Access list for See All Modal
+  const allQuickActions = [
+    { label: 'Pharmacy',     icon: 'medical',        bg: '#EFF6FF', color: '#2563EB', desc: 'Online Prescriptions & Drugs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Pharmacy'); } },
+    { label: 'Hospitals',    icon: 'business',       bg: '#F5F3FF', color: '#7C3AED', desc: 'Verified Hospitals & Centers', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Hospitals'); } },
+    { label: 'Blood Donors', icon: 'water',          bg: '#FEF2F2', color: '#DC2626', desc: 'GPS Emergency Donor Match', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('BloodDonors'); } },
+    { label: 'Records',      icon: 'document-text',  bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History & Files', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('PatientRecords'); } },
+    { label: 'Reminders',    icon: 'alarm',          bg: '#FFF1F2', color: '#E11D48', desc: 'Pill Alarms & Medication Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('MedicationReminders'); } },
+    { label: 'Check Vitals', icon: 'heart-half',     bg: '#FEF3C7', color: '#D97706', desc: 'Log BP, Heart Rate & Temp', action: () => { setIsSeeAllQuickAccessOpen(false); handleOpenVitalsEdit(); } },
+    { label: 'Report Incident', icon: 'shield-alert', bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
+    { label: 'Omini Premium', icon: 'star',          bg: '#FEF3C7', color: '#B45309', desc: 'VIP Healthcare Telehealth Plan', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Premium'); } },
   ];
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -385,19 +399,35 @@ export default function PatientHomeScreen({ navigation }: any) {
 
         {/* ── Quick Actions ─────────────────────────────────────────────── */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Access</Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map((item) => (
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>Quick Access</Text>
+            <TouchableOpacity onPress={() => setIsSeeAllQuickAccessOpen(true)} activeOpacity={0.7}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
+            {mainQuickActions.map((item) => (
               <TouchableOpacity
                 key={item.label}
-                style={styles.actionItem}
+                style={{
+                  flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12,
+                  alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', ...Shadows.sm
+                }}
                 onPress={item.action}
                 activeOpacity={0.75}
               >
-                <View style={[styles.actionIcon, { backgroundColor: item.bg }]}>
+                <View style={{
+                  width: 44, height: 44, borderRadius: 22, backgroundColor: item.bg,
+                  alignItems: 'center', justifyContent: 'center', marginBottom: 8
+                }}>
                   <Ionicons name={item.icon as any} size={22} color={item.color} />
                 </View>
-                <Text style={styles.actionLabel}>{item.label}</Text>
+                <Text style={{ fontSize: 12.5, fontWeight: FontWeight.bold, color: '#0F172A', textAlign: 'center' }}>
+                  {item.label}
+                </Text>
+                <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
+                  {item.desc}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -599,6 +629,52 @@ export default function PatientHomeScreen({ navigation }: any) {
             keyboardType="numeric"
             leftIcon="thermometer-outline"
           />
+        </View>
+      </AppModal>
+
+      {/* ── See All Quick Access Modal ─────────────────────────────────────── */}
+      <AppModal
+        visible={isSeeAllQuickAccessOpen}
+        onClose={() => setIsSeeAllQuickAccessOpen(false)}
+        title="All Quick Access Features"
+      >
+        <View style={{ padding: Spacing[4], gap: 12 }}>
+          <Text style={{ fontSize: 12, color: Colors.text.secondary, marginBottom: 4 }}>
+            Select a medical feature to navigate directly:
+          </Text>
+
+          <View style={{ gap: 8 }}>
+            {allQuickActions.map((act) => (
+              <TouchableOpacity
+                key={act.label}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 12,
+                  backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12,
+                  borderWidth: 1, borderColor: '#E2E8F0'
+                }}
+                onPress={act.action}
+                activeOpacity={0.75}
+              >
+                <View style={{
+                  width: 40, height: 40, borderRadius: 20, backgroundColor: act.bg,
+                  alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <Ionicons name={act.icon as any} size={20} color={act.color} />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13.5, fontWeight: FontWeight.bold, color: '#0F172A' }}>
+                    {act.label}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
+                    {act.desc}
+                  </Text>
+                </View>
+
+                <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </AppModal>
 

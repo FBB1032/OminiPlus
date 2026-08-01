@@ -1,8 +1,8 @@
 // API Configuration
-export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.ominiplus.health/v1';
+export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.ominipulse.health/v1';
 
 // App Info
-export const APP_NAME = 'OminiPlus AI';
+export const APP_NAME = 'Omini Pulse AI';
 export const APP_VERSION = '1.0.0';
 
 // Pagination
@@ -14,11 +14,11 @@ export const ACCESS_TOKEN_EXPIRY_BUFFER = 5 * 60 * 1000; // 5 min before expiry
 
 // AsyncStorage Keys
 export const STORAGE_KEYS = {
-  ACCESS_TOKEN: 'ominiplus_access_token',
-  REFRESH_TOKEN: 'ominiplus_refresh_token',
-  USER: 'ominiplus_user',
-  TOKEN_EXPIRY: 'ominiplus_token_expiry',
-  ONBOARDING_COMPLETE: 'ominiplus_onboarding_complete',
+  ACCESS_TOKEN: 'ominipulse_access_token',
+  REFRESH_TOKEN: 'ominipulse_refresh_token',
+  USER: 'ominipulse_user',
+  TOKEN_EXPIRY: 'ominipulse_token_expiry',
+  ONBOARDING_COMPLETE: 'ominipulse_onboarding_complete',
 } as const;
 
 // React Query stale times

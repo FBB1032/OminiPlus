@@ -7,7 +7,7 @@ import type { Admin, AdminRole } from '@/types';
 export const MOCK_ADMINS: Record<AdminRole, Admin> = {
   super_admin: {
     id: 'admin-1',
-    email: 'admin@ominiplus.ai',
+    email: 'admin@ominipulse.ai',
     firstName: 'Admin',
     lastName: 'User',
     role: 'super_admin',
@@ -16,7 +16,7 @@ export const MOCK_ADMINS: Record<AdminRole, Admin> = {
   },
   verification_admin: {
     id: 'admin-2',
-    email: 'verify@ominiplus.ai',
+    email: 'verify@ominipulse.ai',
     firstName: 'Sarah',
     lastName: 'Chen',
     role: 'verification_admin',
@@ -25,7 +25,7 @@ export const MOCK_ADMINS: Record<AdminRole, Admin> = {
   },
   support_admin: {
     id: 'admin-3',
-    email: 'support@ominiplus.ai',
+    email: 'support@ominipulse.ai',
     firstName: 'Mark',
     lastName: 'Davis',
     role: 'support_admin',
@@ -34,7 +34,7 @@ export const MOCK_ADMINS: Record<AdminRole, Admin> = {
   },
   security_admin: {
     id: 'admin-4',
-    email: 'security@ominiplus.ai',
+    email: 'security@ominipulse.ai',
     firstName: 'Priya',
     lastName: 'Sharma',
     role: 'security_admin',
@@ -43,7 +43,7 @@ export const MOCK_ADMINS: Record<AdminRole, Admin> = {
   },
   moderator: {
     id: 'admin-5',
-    email: 'mod@ominiplus.ai',
+    email: 'mod@ominipulse.ai',
     firstName: 'Felix',
     lastName: 'Okafor',
     role: 'moderator',
@@ -52,7 +52,7 @@ export const MOCK_ADMINS: Record<AdminRole, Admin> = {
   },
   doctor: {
     id: 'doc-admin-1',
-    email: 'doctor@ominiplus.ai',
+    email: 'doctor@ominipulse.ai',
     firstName: 'Dr. Folake',
     lastName: 'Ademola',
     role: 'doctor',
@@ -83,13 +83,13 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       setAdmin: (admin, token) => {
         if (typeof window !== 'undefined') {
-          localStorage.setItem('ominiplus_admin_token', token);
+          localStorage.setItem('ominipulse_admin_token', token);
         }
         set({ admin, token, isAuthenticated: true });
       },
       logout: () => {
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('ominiplus_admin_token');
+          localStorage.removeItem('ominipulse_admin_token');
         }
         set({ admin: null, token: null, isAuthenticated: false });
       },
@@ -100,7 +100,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'ominiplus-admin-auth',
+      name: 'ominipulse-admin-auth',
       partialize: (s) => ({
         admin: s.admin,
         token: s.token,

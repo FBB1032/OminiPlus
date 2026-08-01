@@ -109,7 +109,7 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
         >
           <View style={styles.headerContainer}>
             <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join OminiPlus to manage your wellness journey</Text>
+            <Text style={styles.subtitle}>Join Omini Pulse to manage your wellness journey</Text>
           </View>
 
           <View style={styles.formContainer}>

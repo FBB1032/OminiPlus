@@ -37,8 +37,8 @@ interface IntakeLog {
 }
 
 const STORAGE_KEYS = {
-  MEDICATIONS: 'ominiplus_medications',
-  INTAKE_LOGS: 'ominiplus_intake_logs',
+  MEDICATIONS: 'ominipulse_medications',
+  INTAKE_LOGS: 'ominipulse_intake_logs',
 };
 
 const FREQUENCY_OPTIONS = ['Once Daily', 'Twice Daily', 'Thrice Daily', 'Weekly'];

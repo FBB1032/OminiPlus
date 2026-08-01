@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  LayoutDashboard, Stethoscope, Building2, Pill, Calendar,
+  LayoutDashboard, Stethoscope, Building2, Pill, Calendar, Droplet,
   Bot, Bell, BarChart3, ScrollText, ShieldCheck, Settings,
   ChevronLeft, LogOut,
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import type { LucideIcon } from 'lucide-react';
 
 // ─── Icon Registry ────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, LucideIcon> = {
-  LayoutDashboard, Stethoscope, Building2, Pill, Calendar,
+  LayoutDashboard, Stethoscope, Building2, Pill, Calendar, Droplet,
   Bot, Bell, BarChart3, ScrollText, ShieldCheck, Settings,
 };
 
@@ -37,6 +37,7 @@ const NAV_GROUPS: {
       { href: '/dashboard/doctors', label: 'Doctors', icon: 'Stethoscope', permission: 'doctors.view' },
       { href: '/dashboard/hospitals', label: 'Hospitals', icon: 'Building2', permission: 'hospitals.view' },
       { href: '/dashboard/pharmacies', label: 'Pharmacies', icon: 'Pill', permission: 'pharmacies.view' },
+      { href: '/dashboard/blood-donors', label: 'Blood Donors', icon: 'Droplet', permission: 'blood_donors.view' },
       { href: '/dashboard/appointments', label: 'Appointments', icon: 'Calendar', permission: 'appointments.view_overview' },
     ],
   },
@@ -112,30 +113,30 @@ export function Sidebar() {
       >
         {/* Brand header */}
         <div style={{
-          height: 64,
+          height: 76,
           borderBottom: '1px solid #1e293b',
           display: 'flex',
           alignItems: 'center',
-          padding: '0 16px',
-          gap: 12,
+          padding: collapsed ? '0' : '0 8px 0 12px',
+          gap: 4,
           flexShrink: 0,
           justifyContent: collapsed ? 'center' : 'space-between',
           position: 'relative',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0, overflow: 'hidden', flex: 1 }}>
             <div style={{
-              height: 38,
-              width: collapsed ? 38 : 164,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              height: 54,
+              width: collapsed ? 42 : 225,
+              display: 'flex', alignItems: 'center', justifyContent: 'flex-start',
               flexShrink: 0,
               transition: 'all 0.2s ease',
             }}>
               <Image
                 src="/logo.png"
-                alt="OminiPlus"
-                width={collapsed ? 30 : 156}
-                height={collapsed ? 30 : 32}
-                style={{ objectFit: 'contain', width: '100%', height: '100%' }}
+                alt="Omini Pulse"
+                width={collapsed ? 38 : 220}
+                height={collapsed ? 38 : 52}
+                style={{ objectFit: 'contain', objectPosition: 'left center', width: '100%', height: '100%' }}
                 onError={() => {}}
               />
             </div>

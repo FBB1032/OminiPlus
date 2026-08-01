@@ -30,13 +30,13 @@ export default function LoginPage() {
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'admin@ominiplus.ai', password: 'admin123' },
+    defaultValues: { email: 'admin@ominipulse.ai', password: 'admin123' },
   });
 
   const onSubmit = async (data: LoginForm) => {
     setServerError('');
     await new Promise(r => setTimeout(r, 800));
-    if ((data.email === 'admin@ominiplus.ai' || data.email === 'doctor@ominiplus.ai') && data.password === 'admin123') {
+    if ((data.email === 'admin@ominipulse.ai' || data.email === 'doctor@ominipulse.ai') && data.password === 'admin123') {
       const admin = MOCK_ADMINS[selectedRole];
       setAdmin(admin, `mock-jwt-token-${selectedRole}`);
       if (selectedRole === 'doctor') {
@@ -78,10 +78,10 @@ export default function LoginPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 10 }}>
           <Image
             src="/logo.png"
-            alt="OminiPlus"
-            width={210}
-            height={44}
-            style={{ objectFit: 'contain' }}
+            alt="Omini Pulse"
+            width={340}
+            height={72}
+            style={{ objectFit: 'contain', height: 'auto', width: 340 }}
           />
         </div>
 
@@ -120,7 +120,7 @@ export default function LoginPage() {
 
         {/* Portal Info Footer */}
         <div style={{ position: 'relative', zIndex: 10, fontSize: 12, color: '#64748b' }}>
-          OminiPlus Platform Console v2.4 · Encrypted via AES-256
+          Omini Pulse Platform Console v2.4 · Encrypted via AES-256
         </div>
       </div>
 
@@ -139,10 +139,10 @@ export default function LoginPage() {
           <div className="flex lg:hidden flex-col items-center mb-8">
             <Image
               src="/logo.png"
-              alt="OminiPlus"
-              width={240}
-              height={52}
-              style={{ objectFit: 'contain' }}
+              alt="Omini Pulse"
+              width={300}
+              height={64}
+              style={{ objectFit: 'contain', height: 'auto', width: 300 }}
             />
             <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>Secure Console Sign In</p>
           </div>
@@ -204,7 +204,7 @@ export default function LoginPage() {
                   <input
                     {...register('email')}
                     type="email"
-                    placeholder="admin@ominiplus.ai"
+                    placeholder="admin@ominipulse.ai"
                     className="input"
                     style={{ paddingLeft: 38, height: 42 }}
                   />
@@ -259,7 +259,7 @@ export default function LoginPage() {
               background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12,
               marginTop: 16, fontSize: 12, color: '#64748b', textAlign: 'center'
             }}>
-              Demo Details: <strong style={{ color: '#1e293b' }}>admin@ominiplus.ai</strong> password: <strong style={{ color: '#1e293b' }}>admin123</strong>
+              Demo Details: <strong style={{ color: '#1e293b' }}>admin@ominipulse.ai</strong> password: <strong style={{ color: '#1e293b' }}>admin123</strong>
             </div>
 
           </div>

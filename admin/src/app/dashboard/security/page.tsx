@@ -13,15 +13,15 @@ import type { Admin, AdminRole } from '@/types';
 const INITIAL_EVENTS = [
   { id: 1, type: 'warning', message: 'Failed login attempt from IP 45.132.22.1', time: '12 min ago' },
   { id: 2, type: 'info', message: 'Admin Sarah Chen logged in from new device', time: '1 hr ago' },
-  { id: 3, type: 'success', message: '2FA enabled for admin account mark.davis@ominiplus.ai', time: '2 hr ago' },
+  { id: 3, type: 'success', message: '2FA enabled for admin account mark.davis@ominipulse.ai', time: '2 hr ago' },
   { id: 4, type: 'error', message: '5 consecutive failed login attempts — IP temporarily blocked', time: '3 hr ago' },
-  { id: 5, type: 'info', message: 'Password changed for admin admin@ominiplus.ai', time: '1 day ago' },
+  { id: 5, type: 'info', message: 'Password changed for admin admin@ominipulse.ai', time: '1 day ago' },
 ];
 
 const INITIAL_ADMINS: Admin[] = [
-  { id: 'adm-1', email: 'sarah.chen@ominiplus.ai', firstName: 'Sarah', lastName: 'Chen', role: 'super_admin', isTwoFactorEnabled: true, createdAt: '2025-01-01', lastLogin: '2 min ago' },
-  { id: 'adm-2', email: 'mark.davis@ominiplus.ai', firstName: 'Mark', lastName: 'Davis', role: 'moderator', isTwoFactorEnabled: true, createdAt: '2025-02-15', lastLogin: '1 hr ago' },
-  { id: 'adm-3', email: 'security.admin@ominiplus.ai', firstName: 'Security', lastName: 'Officer', role: 'security_admin', isTwoFactorEnabled: false, createdAt: '2025-03-10', lastLogin: '3 hr ago' },
+  { id: 'adm-1', email: 'sarah.chen@ominipulse.ai', firstName: 'Sarah', lastName: 'Chen', role: 'super_admin', isTwoFactorEnabled: true, createdAt: '2025-01-01', lastLogin: '2 min ago' },
+  { id: 'adm-2', email: 'mark.davis@ominipulse.ai', firstName: 'Mark', lastName: 'Davis', role: 'moderator', isTwoFactorEnabled: true, createdAt: '2025-02-15', lastLogin: '1 hr ago' },
+  { id: 'adm-3', email: 'security.admin@ominipulse.ai', firstName: 'Security', lastName: 'Officer', role: 'security_admin', isTwoFactorEnabled: false, createdAt: '2025-03-10', lastLogin: '3 hr ago' },
 ];
 
 const EVENT_STYLES: Record<string, { bg: string; color: string; border: string }> = {
@@ -315,7 +315,7 @@ export default function SecurityPage() {
                 className="input"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="name@ominiplus.ai"
+                placeholder="name@ominipulse.ai"
               />
             </div>
 

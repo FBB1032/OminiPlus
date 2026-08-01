@@ -19,7 +19,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: 'doc-101',
     firstName: 'Amina',
     lastName: 'Bello',
-    email: 'amina.bello@ominiplus.ai',
+    email: 'amina.bello@ominipulse.ai',
     phone: '+234 803 123 4567',
     specialization: 'Cardiology',
     licenseNo: 'LIC-98347102',
@@ -39,7 +39,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: 'doc-102',
     firstName: 'Felix',
     lastName: 'Okafor',
-    email: 'felix.okafor@ominiplus.ai',
+    email: 'felix.okafor@ominipulse.ai',
     phone: '+234 805 987 6543',
     specialization: 'Pediatrics',
     licenseNo: 'LIC-10492837',
@@ -61,7 +61,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: 'doc-103',
     firstName: 'Blessing',
     lastName: 'Okoro',
-    email: 'blessing.okoro@ominiplus.ai',
+    email: 'blessing.okoro@ominipulse.ai',
     phone: '+234 812 345 6789',
     specialization: 'Neurology',
     licenseNo: 'LIC-49381029',
@@ -84,7 +84,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: 'doc-104',
     firstName: 'David',
     lastName: 'Okoye',
-    email: 'david.okoye@ominiplus.ai',
+    email: 'david.okoye@ominipulse.ai',
     phone: '+234 901 234 5678',
     specialization: 'Dermatology',
     licenseNo: 'LIC-38491024',
@@ -106,7 +106,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: 'doc-105',
     firstName: 'Oluwaseun',
     lastName: 'Adeyemi',
-    email: 'seun.adeyemi@ominiplus.ai',
+    email: 'seun.adeyemi@ominipulse.ai',
     phone: '+234 802 888 9999',
     specialization: 'Orthopedics',
     licenseNo: 'LIC-77491028',
@@ -129,7 +129,7 @@ const INITIAL_DOCTORS: Doctor[] = [
     id: 'doc-106',
     firstName: 'Maria',
     lastName: 'Ezenwa',
-    email: 'maria.ezenwa@ominiplus.ai',
+    email: 'maria.ezenwa@ominipulse.ai',
     phone: '+234 810 555 4444',
     specialization: 'Psychiatry',
     licenseNo: 'LIC-55102938',
@@ -811,7 +811,7 @@ export default function DoctorsPage() {
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{previewDocUrl.title}</h3>
                   <p style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 4 }}>
-                    Secure OminiPlus Document Portal (SSL Encrypted)
+                    Secure Omini Pulse Document Portal (SSL Encrypted)
                   </p>
                 </div>
                 <div style={{

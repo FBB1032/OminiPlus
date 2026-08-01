@@ -4,13 +4,47 @@ import { useState } from 'react';
 import { 
   Stethoscope, Calendar, Clock, Users, FileText, Pill, 
   FlaskConical, CheckCircle2, AlertCircle, Plus, Search, 
-  Send, Eye, Edit3, Award, MapPin, DollarSign, UserCheck, Shield
+  Send, Eye, Edit3, Award, MapPin, DollarSign, UserCheck, Shield, Star, MessageSquare
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuthStore } from '@/store/authStore';
+
+interface PatientReview {
+  id: string;
+  patientName: string;
+  rating: number;
+  date: string;
+  comment: string;
+  doctorReply?: string;
+}
+
+const INITIAL_PATIENT_REVIEWS: PatientReview[] = [
+  {
+    id: 'pr-1',
+    patientName: 'Mariam Oladosu',
+    rating: 5,
+    date: '2026-06-02',
+    comment: 'Dr. Folake is extremely thorough and caring. She explained my blood pressure management plan clearly.',
+    doctorReply: 'Thank you Mariam! Stay consistent with your medication and salt reduction regimen.',
+  },
+  {
+    id: 'pr-2',
+    patientName: 'Tunde Afolabi',
+    rating: 5,
+    date: '2026-05-28',
+    comment: 'Very professional cardiac evaluation and bedside manner. I highly recommend her clinic.',
+  },
+  {
+    id: 'pr-3',
+    patientName: 'Grace Eze',
+    rating: 4,
+    date: '2026-05-15',
+    comment: 'Very good consultation. Video call was clear and prescription was sent to pharmacy immediately.',
+  },
+];
 
 // Mock Consultations for Doctor Web Workspace
 interface Consultation {
@@ -79,7 +113,7 @@ const TODAY_CONSULTATIONS: Consultation[] = [
 
 export default function DoctorPortalPage() {
   const { admin } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'queue' | 'notes' | 'prescriptions' | 'labs' | 'schedule' | 'profile'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'notes' | 'prescriptions' | 'labs' | 'schedule' | 'reviews' | 'profile'>('queue');
   
   // Active Consultation Modal
   const [selectedConsult, setSelectedConsult] = useState<Consultation | null>(null);
@@ -99,13 +133,26 @@ export default function DoctorPortalPage() {
   const [labTestName, setLabTestName] = useState('');
   const [labPriority, setLabPriority] = useState<'routine' | 'urgent'>('routine');
 
-  // Doctor Bio & Fee state
+  // Doctor Bio, Fee & Feedback Toast state
   const [doctorBio, setDoctorBio] = useState('Dr. Folake Ademola is a board-certified cardiologist with over 12 years of clinical experience specializing in interventional cardiology, heart failure management, and preventive cardiac care.');
   const [consultFee, setConsultFee] = useState(15000);
   const [isBioEditing, setIsBioEditing] = useState(false);
-
-  // Success Feedback Toast/Notification
   const [feedbackMsg, setFeedbackMsg] = useState('');
+
+  // Patient Reviews State
+  const [patientReviews, setPatientReviews] = useState<PatientReview[]>(INITIAL_PATIENT_REVIEWS);
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+
+  const handlePostDoctorReply = (reviewId: string) => {
+    if (!replyText.trim()) return;
+    setPatientReviews(prev =>
+      prev.map(r => r.id === reviewId ? { ...r, doctorReply: replyText.trim() } : r)
+    );
+    setReplyingId(null);
+    setReplyText('');
+    triggerFeedback('Official doctor reply posted to patient review feed.');
+  };
 
   const triggerFeedback = (msg: string) => {
     setFeedbackMsg(msg);
@@ -164,7 +211,7 @@ export default function DoctorPortalPage() {
               <Badge variant="teal" size="sm">Verified Doctor</Badge>
             </div>
             <p style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-              Cardiology Specialist · OminiPlus Heart Center (Lagos) · License: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>LIC-98754-C3</span>
+              Cardiology Specialist · Omini Pulse Heart Center (Lagos) · License: <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>LIC-98754-C3</span>
             </p>
           </div>
         </div>
@@ -212,6 +259,7 @@ export default function DoctorPortalPage() {
           { key: 'prescriptions', label: 'Digital E-Prescriptions', icon: Pill },
           { key: 'labs', label: 'Lab Orders & Diagnostics', icon: FlaskConical },
           { key: 'schedule', label: 'Weekly Availability', icon: Calendar },
+          { key: 'reviews', label: 'Patient Ratings & Feedbacks', icon: Star },
           { key: 'profile', label: 'Doctor Bio & Credentials', icon: Award },
         ].map((t) => {
           const Icon = t.icon;
@@ -477,6 +525,97 @@ export default function DoctorPortalPage() {
         </Card>
       )}
 
+      {/* ── TAB: PATIENT RATINGS & FEEDBACKS ───────────────────────── */}
+      {activeTab === 'reviews' && (
+        <Card padding="lg">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>Patient Feedbacks & Verified Ratings</h3>
+                <p style={{ fontSize: 12.5, color: '#64748b', marginTop: 2 }}>Review verified patient ratings, feedback comments, and post official responses.</p>
+              </div>
+
+              {/* Rating Summary Badge */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                background: '#fffbeb', border: '1px solid #fef3c7', padding: '10px 16px', borderRadius: 10
+              }}>
+                <Star size={24} style={{ color: '#f59e0b', fill: '#f59e0b' }} />
+                <div>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: '#b45309' }}>4.9 / 5.0</span>
+                  <p style={{ fontSize: 11, color: '#d97706', fontWeight: 600 }}>Based on {patientReviews.length} Verified Patient Reviews</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Reviews List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 4 }}>
+              {patientReviews.map((rev) => (
+                <div key={rev.id} style={{
+                  background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: 16, display: 'flex', flexDirection: 'column', gap: 10
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 17, background: '#eff6ff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 700, color: '#2563eb', fontSize: 14
+                      }}>
+                        {rev.patientName[0]}
+                      </div>
+                      <div>
+                        <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a' }}>{rev.patientName}</h4>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>Submitted {rev.date}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: '#fffbeb', padding: '3px 8px', borderRadius: 6 }}>
+                      {Array.from({ length: rev.rating }).map((_, i) => (
+                        <Star key={i} size={12} style={{ color: '#f59e0b', fill: '#f59e0b' }} />
+                      ))}
+                    </div>
+                  </div>
+
+                  <p style={{ fontSize: 13, color: '#334155', lineHeight: 1.5 }}>"{rev.comment}"</p>
+
+                  {/* Doctor Response Section */}
+                  {rev.doctorReply ? (
+                    <div style={{
+                      background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 12, marginTop: 4
+                    }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: '#166534', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <CheckCircle2 size={13} /> Official Doctor Response:
+                      </span>
+                      <p style={{ fontSize: 12.5, color: '#15803d', marginTop: 2 }}>{rev.doctorReply}</p>
+                    </div>
+                  ) : replyingId === rev.id ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
+                      <textarea
+                        className="input"
+                        placeholder="Write official response to patient..."
+                        style={{ height: 65, padding: 8, fontSize: 12.5 }}
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                      />
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <Button variant="ghost" size="sm" onClick={() => setReplyingId(null)}>Cancel</Button>
+                        <Button variant="teal" size="sm" onClick={() => handlePostDoctorReply(rev.id)}>Post Response</Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
+                      <Button variant="outline" size="sm" leftIcon={<MessageSquare size={12} />} onClick={() => { setReplyingId(rev.id); setReplyText(''); }}>
+                        Respond to Feedback
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* ── TAB 6: DOCTOR BIO & CREDENTIALS ───────────────────────── */}
       {activeTab === 'profile' && (
         <Card padding="lg">
@@ -524,7 +663,7 @@ export default function DoctorPortalPage() {
                   type="text"
                   disabled
                   className="input"
-                  value="OminiPlus Heart Center (Lagos)"
+                  value="Omini Pulse Heart Center (Lagos)"
                 />
               </div>
             </div>

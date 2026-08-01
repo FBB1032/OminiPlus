@@ -1,14 +1,14 @@
 /**
- * OminiPlus AI — Environment-aware logger.
+ * Omini Pulse AI — Environment-aware logger.
  *
  * In production (__DEV__ === false) all methods are no-ops so no sensitive
  * information (tokens, user objects, storage keys) leaks to the console.
- * In development each call is prefixed with [OminiPlus] for easy filtering.
+ * In development each call is prefixed with [Omini Pulse] for easy filtering.
  */
 
 type LogLevel = 'log' | 'info' | 'warn' | 'error';
 
-const PREFIX = '[OminiPlus]';
+const PREFIX = '[Omini Pulse]';
 
 const noop = () => undefined;
 

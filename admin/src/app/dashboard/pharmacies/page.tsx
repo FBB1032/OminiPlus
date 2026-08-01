@@ -147,11 +147,11 @@ export default function PharmaciesPage() {
       id: `ph-${Date.now()}`,
       name: newName,
       licenseNo: newLicenseNo,
-      address: 'OminiPlus Partner Pharmacy Address',
+      address: 'Omini Pulse Partner Pharmacy Address',
       city: newCity || 'Lagos',
       country: 'Nigeria',
       phone: newPhone || '+234 800 000 0000',
-      email: newEmail || 'contact@partner.ominiplus.ai',
+      email: newEmail || 'contact@partner.ominipulse.ai',
       partnerStatus: 'pending',
       operationalStatus: 'open',
       createdAt: new Date().toISOString(),
@@ -794,7 +794,7 @@ export default function PharmaciesPage() {
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{previewDocUrl.title}</h3>
                   <p style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 4 }}>
-                    Secure OminiPlus Document Portal (SSL Encrypted)
+                    Secure Omini Pulse Document Portal (SSL Encrypted)
                   </p>
                 </div>
                 <div style={{

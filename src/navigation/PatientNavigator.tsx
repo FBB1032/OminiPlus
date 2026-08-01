@@ -24,7 +24,9 @@ import HospitalsScreen from '../screens/patient/HospitalsScreen';
 import DoctorProfileScreen from '../screens/patient/DoctorProfileScreen';
 import MedicationRemindersScreen from '../screens/patient/MedicationRemindersScreen';
 import VideoConsultationScreen from '../screens/patient/VideoConsultationScreen';
+import BloodDonorsScreen from '../screens/patient/BloodDonorsScreen';
 import ConsultationChatScreen from '../screens/shared/ConsultationChatScreen';
+import ReportIncidentScreen from '../screens/patient/ReportIncidentScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -85,6 +87,8 @@ export const PatientNavigator = () => (
     <Stack.Screen name="VideoConsultation" component={VideoConsultationScreen} />
     <Stack.Screen name="Pharmacy" component={PharmacyScreen} />
     <Stack.Screen name="Hospitals" component={HospitalsScreen} />
+    <Stack.Screen name="BloodDonors" component={BloodDonorsScreen} />
+    <Stack.Screen name="ReportIncident" component={ReportIncidentScreen} />
     <Stack.Screen name="DoctorProfile" component={DoctorProfileScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Settings" component={SettingsScreen} />

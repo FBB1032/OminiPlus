@@ -175,7 +175,7 @@ export default function SettingsScreen({ navigation }: any) {
         ))}
 
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>OminiPlus v1.0.0</Text>
+          <Text style={styles.versionText}>Omini Pulse v1.0.0</Text>
           <Text style={styles.userEmail}>Logged in as: {user?.email}</Text>
         </View>
 

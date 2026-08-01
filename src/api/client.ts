@@ -1,5 +1,5 @@
 /**
- * OminiPlus AI — Axios HTTP Client
+ * Omini Pulse AI — Axios HTTP Client
  *
  * Responsibilities:
  *  - Axios instance setup (base URL, timeout, headers)

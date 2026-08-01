@@ -1,4 +1,4 @@
-// OminiPlus Design System — Color Tokens
+// Omini Pulse Design System — Color Tokens
 // Mirrors the mobile app theme for a unified brand identity
 
 export const colors = {

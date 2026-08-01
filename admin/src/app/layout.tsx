@@ -3,8 +3,8 @@ import './globals.css';
 import { QueryProvider } from '@/providers/QueryProvider';
 
 export const metadata: Metadata = {
-  title: { default: 'OminiPlus Admin', template: '%s | OminiPlus Admin' },
-  description: 'Production-grade admin dashboard for the OminiPlus healthcare platform.',
+  title: { default: 'Omini Pulse Admin', template: '%s | Omini Pulse Admin' },
+  description: 'Production-grade admin dashboard for the Omini Pulse healthcare platform.',
   icons: { icon: '/logo.png' },
 };
 

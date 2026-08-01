@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,16 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { Avatar, Card } from '../../components';
+import { useToast } from '../../hooks/useAuth';
 
 const MOCK_DOCTORS: Record<string, any> = {
   '1': {
@@ -21,7 +27,7 @@ const MOCK_DOCTORS: Record<string, any> = {
     experience: 12,
     about: 'Dr. Folake Ademola is a board-certified cardiologist with over 12 years of clinical experience. She specializes in interventional cardiology, heart failure management, and preventive cardiac care. She completed her residency at Lagos University Teaching Hospital (LUTH).',
     avatar: 'https://images.unsplash.com/photo-1594824813573-246434e33963?w=300',
-    hospital: 'OminiPlus Heart Center (Lagos)',
+    hospital: 'Omini Pulse Heart Center (Lagos)',
     consultFee: 15000,
     available: true,
     reviews: [
@@ -39,7 +45,7 @@ const MOCK_DOCTORS: Record<string, any> = {
     experience: 15,
     about: 'Dr. Tunde Adewale is a neurologist specializing in headache disorders, stroke management, epilepsy, and neurodegenerative diseases. He completed his fellowship at the West African College of Physicians.',
     avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300',
-    hospital: 'OminiPlus Neuroscience Institute (Abuja)',
+    hospital: 'Omini Pulse Neuroscience Institute (Abuja)',
     consultFee: 20000,
     available: true,
     reviews: [
@@ -57,7 +63,7 @@ const MOCK_DOCTORS: Record<string, any> = {
     experience: 8,
     about: 'Dr. Amina Yusuf is a dermatologist focused on medical and cosmetic dermatology, treating conditions ranging from acne and eczema to skin cancer screenings.',
     avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300',
-    hospital: 'OminiPlus Skin & Wellness Clinic (Ibadan)',
+    hospital: 'Omini Pulse Skin & Wellness Clinic (Ibadan)',
     consultFee: 12000,
     available: false,
     reviews: [
@@ -69,8 +75,43 @@ const MOCK_DOCTORS: Record<string, any> = {
 };
 
 export default function DoctorProfileScreen({ route, navigation }: any) {
+  const { success: toastSuccess, error: toastError } = useToast();
   const { doctorId } = route.params;
-  const doctor = MOCK_DOCTORS[doctorId] || MOCK_DOCTORS['1'];
+  const initialDoctor = MOCK_DOCTORS[doctorId] || MOCK_DOCTORS['1'];
+
+  const [doctorData, setDoctorData] = useState(initialDoctor);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newAuthor, setNewAuthor] = useState('');
+  const [newText, setNewText] = useState('');
+
+  const handleReviewSubmit = () => {
+    if (!newAuthor.trim() || !newText.trim()) {
+      toastError('Missing Fields', 'Please enter your name and feedback comments.');
+      return;
+    }
+
+    const newRev = {
+      id: `r-${Date.now()}`,
+      author: newAuthor.trim(),
+      rating: newRating,
+      text: newText.trim(),
+      date: 'Just now',
+    };
+
+    const updatedReviews = [newRev, ...doctorData.reviews];
+    setDoctorData({
+      ...doctorData,
+      reviews: updatedReviews,
+    });
+
+    setIsReviewModalOpen(false);
+    setNewAuthor('');
+    setNewText('');
+    setNewRating(5);
+
+    toastSuccess('Feedback Submitted!', 'Thank you! Your review has been added to the doctor\'s profile feed.');
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -87,37 +128,37 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
 
         {/* Profile Card */}
         <View style={styles.profileCard}>
-          <Avatar name={doctor.name} uri={doctor.avatar} size="xl" />
-          <Text style={styles.docName}>{doctor.name}</Text>
-          <Text style={styles.docSpec}>{doctor.spec}</Text>
+          <Avatar name={doctorData.name} uri={doctorData.avatar} size="xl" />
+          <Text style={styles.docName}>{doctorData.name}</Text>
+          <Text style={styles.docSpec}>{doctorData.spec}</Text>
           <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: doctor.available ? '#10B981' : '#94A3B8' }]} />
-            <Text style={styles.statusText}>{doctor.available ? 'Available Today' : 'Unavailable'}</Text>
+            <View style={[styles.statusDot, { backgroundColor: doctorData.available ? '#10B981' : '#94A3B8' }]} />
+            <Text style={styles.statusText}>{doctorData.available ? 'Available Today' : 'Unavailable'}</Text>
           </View>
         </View>
 
         {/* Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{doctor.patients.toLocaleString()}</Text>
+            <Text style={styles.statValue}>{doctorData.patients.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Patients</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{doctor.experience} yr</Text>
+            <Text style={styles.statValue}>{doctorData.experience} yr</Text>
             <Text style={styles.statLabel}>Experience</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
             <View style={styles.ratingValue}>
               <Ionicons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.statValue}>{doctor.rating}</Text>
+              <Text style={styles.statValue}>{doctorData.rating}</Text>
             </View>
             <Text style={styles.statLabel}>Rating</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>₦{doctor.consultFee?.toLocaleString()}</Text>
+            <Text style={styles.statValue}>₦{doctorData.consultFee?.toLocaleString()}</Text>
             <Text style={styles.statLabel}>Per Visit</Text>
           </View>
         </View>
@@ -125,7 +166,7 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
         {/* About */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
-          <Text style={styles.aboutText}>{doctor.about}</Text>
+          <Text style={styles.aboutText}>{doctorData.about}</Text>
         </View>
 
         {/* Hospital */}
@@ -135,16 +176,16 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
             <View style={styles.hospitalIcon}>
               <Ionicons name="business" size={18} color="#2563EB" />
             </View>
-            <Text style={styles.hospitalName}>{doctor.hospital}</Text>
+            <Text style={styles.hospitalName}>{doctorData.hospital}</Text>
           </View>
         </View>
 
         {/* Available Slots */}
-        {doctor.availableSlots.length > 0 && (
+        {doctorData.availableSlots.length > 0 && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Available Today</Text>
             <View style={styles.slotsRow}>
-              {doctor.availableSlots.map((slot: string, idx: number) => (
+              {doctorData.availableSlots.map((slot: string, idx: number) => (
                 <View key={idx} style={styles.slotChip}>
                   <Text style={styles.slotText}>{slot}</Text>
                 </View>
@@ -155,8 +196,22 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
 
         {/* Reviews */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Patient Reviews</Text>
-          {doctor.reviews.map((review: any) => (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Text style={styles.sectionTitle}>Patient Reviews ({doctorData.reviews.length})</Text>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 4,
+                backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8
+              }}
+              onPress={() => setIsReviewModalOpen(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="add-circle-outline" size={15} color="#2563EB" />
+              <Text style={{ fontSize: 11.5, fontWeight: FontWeight.bold, color: '#2563EB' }}>Write Review</Text>
+            </TouchableOpacity>
+          </View>
+
+          {doctorData.reviews.map((review: any) => (
             <View key={review.id} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
                 <Text style={styles.reviewAuthor}>{review.author}</Text>
@@ -172,31 +227,151 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
           ))}
         </View>
 
+        {/* Report Doctor Banner */}
+        <View style={{ paddingHorizontal: Spacing[4], marginTop: Spacing[4], marginBottom: Spacing[2] }}>
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+              backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5',
+              paddingVertical: 12, borderRadius: 10
+            }}
+            onPress={() => navigation.navigate('ReportIncident', { doctorId: doctorData.id, doctorName: doctorData.name })}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="shield-outline" size={18} color="#DC2626" />
+            <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#DC2626' }}>
+              Report Provider / File Incident
+            </Text>
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
 
       {/* Bottom CTA */}
       <View style={styles.bottomBar}>
         <View style={styles.feeCol}>
           <Text style={styles.feeLabel}>Consultation Fee</Text>
-          <Text style={styles.feeValue}>₦{doctor.consultFee?.toLocaleString()}</Text>
+          <Text style={styles.feeValue}>₦{doctorData.consultFee?.toLocaleString()}</Text>
         </View>
         <TouchableOpacity
-          style={[styles.bookBtn, !doctor.available && styles.bookBtnDisabled]}
+          style={[styles.bookBtn, !doctorData.available && styles.bookBtnDisabled]}
           activeOpacity={0.85}
           onPress={() => {
-            if (doctor.available) {
+            if (doctorData.available) {
               navigation.navigate('BookAppointment', {
-                doctorId: doctor.id,
-                preSelectedDoctor: doctor,
+                doctorId: doctorData.id,
+                preSelectedDoctor: doctorData,
               });
             }
           }}
         >
           <Text style={styles.bookBtnText}>
-            {doctor.available ? 'Book Appointment' : 'Currently Unavailable'}
+            {doctorData.available ? 'Book Appointment' : 'Currently Unavailable'}
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Write Review Modal ───────────────────────────────────────── */}
+      <Modal
+        visible={isReviewModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsReviewModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' }}
+            activeOpacity={1}
+            onPress={() => setIsReviewModalOpen(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={(e) => e.stopPropagation()}
+              style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, gap: 14 }}
+            >
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                <View>
+                  <Text style={{ fontSize: 16, fontWeight: FontWeight.bold, color: '#0F172A' }}>Write Doctor Review</Text>
+                  <Text style={{ fontSize: 11.5, color: '#64748B' }}>Share your feedback for {doctorData.name}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setIsReviewModalOpen(false)}>
+                  <Ionicons name="close" size={22} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Star Rating Picker */}
+              <View style={{ alignItems: 'center', marginVertical: 4 }}>
+                <Text style={{ fontSize: 12, fontWeight: FontWeight.semiBold, color: '#334155', marginBottom: 6 }}>
+                  Overall Rating ({newRating} of 5 Stars)
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity key={star} onPress={() => setNewRating(star)} activeOpacity={0.7}>
+                      <Ionicons
+                        name={star <= newRating ? 'star' : 'star-outline'}
+                        size={32}
+                        color="#F59E0B"
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Your Name */}
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: FontWeight.semiBold, color: '#334155', marginBottom: 4 }}>
+                  Your Name
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8,
+                    paddingHorizontal: 12, height: 42, fontSize: 13, color: '#0F172A'
+                  }}
+                  placeholder="e.g. Mariam O."
+                  value={newAuthor}
+                  onChangeText={setNewAuthor}
+                />
+              </View>
+
+              {/* Written Feedback */}
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: FontWeight.semiBold, color: '#334155', marginBottom: 4 }}>
+                  Feedback & Experience Details
+                </Text>
+                <TextInput
+                  style={{
+                    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 8,
+                    padding: 12, fontSize: 13, color: '#0F172A', minHeight: 90
+                  }}
+                  placeholder="Describe your consultation experience, bedside manner, and treatment guidance..."
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                  value={newText}
+                  onChangeText={setNewText}
+                />
+              </View>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: '#2563EB', paddingVertical: 14, borderRadius: 10,
+                  alignItems: 'center', justifyContent: 'center', marginTop: 4
+                }}
+                onPress={handleReviewSubmit}
+                activeOpacity={0.85}
+              >
+                <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>
+                  Submit Verified Feedback
+                </Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 }

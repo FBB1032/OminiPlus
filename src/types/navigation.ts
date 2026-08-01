@@ -50,6 +50,8 @@ export type PatientStackParamList = {
   VideoConsultation: { appointmentId: string; doctorName: string };
   Pharmacy: undefined;
   Hospitals: undefined;
+  BloodDonors: { initialBloodGroup?: string } | undefined;
+  ReportIncident: { doctorId?: string; doctorName?: string; appointmentId?: string } | undefined;
   Notifications: undefined;
   Settings: undefined;
   ProfileEdit: undefined;

@@ -1,4 +1,4 @@
-// OminiPlus Admin — Shared TypeScript Types
+// Omini Pulse Admin — Shared TypeScript Types
 
 // ─── Admin Roles & Permissions ────────────────────────────────────────────────
 
@@ -16,6 +16,7 @@ export type Permission =
   | 'doctors.view' | 'doctors.verify' | 'doctors.suspend'
   | 'hospitals.view' | 'hospitals.onboard' | 'hospitals.manage'
   | 'pharmacies.view' | 'pharmacies.onboard' | 'pharmacies.manage'
+  | 'blood_donors.view' | 'blood_donors.manage'
   | 'appointments.view_overview' | 'appointments.resolve_issues'
   | 'ai_monitoring.view' | 'ai_monitoring.moderate'
   | 'notifications.view' | 'notifications.send'
@@ -152,6 +153,15 @@ export interface AuditLog {
   createdAt: string;
 }
 
+export interface ReportEvidence {
+  id: string;
+  fileName: string;
+  fileType: 'pdf' | 'image' | 'audio' | 'transcript';
+  fileUrl: string;
+  uploadedAt: string;
+  sizeBytes: string;
+}
+
 export interface Report {
   id: string;
   reporterId: string;
@@ -159,10 +169,18 @@ export interface Report {
   targetId: string;
   targetName: string;
   targetType: 'doctor' | 'patient' | 'pharmacy' | 'hospital';
-  category: 'fake_credentials' | 'inappropriate_behavior' | 'fraud' | 'spam' | 'other';
+  targetLicenseNo?: string;
+  targetSpecialty?: string;
+  targetHospital?: string;
+  consultationId?: string;
+  category: 'fake_credentials' | 'inappropriate_behavior' | 'fraud' | 'spam' | 'malpractice' | 'prescription_error' | 'other';
   description: string;
-  status: 'pending' | 'under_review' | 'resolved' | 'dismissed';
+  status: 'pending' | 'under_review' | 'resolved' | 'dismissed' | 'handover_to_board' | 'temp_suspended' | 'perm_suspended';
   severity: 'low' | 'medium' | 'high' | 'critical';
+  evidenceFiles?: ReportEvidence[];
+  suspensionDurationDays?: number;
+  disciplinaryActionNote?: string;
+  boardHandoverAt?: string;
   createdAt: string;
   resolvedAt?: string;
 }
@@ -205,4 +223,33 @@ export interface ApiResponse<T> {
   data: T;
   message: string;
   success: boolean;
+}
+
+export interface BloodDonor {
+  id: string;
+  name: string;
+  bloodGroup: 'O-' | 'O+' | 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-';
+  genotype: string;
+  city: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  phone: string;
+  availabilityStatus: 'Available Anytime' | 'On-Call Emergency' | 'Temporarily Unavailable';
+  isVerified: boolean;
+  lastDonationDate: string;
+  donationsCount: number;
+  gender: string;
+}
+
+export interface BloodRequest {
+  id: string;
+  patientName: string;
+  bloodGroup: string;
+  unitsNeeded: number;
+  hospitalName: string;
+  city: string;
+  contactPhone: string;
+  status: 'urgent' | 'fulfilled' | 'cancelled';
+  createdAt: string;
 }

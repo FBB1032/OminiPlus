@@ -27,9 +27,45 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
-  customComponent?: 'symptomCheckerBodyArea' | 'symptomCheckerSeverity' | 'symptomCheckerAssociated' | 'symptomCheckerResults';
+  customComponent?: 'symptomCheckerBodyArea' | 'symptomCheckerSeverity' | 'symptomCheckerAssociated' | 'symptomCheckerResults' | 'aiDoctorRouting';
   customData?: any;
 }
+
+const TOP_DOCTORS_DATABASE = [
+  {
+    id: '1',
+    name: 'Dr. Folake Ademola',
+    specialty: 'Cardiologist',
+    rating: 4.9,
+    reviewsCount: 128,
+    hospital: 'Omini Pulse Heart Center (Lagos)',
+    experienceYears: 12,
+    consultFee: 15000,
+    topFeedback: 'Very thorough and explained cardiac vitals clearly.',
+  },
+  {
+    id: '2',
+    name: 'Dr. Tunde Adewale',
+    specialty: 'Neurologist',
+    rating: 4.8,
+    reviewsCount: 96,
+    hospital: 'Omini Pulse Neuroscience Institute (Abuja)',
+    experienceYears: 15,
+    consultFee: 20000,
+    topFeedback: 'Got a proper diagnosis after years. Exceptional care.',
+  },
+  {
+    id: '3',
+    name: 'Dr. Amina Bello',
+    specialty: 'Gastroenterologist',
+    rating: 4.9,
+    reviewsCount: 112,
+    hospital: 'Lagos University Teaching Hospital (LUTH)',
+    experienceYears: 10,
+    consultFee: 18000,
+    topFeedback: 'Gentle, attentive, and very detailed digestive treatment.',
+  },
+];
 
 const SUGGESTIONS = [
   'Start Symptom Checker',
@@ -67,7 +103,7 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('stroke') ||
     q.includes('unconscious')
   ) {
-    return "I am your OminiPlus AI health assistant. How can I assist you with your health query or medical records today?";
+    return "I am your Omini Pulse AI health assistant. How can I assist you with your health query or medical records today?";
   }
   
   if (q.includes('symptom') || q.includes('headache') || q.includes('pain') || q.includes('migraine') || q.includes('fever')) {
@@ -94,7 +130,7 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     return `Your recorded blood pressure is ${vitals.bloodPressure} mmHg. Typical healthy blood pressure is under 120/80 mmHg. To maintain healthy levels: eat a low-sodium diet, exercise regularly, manage stress, and avoid smoking. Let me know if you would like to consult a cardiologist.`;
   }
   
-  let baseMsg = "I am your OminiPlus AI health assistant. I can help you analyze symptoms, explain medical records, search medication information, and cross-reference drug interactions. \n\nPlease describe your health query or select 'Start Symptom Checker' to check your symptoms step-by-step.";
+  let baseMsg = "I am your Omini Pulse AI health assistant. I can help you analyze symptoms, explain medical records, search medication information, and cross-reference drug interactions. \n\nPlease describe your health query or select 'Start Symptom Checker' to check your symptoms step-by-step.";
   if (vitals) {
     baseMsg += `\n\nI have access to your health profile: BP is ${vitals.bloodPressure}, HR is ${vitals.heartRate} bpm, Weight is ${vitals.weight} kg. This helps me provide more tailored clinical insights.`;
   }
@@ -445,6 +481,31 @@ export default function AIChatScreen({ route, navigation }: any) {
     };
   };
 
+  const handleTriggerDoctorRouting = (specialty?: string) => {
+    setIsTyping(true);
+    const userMsg: Message = {
+      id: `msg-${Date.now()}`,
+      text: `Yes, please search and route me to the top 3 doctors for ${specialty || 'my health complaint'}.`,
+      isUser: true,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+    setTimeout(() => {
+      setIsTyping(false);
+      const aiResponse: Message = {
+        id: `msg-${Date.now() + 1}`,
+        text: `I have analyzed our verified provider network and routed you to the Top 3 highest-rated ${specialty || 'specialists'} based on verified patient reviews and feedback ratings:`,
+        isUser: false,
+        timestamp: new Date(),
+        customComponent: 'aiDoctorRouting',
+      };
+      setMessages((prev) => [...prev, aiResponse]);
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    }, 1200);
+  };
+
   const handleSend = (text: string) => {
     if (!text.trim()) return;
 
@@ -650,10 +711,77 @@ export default function AIChatScreen({ route, navigation }: any) {
               </View>
               <TouchableOpacity
                 style={[styles.chatBookBtn, { backgroundColor: item.customData.color }]}
-                onPress={() => navigation.navigate('BookAppointment')}
+                onPress={() => handleTriggerDoctorRouting(item.customData.spec)}
               >
-                <Text style={styles.chatBookBtnText}>Book a {item.customData.spec}</Text>
+                <Ionicons name="compass-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
+                <Text style={styles.chatBookBtnText}>Route Me to Top 3 {item.customData.spec}s</Text>
               </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Inline AI Doctor Routing Recommendations */}
+          {item.customComponent === 'aiDoctorRouting' && (
+            <View style={{ gap: 10, marginTop: 10 }}>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: '#0F172A' }}>
+                Top 3 Matched Specialists (Ranked by Patient Feedback):
+              </Text>
+
+              {TOP_DOCTORS_DATABASE.map((doc, idx) => (
+                <View key={doc.id} style={{
+                  backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12,
+                  borderWidth: 1, borderColor: '#E2E8F0', gap: 8
+                }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={{
+                      width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF',
+                      alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#DBEAFE'
+                    }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#2563EB' }}>{doc.name[4]}</Text>
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 13.5, fontWeight: '700', color: '#0F172A' }}>{doc.name}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: '#FEF3C7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Ionicons name="star" size={11} color="#F59E0B" />
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>{doc.rating}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: 11, color: '#64748B' }}>{doc.specialty} • {doc.hospital}</Text>
+                    </View>
+                  </View>
+
+                  {/* Patient Feedback Snippet */}
+                  <View style={{ backgroundColor: '#F8FAFC', padding: 8, borderRadius: 6, borderWidth: 1, borderColor: '#F1F5F9' }}>
+                    <Text style={{ fontSize: 10.5, color: '#475569', fontStyle: 'italic' }}>
+                      "{doc.topFeedback}"
+                    </Text>
+                  </View>
+
+                  {/* Actions */}
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 2 }}>
+                    <TouchableOpacity
+                      style={{
+                        flex: 1, backgroundColor: '#2563EB', paddingVertical: 8, borderRadius: 8,
+                        alignItems: 'center', justifyContent: 'center'
+                      }}
+                      onPress={() => navigation.navigate('BookAppointment', { doctorId: doc.id })}
+                    >
+                      <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#FFFFFF' }}>Book Now (₦{doc.consultFee.toLocaleString()})</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={{
+                        flex: 1, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1',
+                        paddingVertical: 8, borderRadius: 8, alignItems: 'center', justifyContent: 'center'
+                      }}
+                      onPress={() => navigation.navigate('DoctorProfile', { doctorId: doc.id })}
+                    >
+                      <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#334155' }}>View Profile & Reviews</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
             </View>
           )}
 
@@ -674,7 +802,7 @@ export default function AIChatScreen({ route, navigation }: any) {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <View style={styles.headerTitleRow}>
             <View style={styles.brandingDot} />
-            <Text style={styles.headerTitle}>OminiPlus AI Assistant</Text>
+            <Text style={styles.headerTitle}>Omini Pulse AI Assistant</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
             <Ionicons name="shield-checkmark" size={10} color="#10B981" />
@@ -682,6 +810,18 @@ export default function AIChatScreen({ route, navigation }: any) {
           </View>
         </View>
         <Text style={styles.headerSubtitle}>Medical AI Companion • Online</Text>
+      </View>
+
+      {/* ── Legal Medical Disclaimer Banner ─────────────────────────────── */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        backgroundColor: '#FFFBEB', borderBottomWidth: 1, borderBottomColor: '#FCD34D',
+        paddingHorizontal: 12, paddingVertical: 8
+      }}>
+        <Ionicons name="information-circle" size={16} color="#D97706" />
+        <Text style={{ flex: 1, fontSize: 10.5, color: '#92400E', lineHeight: 14, fontWeight: '600' }}>
+          Omini Pulse AI is a triage assistant and does not replace emergency ER care or a licensed doctor's diagnosis.
+        </Text>
       </View>
 
 
@@ -703,7 +843,7 @@ export default function AIChatScreen({ route, navigation }: any) {
                 <Ionicons name="leaf-outline" size={48} color="#FFFFFF" />
               </View>
             </View>
-            <Text style={styles.welcomeTitle}>OminiPlus AI Consult</Text>
+            <Text style={styles.welcomeTitle}>Omini Pulse AI Consult</Text>
             <Text style={styles.welcomeSubtitle}>
               Your intelligent clinical assistant. Get instant, clinical-grade guidance on symptoms, drug dosages, pill identification, and medical records.
             </Text>
@@ -844,7 +984,7 @@ export default function AIChatScreen({ route, navigation }: any) {
             <TouchableOpacity style={styles.voiceCloseBtn} onPress={closeVoiceMode}>
               <Ionicons name="close" size={26} color="#FFFFFF" />
             </TouchableOpacity>
-            <Text style={styles.voiceHeaderTitle}>OminiPlus AI Voice</Text>
+            <Text style={styles.voiceHeaderTitle}>Omini Pulse AI Voice</Text>
             <View style={styles.voiceHeaderRight}>
               <Ionicons name="volume-high" size={22} color="#FFFFFF" />
             </View>
@@ -854,7 +994,7 @@ export default function AIChatScreen({ route, navigation }: any) {
             <Text style={styles.voiceStatusText}>
               {voiceStatus === 'connecting' && 'INITIALIZING AI VOICE...'}
               {voiceStatus === 'listening' && 'LISTENING FOR AUDIO...'}
-              {voiceStatus === 'speaking' && 'OMINIPLUS AI IS SPEAKING...'}
+              {voiceStatus === 'speaking' && 'OMINI PULSE AI IS SPEAKING...'}
             </Text>
 
             <View style={styles.sonarContainer}>
@@ -941,7 +1081,7 @@ export default function AIChatScreen({ route, navigation }: any) {
 
                 {voiceResponse ? (
                   <View style={styles.transAiRow}>
-                    <Text style={styles.transAiLabel}>OminiPlus AI</Text>
+                    <Text style={styles.transAiLabel}>Omini Pulse AI</Text>
                     <Text style={styles.transAiText}>{voiceResponse}</Text>
                   </View>
                 ) : null}

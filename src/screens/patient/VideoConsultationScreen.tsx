@@ -26,7 +26,7 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
     const timer = setTimeout(() => {
       Alert.alert(
         'Allow Camera & Microphone Access?',
-        'OminiPlus requires camera and microphone permissions to start this secure telemedicine session.',
+        'Omini Pulse requires camera and microphone permissions to start this secure telemedicine session.',
         [
           {
             text: "Don't Allow",

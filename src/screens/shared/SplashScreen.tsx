@@ -48,7 +48,7 @@ export const SplashScreen = () => {
       {/* Decorative radial glow behind logo */}
       <View style={styles.glow} />
 
-      {/* Full OminiPlus logo (transparent PNG, no background) */}
+      {/* Full Omini Pulse logo (transparent PNG, no background) */}
       <Animated.View
         style={[
           styles.logoWrapper,

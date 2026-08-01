@@ -10,7 +10,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
     // Simulated approval: log in as doctor directly for sandbox demonstration
     const mockDoctorUser = {
       id: 'mock-doctor-123',
-      email: 'doctor@ominiplus.ai',
+      email: 'doctor@ominipulse.ai',
       firstName: 'Babajide',
       lastName: 'Alabi',
       role: 'doctor' as const,
@@ -39,7 +39,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
         <Text style={styles.title}>Verification Pending</Text>
         
         <Text style={styles.description}>
-          Thank you for joining OminiPlus as a clinical practitioner. Our verification committee is currently reviewing your medical license and hospital affiliations.
+          Thank you for joining Omini Pulse as a clinical practitioner. Our verification committee is currently reviewing your medical license and hospital affiliations.
         </Text>
 
         <View style={styles.card}>

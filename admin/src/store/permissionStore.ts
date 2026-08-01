@@ -10,6 +10,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'doctors.view', 'doctors.verify', 'doctors.suspend',
     'hospitals.view', 'hospitals.onboard', 'hospitals.manage',
     'pharmacies.view', 'pharmacies.onboard', 'pharmacies.manage',
+    'blood_donors.view', 'blood_donors.manage',
     'appointments.view_overview', 'appointments.resolve_issues',
     'ai_monitoring.view', 'ai_monitoring.moderate',
     'notifications.view', 'notifications.send',
@@ -24,6 +25,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'doctors.view', 'doctors.verify', 'doctors.suspend',
     'hospitals.view', 'hospitals.onboard', 'hospitals.manage',
     'pharmacies.view', 'pharmacies.onboard', 'pharmacies.manage',
+    'blood_donors.view', 'blood_donors.manage',
     'appointments.view_overview', 'appointments.resolve_issues',
   ],
 

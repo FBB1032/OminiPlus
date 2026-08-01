@@ -135,11 +135,11 @@ export default function HospitalsPage() {
     const newHosp: VerificationHospital = {
       id: `h-${Date.now()}`,
       name: newName,
-      address: 'OminiPlus Partner Facility Address',
+      address: 'Omini Pulse Partner Facility Address',
       city: newCity || 'Lagos',
       country: 'Nigeria',
       phone: newPhone || '+234 800 000 0000',
-      email: newEmail || 'contact@partner.ominiplus.ai',
+      email: newEmail || 'contact@partner.ominipulse.ai',
       partnerStatus: 'pending',
       doctorCount: 0,
       createdAt: new Date().toISOString(),
@@ -827,7 +827,7 @@ export default function HospitalsPage() {
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em' }}>{previewDocUrl.title}</h3>
                   <p style={{ fontSize: 12.5, color: '#94a3b8', marginTop: 4 }}>
-                    Secure OminiPlus Document Portal (SSL Encrypted)
+                    Secure Omini Pulse Document Portal (SSL Encrypted)
                   </p>
                 </div>
                 <div style={{
