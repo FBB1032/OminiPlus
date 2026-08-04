@@ -1,5 +1,4 @@
-import React from 'react';
-import { useSkeletonDelay } from '../../hooks/useSkeletonDelay';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,10 +9,15 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
-import { useNotifications } from '../../hooks/usePatient';
-import { EmptyState, ErrorState, Divider, SkeletonNotificationList } from '../../components';
+import { useAuth } from '../../hooks/useAuth';
+import { EmptyState, SkeletonNotificationList } from '../../components';
 
-type NotificationType = 'appointment_reminder' | 'prescription_ready' | 'result_ready' | 'general';
+type NotificationType =
+  | 'appointment_reminder'
+  | 'prescription_ready'
+  | 'payout_credited'
+  | 'verification_status'
+  | 'general';
 
 interface TypeConfig {
   icon: keyof typeof Ionicons.glyphMap;
@@ -24,17 +28,22 @@ interface TypeConfig {
 const typeConfigs: Record<NotificationType, TypeConfig> = {
   appointment_reminder: {
     icon: 'calendar-outline',
-    color: '#3B82F6',
+    color: '#2563EB',
     bgColor: '#EFF6FF',
   },
   prescription_ready: {
     icon: 'medkit-outline',
-    color: '#10B981',
+    color: '#059669',
     bgColor: '#ECFDF5',
   },
-  result_ready: {
-    icon: 'document-text-outline',
-    color: '#8B5CF6',
+  payout_credited: {
+    icon: 'cash-outline',
+    color: '#16A34A',
+    bgColor: '#F0FDF4',
+  },
+  verification_status: {
+    icon: 'shield-checkmark-outline',
+    color: '#7C3AED',
     bgColor: '#F5F3FF',
   },
   general: {
@@ -44,19 +53,77 @@ const typeConfigs: Record<NotificationType, TypeConfig> = {
   },
 };
 
+const MOCK_PATIENT_NOTIFICATIONS = [
+  {
+    id: 'p-notif-1',
+    type: 'appointment_reminder',
+    title: 'Upcoming Video Consultation',
+    body: 'Your appointment with Dr. Sarah Jenkins starts in 15 minutes. Prepare your health history notes.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
+    isRead: false,
+  },
+  {
+    id: 'p-notif-2',
+    type: 'prescription_ready',
+    title: 'New E-Prescription Issued',
+    body: 'Dr. Sarah Jenkins issued a digitally signed E-Prescription. Tap to view and find nearby pharmacies.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
+    isRead: false,
+  },
+  {
+    id: 'p-notif-3',
+    type: 'general',
+    title: 'GPS Pharmacy Radar Active',
+    body: '3 certified open partner pharmacies detected near your current location.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 600).toISOString(),
+    isRead: true,
+  },
+];
+
+const MOCK_DOCTOR_NOTIFICATIONS = [
+  {
+    id: 'd-notif-1',
+    type: 'appointment_reminder',
+    title: 'New Appointment Booking',
+    body: 'Patient Chidi Okafor booked a 30-minute Cardiology Video Consultation for today at 3:00 PM.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
+    isRead: false,
+  },
+  {
+    id: 'd-notif-2',
+    type: 'payout_credited',
+    title: 'Net Payout Disbursed (₦13,500)',
+    body: 'Your 90% net earnings (₦13,500) for completed consultation #AP-8842 have been credited to your payout bank account.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(),
+    isRead: false,
+  },
+  {
+    id: 'd-notif-3',
+    type: 'verification_status',
+    title: 'MDCN Practitioner Credential Verified',
+    body: 'Your Medical license credentials (MDCN #LIC-98754) have been verified by Compliance Officers.',
+    createdAt: new Date(Date.now() - 1000 * 60 * 1440).toISOString(),
+    isRead: true,
+  },
+];
+
 export default function NotificationsScreen({ navigation }: any) {
-  const { data: notifications, isLoading: _isLoading, isError, refetch } = useNotifications();
-  const showSkeleton = useSkeletonDelay(_isLoading, 150);
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor';
+
+  const notifications = useMemo(() => {
+    return isDoctor ? MOCK_DOCTOR_NOTIFICATIONS : MOCK_PATIENT_NOTIFICATIONS;
+  }, [isDoctor]);
 
   const renderItem = ({ item }: { item: any }) => {
     const config = typeConfigs[item.type as NotificationType] || typeConfigs.general;
-    
+
     return (
       <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
         <View style={[styles.iconContainer, { backgroundColor: config.bgColor }]}>
           <Ionicons name={config.icon} size={20} color={config.color} />
         </View>
-        
+
         <View style={styles.textContainer}>
           <View style={styles.cardHeader}>
             <Text style={[styles.title, !item.isRead && styles.unreadText]}>
@@ -66,7 +133,6 @@ export default function NotificationsScreen({ navigation }: any) {
           </View>
           <Text style={styles.body}>{item.body}</Text>
           <Text style={styles.time}>
-            {/* Display simple time or formatted date */}
             {new Date(item.createdAt).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
@@ -81,27 +147,53 @@ export default function NotificationsScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
+          <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Notifications</Text>
-        <View style={styles.placeholder} />
+        <View style={{ flex: 1, marginLeft: 8 }}>
+          <Text style={styles.headerTitle}>
+            {isDoctor ? 'Doctor Notifications' : 'Patient Notifications'}
+          </Text>
+          <Text style={styles.headerSub}>
+            {isDoctor ? 'Appointments, Payouts & MDCN Verification' : 'Consultations, E-Prescriptions & Vitals Alerts'}
+          </Text>
+        </View>
+        <View
+          style={[
+            styles.roleChip,
+            {
+              backgroundColor: isDoctor ? '#F0FDF4' : '#EFF6FF',
+              borderColor: isDoctor ? '#BBF7D0' : '#BFDBFE',
+            },
+          ]}
+        >
+          <Ionicons
+            name={isDoctor ? 'medkit' : 'person'}
+            size={11}
+            color={isDoctor ? '#059669' : '#2563EB'}
+          />
+          <Text
+            style={[
+              styles.roleChipText,
+              { color: isDoctor ? '#059669' : '#2563EB' },
+            ]}
+          >
+            {isDoctor ? 'Doctor' : 'Patient'}
+          </Text>
+        </View>
       </View>
 
-      {showSkeleton ? (
-        <SkeletonNotificationList />
-      ) : isError ? (
-        <ErrorState onRetry={refetch} message="Could not load notifications." />
-      ) : !notifications || notifications.length === 0 ? (
+      {!notifications || notifications.length === 0 ? (
         <EmptyState
           icon="notifications-off-outline"
           title="All caught up!"
-          subtitle="You don't have any notifications right now."
+          subtitle={`No ${isDoctor ? 'Doctor' : 'Patient'} notifications right now.`}
         />
       ) : (
         <FlatList
@@ -110,8 +202,6 @@ export default function NotificationsScreen({ navigation }: any) {
           renderItem={renderItem}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={_isLoading}
-          onRefresh={refetch}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -127,7 +217,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
     borderBottomWidth: 1,
@@ -142,31 +231,39 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
   },
-  placeholder: {
-    width: 24,
+  headerSub: {
+    fontSize: 11,
+    color: Colors.text.secondary,
   },
-  loadingContainer: {
-    flex: 1,
+  roleChip: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  roleChipText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
   },
   listContainer: {
     padding: Spacing[4],
-    flexGrow: 1,
   },
   notificationCard: {
     flexDirection: 'row',
     backgroundColor: Colors.surface,
     padding: Spacing[4],
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: Colors.border,
-    gap: Spacing[3],
+    gap: 12,
     ...Shadows.xs,
   },
   unreadCard: {
-    borderColor: Colors.primary[200],
-    backgroundColor: Colors.primary[50] + '40', // light tint
+    borderColor: Colors.primary[300],
+    backgroundColor: '#FAFAFA',
   },
   iconContainer: {
     width: 40,
@@ -174,7 +271,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
   },
   textContainer: {
     flex: 1,
@@ -184,35 +280,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: Spacing[2],
   },
   title: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semiBold,
-    color: Colors.text.secondary,
+    color: Colors.text.primary,
     flex: 1,
   },
   unreadText: {
-    color: Colors.text.primary,
     fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: Colors.primary[600],
+    marginLeft: 6,
   },
   body: {
-    fontSize: FontSize.sm,
+    fontSize: 12,
     color: Colors.text.secondary,
-    lineHeight: 18,
+    lineHeight: 17,
   },
   time: {
-    fontSize: FontSize.xs,
+    fontSize: 10.5,
     color: Colors.text.disabled,
-    marginTop: 4,
+    marginTop: 2,
   },
   separator: {
-    height: Spacing[3],
+    height: 10,
   },
 });

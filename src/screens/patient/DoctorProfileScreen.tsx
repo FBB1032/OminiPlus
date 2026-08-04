@@ -141,11 +141,11 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{doctorData.patients.toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Patients</Text>
+            <Text style={styles.statLabel}>Patients Treated</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{doctorData.experience} yr</Text>
+            <Text style={styles.statValue}>{doctorData.experience} yrs</Text>
             <Text style={styles.statLabel}>Experience</Text>
           </View>
           <View style={styles.statDivider} />
@@ -154,7 +154,7 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
               <Ionicons name="star" size={14} color="#F59E0B" />
               <Text style={styles.statValue}>{doctorData.rating}</Text>
             </View>
-            <Text style={styles.statLabel}>Rating</Text>
+            <Text style={styles.statLabel}>Avg Rating</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>

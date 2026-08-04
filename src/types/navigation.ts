@@ -29,6 +29,8 @@ export type DoctorStackParamList = {
   Settings: undefined;
   ProfileEdit: undefined;
   ConsultationChat: { appointmentId: string };
+  HelpCenter: undefined;
+  PrivacyPolicy: undefined;
 };
 
 // ─── Patient Tabs ─────────────────────────────────────────────────────────────
@@ -57,6 +59,8 @@ export type PatientStackParamList = {
   ProfileEdit: undefined;
   Premium: undefined;
   ConsultationChat: { appointmentId: string };
+  HelpCenter: undefined;
+  PrivacyPolicy: undefined;
 };
 
 // ─── Root Navigator ─────────────────────────────────────────────────────────

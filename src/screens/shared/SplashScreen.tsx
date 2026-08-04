@@ -1,14 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { View, Text, StyleSheet, Animated, Dimensions, Image, StatusBar } from 'react-native';
 import { Colors, FontSize, FontWeight, Spacing } from '../../theme';
 
 const { width } = Dimensions.get('window');
-
 const logo = require('../../../assets/images/logo.png');
 
 export const SplashScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.82)).current;
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const textFade = useRef(new Animated.Value(0)).current;
   const textSlide = useRef(new Animated.Value(12)).current;
 
@@ -17,21 +16,21 @@ export const SplashScreen = () => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 900,
+        duration: 800,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 5,
-        tension: 35,
+        friction: 6,
+        tension: 40,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Then text slides up
+      // Then tagline slides up smoothly
       Animated.parallel([
         Animated.timing(textFade, {
           toValue: 1,
-          duration: 600,
+          duration: 500,
           useNativeDriver: true,
         }),
         Animated.timing(textSlide, {
@@ -45,10 +44,12 @@ export const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Decorative radial glow behind logo */}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+
+      {/* Decorative subtle ambient backdrop element */}
       <View style={styles.glow} />
 
-      {/* Full Omini Pulse logo (transparent PNG, no background) */}
+      {/* Full Omini Pulse logo */}
       <Animated.View
         style={[
           styles.logoWrapper,
@@ -71,9 +72,6 @@ export const SplashScreen = () => {
       >
         <Text style={styles.tagline}>Your Intelligent Health Companion</Text>
       </Animated.View>
-
-      {/* Bottom decorative arc */}
-      <View style={styles.bottomArc} />
     </View>
   );
 };
@@ -81,24 +79,24 @@ export const SplashScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   glow: {
     position: 'absolute',
-    width: width * 0.9,
-    height: width * 0.9,
-    borderRadius: width * 0.45,
-    backgroundColor: 'rgba(15, 110, 110, 0.10)',
-    top: '15%',
+    width: width * 0.85,
+    height: width * 0.85,
+    borderRadius: width * 0.425,
+    backgroundColor: Colors.primary[50],
+    opacity: 0.6,
   },
   logoWrapper: {
-    width: width * 0.80,
-    height: 120,
+    width: width * 0.75,
+    height: 110,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing[7],
+    marginBottom: Spacing[4],
   },
   logo: {
     width: '100%',
@@ -107,25 +105,10 @@ const styles = StyleSheet.create({
   textBlock: {
     alignItems: 'center',
   },
-  appName: {
-    fontSize: FontSize['3xl'],
-    fontWeight: FontWeight.bold,
-    color: '#F8FAFC',
-    letterSpacing: 0.8,
-    marginBottom: Spacing[2],
-  },
   tagline: {
     fontSize: FontSize.sm,
-    color: '#94A3B8',
+    color: Colors.text.secondary,
     fontWeight: FontWeight.medium,
-    letterSpacing: 0.3,
-  },
-  bottomArc: {
-    position: 'absolute',
-    bottom: -width * 0.6,
-    width: width * 1.4,
-    height: width * 1.4,
-    borderRadius: width * 0.7,
-    backgroundColor: 'rgba(56, 178, 172, 0.04)',
+    letterSpacing: 0.5,
   },
 });

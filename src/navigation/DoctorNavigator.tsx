@@ -20,6 +20,8 @@ import SettingsScreen from '../screens/shared/SettingsScreen';
 import ProfileEditScreen from '../screens/shared/ProfileEditScreen';
 import ConsultationChatScreen from './../screens/shared/ConsultationChatScreen';
 import DoctorAvailabilityScreen from '../screens/doctor/DoctorAvailabilityScreen';
+import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
+import PrivacyPolicyScreen from '../screens/shared/PrivacyPolicyScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -77,6 +79,8 @@ export const DoctorNavigator = () => (
       component={DoctorAvailabilityScreen as React.ComponentType}
       options={{ animation: 'slide_from_right' }}
     />
+    <Stack.Screen name="HelpCenter" component={HelpCenterScreen as React.ComponentType} />
+    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen as React.ComponentType} />
   </Stack.Navigator>
 );
 

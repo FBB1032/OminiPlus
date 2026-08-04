@@ -18,6 +18,7 @@ import { authService } from '../../../services/authService';
 import { Button, FormInput, LoadingOverlay } from '../../../components';
 import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
+import { Ionicons } from '@expo/vector-icons';
 import { AuthScreenProps } from '../../../types';
 
 export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
@@ -98,8 +99,12 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
               activeOpacity={0.7}
               onPress={() => navigation.navigate('ForgotPassword')}
               style={styles.forgotContainer}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
-              <Text style={styles.forgotText}>Forgot Password?</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="key-outline" size={14} color={Colors.primary[600]} />
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </View>
             </TouchableOpacity>
 
             <Button

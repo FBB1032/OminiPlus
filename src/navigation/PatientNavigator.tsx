@@ -27,6 +27,8 @@ import VideoConsultationScreen from '../screens/patient/VideoConsultationScreen'
 import BloodDonorsScreen from '../screens/patient/BloodDonorsScreen';
 import ConsultationChatScreen from '../screens/shared/ConsultationChatScreen';
 import ReportIncidentScreen from '../screens/patient/ReportIncidentScreen';
+import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
+import PrivacyPolicyScreen from '../screens/shared/PrivacyPolicyScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -94,6 +96,8 @@ export const PatientNavigator = () => (
     <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
     <Stack.Screen name="ConsultationChat" component={ConsultationChatScreen} />
+    <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
+    <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
   </Stack.Navigator>
 );
 

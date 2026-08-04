@@ -17,6 +17,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { storageService } from '../../services/storageService';
 import { STORAGE_KEYS } from '../../constants/config';
 import { Divider, Button, LoadingOverlay } from '../../components';
+import { RoleLegalModal } from '../../components/legal/RoleLegalModal';
 
 export default function SettingsScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -24,6 +25,9 @@ export default function SettingsScreen({ navigation }: any) {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [biometrics, setBiometrics] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+
+  const userRole: 'patient' | 'doctor' = user?.role === 'doctor' ? 'doctor' : 'patient';
 
   const handleSignOut = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -98,23 +102,23 @@ export default function SettingsScreen({ navigation }: any) {
         {
           icon: 'help-circle-outline',
           iconColor: '#8B5CF6',
-          label: 'Help Center',
+          label: 'Help Center & Support Desk',
           type: 'link',
-          onPress: () => {},
+          onPress: () => navigation.navigate('HelpCenter'),
         },
         {
           icon: 'document-text-outline',
           iconColor: '#EF4444',
-          label: 'Terms of Service',
+          label: userRole === 'doctor' ? 'Provider Terms & 10% Fee Policy' : 'Patient Telehealth Terms',
           type: 'link',
-          onPress: () => {},
+          onPress: () => setIsLegalModalOpen(true),
         },
         {
           icon: 'shield-checkmark-outline',
           iconColor: '#EC4899',
-          label: 'Privacy Policy',
+          label: 'Privacy Policy (EHR Protection)',
           type: 'link',
-          onPress: () => {},
+          onPress: () => navigation.navigate('PrivacyPolicy'),
         },
       ],
     },
@@ -176,7 +180,7 @@ export default function SettingsScreen({ navigation }: any) {
 
         <View style={styles.versionContainer}>
           <Text style={styles.versionText}>Omini Pulse v1.0.0</Text>
-          <Text style={styles.userEmail}>Logged in as: {user?.email}</Text>
+          <Text style={styles.userEmail}>Logged in as: {user?.email} ({userRole})</Text>
         </View>
 
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
@@ -184,6 +188,14 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Role-Based Legal Terms & Policy Modal */}
+      <RoleLegalModal
+        visible={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        role={userRole}
+      />
+
       <LoadingOverlay visible={loading} message="Signing out..." />
     </SafeAreaView>
   );

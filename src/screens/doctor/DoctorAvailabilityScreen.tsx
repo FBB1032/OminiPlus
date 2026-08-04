@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { WorkingHours } from '../../types';
 import { useDoctorAvailability, useUpdateDoctorAvailability } from '../../hooks/useDoctor';
-import { useToast } from '../../hooks/useAuth';
+import { useAuth, useToast } from '../../hooks/useAuth';
 import { Button, Card, Divider, SkeletonList, ErrorState, AppModal } from '../../components';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -133,6 +133,10 @@ const TimePickerModal = ({ visible, value, title, onClose, onConfirm }: TimePick
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 
 export default function DoctorAvailabilityScreen({ navigation }: any) {
+  const { user } = useAuth();
+  const isDoctor = user?.role === 'doctor';
+  const isUnverifiedDoctor = isDoctor && ((user as any)?.isVerified === false || (user as any)?.verificationStatus === 'pending' || (user as any)?.isVerified !== true);
+
   const { success: showSuccess, error: showError } = useToast();
   const { data: serverAvailability, isLoading, isError, refetch } = useDoctorAvailability();
   const updateMutation = useUpdateDoctorAvailability();
@@ -282,6 +286,22 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
+      {/* Verification Pending Banner for Unverified Doctors */}
+      {isUnverifiedDoctor && (
+        <View style={styles.pendingVerificationCard}>
+          <View style={styles.pendingHeaderRow}>
+            <View style={styles.pendingBadge}>
+              <Ionicons name="time" size={13} color="#D97706" />
+              <Text style={styles.pendingBadgeText}>Verification Pending</Text>
+            </View>
+            <Ionicons name="lock-closed" size={16} color="#DC2626" />
+          </View>
+          <Text style={styles.pendingText}>
+            Your MDCN License credentials are under review by OminiPulse Compliance Officers. Consultation availability and patient booking slots remain locked until your verification is approved.
+          </Text>
+        </View>
+      )}
+
       {/* Info Banner */}
       <View style={styles.infoBanner}>
         <Ionicons name="information-circle-outline" size={16} color={Colors.primary[600]} />
@@ -291,121 +311,127 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {schedule.map((daySchedule, index) => (
-          <Card key={daySchedule.day} style={styles.dayCard}>
-            {/* Day Toggle Row */}
-            <View style={styles.dayHeaderRow}>
-              <View style={styles.dayLeft}>
-                <View
-                  style={[
-                    styles.dayIndicator,
-                    { backgroundColor: daySchedule.isActive ? Colors.primary[500] : Colors.neutral[300] },
-                  ]}
+        <View pointerEvents={isUnverifiedDoctor ? 'none' : 'auto'} style={{ opacity: isUnverifiedDoctor ? 0.55 : 1, gap: Spacing[4] }}>
+          {schedule.map((daySchedule, index) => (
+            <Card key={daySchedule.day} style={styles.dayCard}>
+              {/* Day Toggle Row */}
+              <View style={styles.dayHeaderRow}>
+                <View style={styles.dayLeft}>
+                  <View
+                    style={[
+                      styles.dayIndicator,
+                      { backgroundColor: daySchedule.isActive ? Colors.primary[500] : Colors.neutral[300] },
+                    ]}
+                  />
+                  <Text style={[styles.dayLabel, !daySchedule.isActive && styles.dayLabelInactive]}>
+                    {DAY_LABELS[daySchedule.day]}
+                  </Text>
+                </View>
+                <Switch
+                  value={daySchedule.isActive}
+                  onValueChange={(val) => updateDay(index, { isActive: val })}
+                  disabled={isUnverifiedDoctor}
+                  trackColor={{ false: Colors.neutral[200], true: Colors.primary[200] }}
+                  thumbColor={daySchedule.isActive ? Colors.primary[600] : Colors.neutral[400]}
                 />
-                <Text style={[styles.dayLabel, !daySchedule.isActive && styles.dayLabelInactive]}>
-                  {DAY_LABELS[daySchedule.day]}
-                </Text>
               </View>
-              <Switch
-                value={daySchedule.isActive}
-                onValueChange={(val) => updateDay(index, { isActive: val })}
-                trackColor={{ false: Colors.neutral[200], true: Colors.primary[200] }}
-                thumbColor={daySchedule.isActive ? Colors.primary[600] : Colors.neutral[400]}
-              />
-            </View>
 
-            {daySchedule.isActive && (
-              <>
-                <Divider spacing={3} />
+              {daySchedule.isActive && (
+                <>
+                  <Divider spacing={3} />
 
-                {/* Time Slots */}
-                <View style={styles.timeRow}>
-                  {/* Start Time */}
-                  <TouchableOpacity
-                    style={styles.timeBtn}
-                    onPress={() => openTimePicker(index, 'startTime')}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="time-outline" size={14} color={Colors.primary[600]} />
-                    <View>
-                      <Text style={styles.timeBtnLabel}>From</Text>
-                      <Text style={styles.timeBtnValue}>{formatTime(daySchedule.startTime)}</Text>
-                    </View>
-                  </TouchableOpacity>
+                  {/* Time Slots */}
+                  <View style={styles.timeRow}>
+                    {/* Start Time */}
+                    <TouchableOpacity
+                      style={styles.timeBtn}
+                      onPress={() => openTimePicker(index, 'startTime')}
+                      disabled={isUnverifiedDoctor}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="time-outline" size={14} color={Colors.primary[600]} />
+                      <View>
+                        <Text style={styles.timeBtnLabel}>From</Text>
+                        <Text style={styles.timeBtnValue}>{formatTime(daySchedule.startTime)}</Text>
+                      </View>
+                    </TouchableOpacity>
 
-                  <Ionicons name="arrow-forward" size={16} color={Colors.neutral[400]} />
+                    <Ionicons name="arrow-forward" size={16} color={Colors.neutral[400]} />
 
-                  {/* End Time */}
-                  <TouchableOpacity
-                    style={styles.timeBtn}
-                    onPress={() => openTimePicker(index, 'endTime')}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="time-outline" size={14} color={Colors.secondary[600]} />
-                    <View>
-                      <Text style={styles.timeBtnLabel}>To</Text>
-                      <Text style={styles.timeBtnValue}>{formatTime(daySchedule.endTime)}</Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
-
-                <Divider spacing={3} />
-
-                {/* Slot Duration */}
-                <View style={styles.slotDurationRow}>
-                  <Text style={styles.slotDurationLabel}>Slot Duration</Text>
-                  <View style={styles.slotDurationPills}>
-                    {DEFAULT_SLOT_DURATIONS.map((dur) => (
-                      <TouchableOpacity
-                        key={dur}
-                        style={[
-                          styles.durationPill,
-                          (daySchedule.slotDuration ?? 30) === dur && styles.durationPillActive,
-                        ]}
-                        onPress={() => updateDay(index, { slotDuration: dur })}
-                      >
-                        <Text
-                          style={[
-                            styles.durationPillText,
-                            (daySchedule.slotDuration ?? 30) === dur &&
-                              styles.durationPillTextActive,
-                          ]}
-                        >
-                          {dur}m
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {/* End Time */}
+                    <TouchableOpacity
+                      style={styles.timeBtn}
+                      onPress={() => openTimePicker(index, 'endTime')}
+                      disabled={isUnverifiedDoctor}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="time-outline" size={14} color={Colors.secondary[600]} />
+                      <View>
+                        <Text style={styles.timeBtnLabel}>To</Text>
+                        <Text style={styles.timeBtnValue}>{formatTime(daySchedule.endTime)}</Text>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                </View>
 
-                {/* Computed slots count */}
-                {(() => {
-                  const [sh, sm] = daySchedule.startTime.split(':').map(Number);
-                  const [eh, em] = daySchedule.endTime.split(':').map(Number);
-                  const totalMins = (eh * 60 + em) - (sh * 60 + sm);
-                  const dur = daySchedule.slotDuration ?? 30;
-                  const slots = totalMins > 0 ? Math.floor(totalMins / dur) : 0;
-                  return (
-                    <Text style={styles.slotsCount}>
-                      {slots > 0
-                        ? `${slots} appointment slot${slots !== 1 ? 's' : ''} available`
-                        : '⚠ End time must be after start time'}
-                    </Text>
-                  );
-                })()}
-              </>
-            )}
-          </Card>
-        ))}
+                  <Divider spacing={3} />
 
-        {/* Save Button */}
-        <Button
-          label={updateMutation.isPending ? 'Saving...' : 'Save Availability'}
-          onPress={handleSave}
-          isLoading={updateMutation.isPending}
-          disabled={!hasChanges || updateMutation.isPending}
-          style={styles.saveBtn}
-        />
+                  {/* Slot Duration */}
+                  <View style={styles.slotDurationRow}>
+                    <Text style={styles.slotDurationLabel}>Slot Duration</Text>
+                    <View style={styles.slotDurationPills}>
+                      {DEFAULT_SLOT_DURATIONS.map((dur) => (
+                        <TouchableOpacity
+                          key={dur}
+                          style={[
+                            styles.durationPill,
+                            (daySchedule.slotDuration ?? 30) === dur && styles.durationPillActive,
+                          ]}
+                          disabled={isUnverifiedDoctor}
+                          onPress={() => updateDay(index, { slotDuration: dur })}
+                        >
+                          <Text
+                            style={[
+                              styles.durationPillText,
+                              (daySchedule.slotDuration ?? 30) === dur &&
+                                styles.durationPillTextActive,
+                            ]}
+                          >
+                            {dur}m
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Computed slots count */}
+                  {(() => {
+                    const [sh, sm] = daySchedule.startTime.split(':').map(Number);
+                    const [eh, em] = daySchedule.endTime.split(':').map(Number);
+                    const totalMins = (eh * 60 + em) - (sh * 60 + sm);
+                    const dur = daySchedule.slotDuration ?? 30;
+                    const slots = totalMins > 0 ? Math.floor(totalMins / dur) : 0;
+                    return (
+                      <Text style={styles.slotsCount}>
+                        {slots > 0
+                          ? `${slots} appointment slot${slots !== 1 ? 's' : ''} available`
+                          : '⚠ End time must be after start time'}
+                      </Text>
+                    );
+                  })()}
+                </>
+              )}
+            </Card>
+          ))}
+
+          {/* Save Button */}
+          <Button
+            label={isUnverifiedDoctor ? 'Verification Pending — Locked' : updateMutation.isPending ? 'Saving...' : 'Save Availability'}
+            onPress={handleSave}
+            isLoading={updateMutation.isPending}
+            disabled={isUnverifiedDoctor || !hasChanges || updateMutation.isPending}
+            style={styles.saveBtn}
+          />
+        </View>
       </ScrollView>
 
       {/* Time Picker Modal */}
@@ -583,5 +609,39 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.text.secondary,
     marginTop: 24,
+  },
+  pendingVerificationCard: {
+    backgroundColor: '#FEF3C7',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FCD34D',
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+    gap: 6,
+  },
+  pendingHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  pendingBadgeText: {
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
+    color: '#B45309',
+  },
+  pendingText: {
+    fontSize: 11.5,
+    color: '#92400E',
+    lineHeight: 16,
   },
 });

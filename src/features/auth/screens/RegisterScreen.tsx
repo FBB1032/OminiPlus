@@ -16,6 +16,7 @@ import { registerSchema, RegisterFormValues } from '../../../utils/validators';
 import { authService } from '../../../services/authService';
 import { authApi } from '../../../api/auth';
 import { Button, FormInput, FormSelect, LoadingOverlay, DocumentUploadPicker, DatePicker } from '../../../components';
+import { RoleLegalModal } from '../../../components/legal/RoleLegalModal';
 import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
 import { AuthScreenProps } from '../../../types';
@@ -67,6 +68,7 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
   });
 
   const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor'>('patient');
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
   const onFormError = (formErrors: any) => {
     const firstKey = Object.keys(formErrors)[0];
@@ -395,10 +397,20 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
                       {value && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
                     </View>
                     <Text style={styles.termsText}>
-                      I agree to the{' '}
-                      <Text style={styles.termsHighlight}>Terms & Conditions</Text>
+                      I read and agree to the{' '}
+                      <Text
+                        style={styles.termsHighlight}
+                        onPress={() => setIsLegalModalOpen(true)}
+                      >
+                        {selectedRole === 'patient' ? 'Patient Telehealth Terms' : 'Doctor Provider Terms'}
+                      </Text>
                       {' '}and{' '}
-                      <Text style={styles.termsHighlight}>Privacy Policy</Text>
+                      <Text
+                        style={styles.termsHighlight}
+                        onPress={() => setIsLegalModalOpen(true)}
+                      >
+                        Privacy Policy
+                      </Text>
                     </Text>
                   </TouchableOpacity>
                   {errors.agreeToTerms && (
@@ -406,6 +418,22 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
                       {errors.agreeToTerms.message as string}
                     </Text>
                   )}
+
+                  {/* Modal Trigger Helper */}
+                  <TouchableOpacity
+                    style={{ marginTop: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    onPress={() => setIsLegalModalOpen(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name={selectedRole === 'patient' ? 'person-circle-outline' : 'medkit-outline'}
+                      size={14}
+                      color={Colors.primary[600]}
+                    />
+                    <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: Colors.primary[600] }}>
+                      Tap to read {selectedRole === 'patient' ? 'Patient' : 'Doctor Provider'} Terms & Policy
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
             />
@@ -430,6 +458,15 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Role-Based Legal Terms & Policy Modal */}
+      <RoleLegalModal
+        visible={isLegalModalOpen}
+        onClose={() => setIsLegalModalOpen(false)}
+        role={selectedRole}
+        onAccept={() => setValue('agreeToTerms', true, { shouldValidate: true })}
+      />
+
       <LoadingOverlay visible={loading} message="Creating account..." />
     </SafeAreaView>
   );

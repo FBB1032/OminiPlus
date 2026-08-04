@@ -21,13 +21,30 @@ export default function DoctorProfileScreen({ navigation }: any) {
   const { user } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
 
-  const [consultationFee, setConsultationFee] = useState('150.00');
+  const [consultationFee, setConsultationFee] = useState('15,000');
   const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
   const [feeInput, setFeeInput] = useState('');
+
+  // Bank Account State (Task 2)
+  const [bankName, setBankName] = useState('Wema Bank');
+  const [accountNumber, setAccountNumber] = useState('0123456789');
+  const [accountName, setAccountName] = useState('Dr. Samuel Okon');
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+
+  const [bankNameInput, setBankNameInput] = useState('');
+  const [accountNumberInput, setAccountNumberInput] = useState('');
+  const [accountNameInput, setAccountNameInput] = useState('');
 
   const [bio, setBio] = useState('');
   const [isBioModalOpen, setIsBioModalOpen] = useState(false);
   const [bioInput, setBioInput] = useState('');
+
+  // Platform Service Fee Calculator Math
+  const PLATFORM_FEE_PERCENT = 10; // 10% Platform Service Fee
+  const cleanFeeInput = feeInput.replace(/,/g, '');
+  const parsedFeeInput = parseFloat(cleanFeeInput) || 0;
+  const platformFeeAmount = (parsedFeeInput * (PLATFORM_FEE_PERCENT / 100));
+  const netTakeHomeEarnings = Math.max(0, parsedFeeInput - platformFeeAmount);
 
   const handleOpenBioEdit = () => {
     setBioInput(bio);
@@ -40,20 +57,43 @@ export default function DoctorProfileScreen({ navigation }: any) {
     showSuccess('Bio Updated', 'Your professional bio has been saved.');
   };
 
+  const handleOpenAccountEdit = () => {
+    setBankNameInput(bankName);
+    setAccountNumberInput(accountNumber);
+    setAccountNameInput(accountName);
+    setIsAccountModalOpen(true);
+  };
+
+  const handleSaveAccount = () => {
+    if (!bankNameInput.trim() || !accountNumberInput.trim() || !accountNameInput.trim()) {
+      showError('Missing Details', 'Please enter bank name, account number, and account name.');
+      return;
+    }
+    if (accountNumberInput.trim().length < 8) {
+      showError('Invalid Account', 'Please enter a valid account number.');
+      return;
+    }
+    setBankName(bankNameInput.trim());
+    setAccountNumber(accountNumberInput.trim());
+    setAccountName(accountNameInput.trim());
+    setIsAccountModalOpen(false);
+    showSuccess('Account Details Saved', 'Your payout bank account information has been saved.');
+  };
+
   const handleOpenFeeEdit = () => {
     setFeeInput(consultationFee);
     setIsFeeModalOpen(true);
   };
 
   const handleSaveFee = () => {
-    const val = parseFloat(feeInput);
+    const val = parseFloat(feeInput.replace(/,/g, ''));
     if (isNaN(val) || val < 0) {
       showError('Invalid Amount', 'Please enter a valid consultation fee.');
       return;
     }
-    setConsultationFee(val.toFixed(2));
+    setConsultationFee(val.toLocaleString());
     setIsFeeModalOpen(false);
-    showSuccess('Fee Updated', `Consultation fee set to $${val.toFixed(2)}`);
+    showSuccess('Fee Updated', `Consultation fee set to ₦${val.toLocaleString()}`);
   };
 
   const handleSignOut = () => {
@@ -131,18 +171,21 @@ export default function DoctorProfileScreen({ navigation }: any) {
 
           <View style={styles.metaRow}>
             <View style={styles.metaCol}>
-              <Text style={styles.metaValue}>12+</Text>
-              <Text style={styles.metaLabel}>Years Exp</Text>
+              <Text style={styles.metaValue}>12+ Yrs</Text>
+              <Text style={styles.metaLabel}>Experience</Text>
             </View>
             <Divider vertical spacing={4} />
             <View style={styles.metaCol}>
-              <Text style={styles.metaValue}>4.9</Text>
-              <Text style={styles.metaLabel}>Rating</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="star" size={13} color="#F59E0B" />
+                <Text style={styles.metaValue}>4.9</Text>
+              </View>
+              <Text style={styles.metaLabel}>Avg Rating</Text>
             </View>
             <Divider vertical spacing={4} />
             <View style={styles.metaCol}>
               <Text style={styles.metaValue}>1.2k</Text>
-              <Text style={styles.metaLabel}>Patients</Text>
+              <Text style={styles.metaLabel}>Patients Treated</Text>
             </View>
           </View>
         </Card>
@@ -170,10 +213,29 @@ export default function DoctorProfileScreen({ navigation }: any) {
             >
               <Text style={styles.infoLabel}>Consultation Fee</Text>
               <View style={styles.feeValueRow}>
-                <Text style={styles.feeValue}>${consultationFee} / visit</Text>
+                <Text style={styles.feeValue}>₦{consultationFee} / visit</Text>
                 <View style={styles.editBadge}>
                   <Ionicons name="create-outline" size={13} color={Colors.primary[600]} />
                   <Text style={styles.editBadgeText}>Edit</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+
+            {/* Editable Payout Bank Account Row */}
+            <Divider spacing={3} />
+            <TouchableOpacity
+              style={styles.infoRow}
+              onPress={handleOpenAccountEdit}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.infoLabel, { flexShrink: 0 }]}>Payout Account</Text>
+              <View style={styles.feeValueRow}>
+                <Text style={styles.feeValue} numberOfLines={1} ellipsizeMode="tail">
+                  {bankName ? `${bankName} Account` : 'Set Account'}
+                </Text>
+                <View style={styles.editBadge}>
+                  <Ionicons name="card-outline" size={13} color={Colors.primary[600]} />
+                  <Text style={styles.editBadgeText}>{bankName ? 'Edit' : 'Set'}</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -251,7 +313,7 @@ export default function DoctorProfileScreen({ navigation }: any) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Edit Consultation Fee Modal */}
+      {/* Edit Consultation Fee Modal (Platform Fee Calculator) */}
       <AppModal
         visible={isFeeModalOpen}
         onClose={() => setIsFeeModalOpen(false)}
@@ -279,23 +341,116 @@ export default function DoctorProfileScreen({ navigation }: any) {
             <View style={styles.feePreviewBanner}>
               <Ionicons name="cash-outline" size={24} color={Colors.primary[600]} />
               <View>
-                <Text style={styles.feePreviewLabel}>Current Fee</Text>
-                <Text style={styles.feePreviewValue}>${consultationFee} / visit</Text>
+                <Text style={styles.feePreviewLabel}>Current Consultation Fee</Text>
+                <Text style={styles.feePreviewValue}>₦{consultationFee} / visit</Text>
               </View>
             </View>
-            <Text style={styles.modalHint}>
-              Enter your consultation fee in USD. This will be shown to patients when booking an appointment.
-            </Text>
+
             <Input
-              label="New Fee (USD)"
-              placeholder="e.g. 150.00"
+              label="New Consultation Fee (NGN ₦)"
+              placeholder="e.g. 15,000"
               value={feeInput}
               onChangeText={setFeeInput}
-              keyboardType="decimal-pad"
+              keyboardType="numeric"
               leftIcon="cash-outline"
               autoFocus
               onSubmitEditing={Keyboard.dismiss}
               blurOnSubmit={true}
+            />
+
+            {/* Platform Service Fee & Math Breakdown Box */}
+            <View style={styles.feeBreakdownCard}>
+              <View style={styles.feeHeader}>
+                <Ionicons name="sparkles" size={16} color="#059669" />
+                <Text style={styles.feeHeaderTitle}>Platform Service Fee Breakdown</Text>
+                <View style={styles.feeBadge}>
+                  <Text style={styles.feeBadgeText}>10% Service Fee</Text>
+                </View>
+              </View>
+
+              <View style={styles.feeMathRow}>
+                <Text style={styles.feeMathLabel}>Patient Pays (Gross Fee):</Text>
+                <Text style={styles.feeMathValue}>₦{parsedFeeInput.toLocaleString()}</Text>
+              </View>
+
+              <View style={styles.feeMathRow}>
+                <Text style={styles.feeMathLabel}>OminiPulse Platform Fee ({PLATFORM_FEE_PERCENT}%):</Text>
+                <Text style={[styles.feeMathValue, { color: '#DC2626' }]}>-₦{platformFeeAmount.toLocaleString()}</Text>
+              </View>
+
+              <View style={styles.feeDivider} />
+
+              <View style={styles.feeTakeHomeBox}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.feeTakeHomeLabel}>You'll Take Home (Net Payout):</Text>
+                  <Text style={styles.feeTakeHomeSub}>Disbursed to your payout bank account</Text>
+                </View>
+                <Text style={styles.feeTakeHomeAmount}>₦{netTakeHomeEarnings.toLocaleString()}</Text>
+              </View>
+            </View>
+          </View>
+        </TouchableWithoutFeedback>
+      </AppModal>
+
+      {/* Set Payout Account Details Modal (Task 2) */}
+      <AppModal
+        visible={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        title="Set Payout Account Details"
+        contentStyle={{ alignSelf: 'center' }}
+        footer={
+          <View style={{ flexDirection: 'row', gap: Spacing[3] }}>
+            <Button
+              variant="outline"
+              label="Cancel"
+              onPress={() => setIsAccountModalOpen(false)}
+              style={{ flex: 1 }}
+            />
+            <Button
+              variant="primary"
+              label="Save Account"
+              onPress={handleSaveAccount}
+              style={{ flex: 1 }}
+            />
+          </View>
+        }
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View style={styles.modalBody}>
+            <View style={styles.feePreviewBanner}>
+              <Ionicons name="card-outline" size={24} color={Colors.primary[600]} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.feePreviewLabel}>Payout Bank Account</Text>
+                <Text style={styles.modalHintText}>
+                  Your consultation fee earnings will be automatically disbursed to this account.
+                </Text>
+              </View>
+            </View>
+
+            <Input
+              label="Bank Name"
+              placeholder="e.g. Wema Bank, GTBank, Access Bank"
+              value={bankNameInput}
+              onChangeText={setBankNameInput}
+              leftIcon="business-outline"
+            />
+
+            <Input
+              label="Account Number"
+              placeholder="e.g. 0123456789"
+              value={accountNumberInput}
+              onChangeText={setAccountNumberInput}
+              keyboardType="numeric"
+              maxLength={10}
+              leftIcon="card-outline"
+            />
+
+            <Input
+              label="Account Name / Beneficiary"
+              placeholder="e.g. Dr. Samuel Okon"
+              value={accountNameInput}
+              onChangeText={setAccountNameInput}
+              leftIcon="person-outline"
             />
           </View>
         </TouchableWithoutFeedback>
@@ -428,38 +583,48 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing[2],
+    width: '100%',
   },
   infoLabel: {
     fontSize: FontSize.sm,
     color: Colors.text.secondary,
+    flexShrink: 0,
   },
   infoValue: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semiBold,
     color: Colors.text.primary,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   feeValueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[2],
+    gap: 6,
+    flexShrink: 1,
+    justifyContent: 'flex-end',
   },
   feeValue: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semiBold,
     color: Colors.text.primary,
+    flexShrink: 1,
+    textAlign: 'right',
   },
   editBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
     backgroundColor: Colors.primary[50],
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: Colors.primary[100] ?? '#BFDBFE',
+    flexShrink: 0,
   },
   editBadgeText: {
     fontSize: 10,
@@ -603,5 +768,91 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     textAlign: 'right',
     marginTop: -Spacing[1],
+  },
+
+  // Service Fee Breakdown Styles
+  feeBreakdownCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    padding: Spacing[3],
+    gap: 8,
+    marginTop: Spacing[2],
+  },
+  feeHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  feeHeaderTitle: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: '#065F46',
+    flex: 1,
+  },
+  feeBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  feeBadgeText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: '#047857',
+  },
+  feeMathRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  feeMathLabel: {
+    fontSize: 12,
+    color: '#334155',
+  },
+  feeMathValue: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: '#0F172A',
+  },
+  feeDivider: {
+    height: 1,
+    backgroundColor: '#A7F3D0',
+    marginVertical: 4,
+  },
+  feeTakeHomeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    padding: Spacing[3],
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#86EFAC',
+  },
+  feeTakeHomeLabel: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: '#065F46',
+  },
+  feeTakeHomeSub: {
+    fontSize: 10,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  feeTakeHomeAmount: {
+    fontSize: 17,
+    fontWeight: FontWeight.bold,
+    color: '#047857',
+  },
+  modalHintText: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    lineHeight: 15,
+    marginTop: 2,
   },
 });

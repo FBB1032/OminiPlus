@@ -13,6 +13,8 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth, useToast } from '../../hooks/useAuth';
@@ -45,6 +47,8 @@ interface Message {
 export default function ConsultationChatScreen({ route, navigation }: DoctorScreenProps<'ConsultationChat'> | PatientScreenProps<'ConsultationChat'>) {
   const { appointmentId } = route.params;
   const { role, user } = useAuth();
+  const isDoctor = role === 'doctor' || user?.role === 'doctor';
+  const isUnverifiedDoctor = isDoctor && ((user as any)?.isVerified === false || (user as any)?.verificationStatus === 'pending');
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -95,7 +99,6 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
     }
   };
 
-  const isDoctor = role === 'doctor';
   const partnerUser = isDoctor ? appointment.patient : appointment.doctor;
   const partnerName = isDoctor
     ? `${partnerUser.firstName} ${partnerUser.lastName}`
@@ -171,6 +174,14 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
 
   // Send Message Handler
   const handleSend = (text?: string, customAttachment?: Message['attachment']) => {
+    if (isUnverifiedDoctor) {
+      toast.error(
+        'Verification Pending ⏳',
+        'Your MDCN license is under review by Compliance. Unverified doctors cannot send consultation messages.'
+      );
+      return;
+    }
+
     const textToSend = text?.trim() || '';
     if (!textToSend && !customAttachment) return;
 
@@ -650,30 +661,55 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
       )}
 
       {/* ── MESSAGE LIST ────────────────────────────────────────────────── */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        renderItem={renderMessageItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListFooterComponent={
-          isTyping ? (
-            <View style={styles.typingIndicatorRow}>
-              <View style={styles.typingBubble}>
-                <ActivityIndicator size="small" color={Colors.neutral[400]} />
-                <Text style={styles.typingText}>Typing...</Text>
-              </View>
-            </View>
-          ) : null
-        }
-      />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessageItem}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={Keyboard.dismiss}
+            ListFooterComponent={
+              isTyping ? (
+                <View style={styles.typingIndicatorRow}>
+                  <View style={styles.typingBubble}>
+                    <ActivityIndicator size="small" color={Colors.neutral[400]} />
+                    <Text style={styles.typingText}>Typing...</Text>
+                  </View>
+                </View>
+              ) : null
+            }
+          />
+        </View>
+      </TouchableWithoutFeedback>
 
       {/* ── INPUT TOOLBAR ───────────────────────────────────────────────── */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 25}
       >
+        {isUnverifiedDoctor && (
+          <TouchableOpacity
+            style={styles.pendingVerificationCard}
+            onPress={() => (navigation as any).navigate('DoctorProfile')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.pendingHeaderRow}>
+              <View style={styles.pendingBadge}>
+                <Ionicons name="time" size={13} color="#D97706" />
+                <Text style={styles.pendingBadgeText}>Verification Pending</Text>
+              </View>
+              <Ionicons name="lock-closed" size={16} color="#DC2626" />
+            </View>
+            <Text style={styles.pendingText}>
+              Your MDCN License credentials are under review by OminiPulse Compliance Officers. Unverified doctors cannot send consultation messages or issue e-prescriptions. Tap to upload credentials.
+            </Text>
+          </TouchableOpacity>
+        )}
+
         <View style={styles.inputContainer}>
           {chatStatus === 'active' ? (
             <>
@@ -1409,5 +1445,78 @@ const styles = StyleSheet.create({
     color: Colors.text.disabled,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  complianceLockedContainer: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    padding: Spacing[3],
+    gap: 8,
+  },
+  complianceLockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  complianceLockedTitle: {
+    fontSize: 12.5,
+    fontWeight: FontWeight.bold,
+    color: '#991B1B',
+  },
+  complianceLockedSub: {
+    fontSize: 11,
+    color: '#7F1D1D',
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  complianceVerifyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#DC2626',
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  complianceVerifyBtnText: {
+    fontSize: 11.5,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+  },
+  pendingVerificationCard: {
+    backgroundColor: '#FEF3C7',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#FCD34D',
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+    gap: 4,
+  },
+  pendingHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  pendingBadgeText: {
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
+    color: '#B45309',
+  },
+  pendingText: {
+    fontSize: 11,
+    color: '#92400E',
+    lineHeight: 15,
   },
 });

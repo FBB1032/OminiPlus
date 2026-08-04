@@ -369,41 +369,41 @@ export default function BloodDonorsScreen({ navigation }: any) {
             filteredDonors.map((donor) => (
               <View key={donor.id} style={styles.donorCard}>
                 <View style={styles.donorCardTop}>
-                  <View style={[styles.donorBadgeGroup, { flex: 1 }]}>
+                  <View style={styles.donorBadgeGroup}>
                     <View style={styles.bloodBadgeContainer}>
                       <Text style={styles.bloodBadgeText}>{donor.bloodGroup}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Text style={styles.donorName}>{donor.name}</Text>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                        <Text style={styles.donorName} numberOfLines={1}>{donor.name}</Text>
                         {donor.isVerified && (
-                          <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                          <Ionicons name="checkmark-circle" size={15} color="#10B981" />
                         )}
                       </View>
-                      <Text style={styles.donorLocationSub}>
+                      <Text style={styles.donorLocationSub} numberOfLines={1}>
                         {donor.city} • Genotype: <Text style={{ fontWeight: 'bold' }}>{donor.genotype}</Text>
                       </Text>
                     </View>
                   </View>
 
                   <View style={styles.distanceBadge}>
-                    <Ionicons name="navigate-circle" size={14} color="#DC2626" />
-                    <Text style={styles.distanceBadgeText}>{donor.distanceKm} km away</Text>
+                    <Ionicons name="navigate-circle" size={13} color="#DC2626" />
+                    <Text style={styles.distanceBadgeText}>{donor.distanceKm} km</Text>
                   </View>
                 </View>
 
                 {/* Info row */}
                 <View style={styles.donorInfoRow}>
                   <View style={[styles.infoPill, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}>
-                    <Ionicons name="location-sharp" size={12} color="#DC2626" />
+                    <Ionicons name="location-sharp" size={11} color="#DC2626" />
                     <Text style={[styles.infoPillText, { color: '#DC2626', fontWeight: 'bold' }]}>{donor.distanceKm} km Proximity</Text>
                   </View>
                   <View style={styles.infoPill}>
-                    <Ionicons name="time-outline" size={12} color="#475569" />
+                    <Ionicons name="time-outline" size={11} color="#475569" />
                     <Text style={styles.infoPillText}>{donor.availabilityStatus}</Text>
                   </View>
                   <View style={styles.infoPill}>
-                    <Ionicons name="ribbon-outline" size={12} color="#475569" />
+                    <Ionicons name="ribbon-outline" size={11} color="#475569" />
                     <Text style={styles.infoPillText}>{donor.donationsCount} donations</Text>
                   </View>
                 </View>
@@ -415,8 +415,8 @@ export default function BloodDonorsScreen({ navigation }: any) {
                     onPress={() => handleCallDonor(donor.phone, donor.name)}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="call" size={16} color="#FFFFFF" />
-                    <Text style={styles.callDonorBtnText}>Call Donor</Text>
+                    <Ionicons name="call" size={15} color="#FFFFFF" />
+                    <Text style={styles.callDonorBtnText} numberOfLines={1}>Call Donor</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -424,8 +424,8 @@ export default function BloodDonorsScreen({ navigation }: any) {
                     onPress={() => handleSendRequest(donor)}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="send-outline" size={15} color="#DC2626" />
-                    <Text style={styles.requestDonorBtnText}>Send SOS</Text>
+                    <Ionicons name="send-outline" size={14} color="#DC2626" />
+                    <Text style={styles.requestDonorBtnText} numberOfLines={1}>Send SOS</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -870,44 +870,49 @@ const styles = StyleSheet.create({
   donorCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 14,
+    padding: 12,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    gap: 12,
+    gap: 10,
     ...Shadows.sm,
   },
   donorCardTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    gap: 8,
   },
   donorBadgeGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
+    flex: 1,
+    minWidth: 0,
   },
   bloodBadgeContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   bloodBadgeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: FontWeight.bold,
     color: '#FFFFFF',
   },
   donorName: {
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: FontWeight.bold,
     color: '#0F172A',
+    flexShrink: 1,
   },
   donorLocationSub: {
-    fontSize: 11.5,
+    fontSize: 11,
     color: '#64748B',
-    marginTop: 2,
+    marginTop: 1,
   },
   distanceBadge: {
     flexDirection: 'row',
@@ -916,18 +921,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 8,
+    flexShrink: 0,
   },
   distanceBadgeText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: FontWeight.bold,
     color: '#DC2626',
   },
   donorInfoRow: {
     flexDirection: 'row',
-    gap: 8,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   infoPill: {
     flexDirection: 'row',
@@ -946,7 +953,7 @@ const styles = StyleSheet.create({
   },
   donorCardActions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
@@ -958,11 +965,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: '#10B981',
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: 8,
   },
   callDonorBtnText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: FontWeight.bold,
     color: '#FFFFFF',
   },
@@ -975,11 +983,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    paddingVertical: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 8,
     borderRadius: 8,
   },
   requestDonorBtnText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: FontWeight.bold,
     color: '#DC2626',
   },
