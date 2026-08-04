@@ -7,22 +7,23 @@ const logo = require('../../../assets/images/logo.png');
 
 export const SplashScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const scaleAnim = useRef(new Animated.Value(0.82)).current;
   const textFade = useRef(new Animated.Value(0)).current;
-  const textSlide = useRef(new Animated.Value(12)).current;
+  const textSlide = useRef(new Animated.Value(14)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Logo animates in first
+    // Logo animates in first with smooth spring
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 800,
+        duration: 700,
         useNativeDriver: true,
       }),
       Animated.spring(scaleAnim, {
         toValue: 1,
-        friction: 6,
-        tension: 40,
+        friction: 5,
+        tension: 35,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -38,22 +39,45 @@ export const SplashScreen = () => {
           duration: 500,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(() => {
+        // Continuous subtle heartbeat pulse loop
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(pulseAnim, {
+              toValue: 1.08,
+              duration: 1100,
+              useNativeDriver: true,
+            }),
+            Animated.timing(pulseAnim, {
+              toValue: 1,
+              duration: 1100,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      });
     });
   }, []);
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" animated />
 
-      {/* Decorative subtle ambient backdrop element */}
-      <View style={styles.glow} />
+      {/* Decorative ambient heartbeat pulse backdrop */}
+      <Animated.View
+        style={[
+          styles.glow,
+          {
+            transform: [{ scale: pulseAnim }],
+          },
+        ]}
+      />
 
-      {/* Full Omini Pulse logo */}
+      {/* Full Omini Pulse logo (25-30% larger) */}
       <Animated.View
         style={[
           styles.logoWrapper,
-          { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+          { opacity: fadeAnim, transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] },
         ]}
       >
         <Image
@@ -85,15 +109,15 @@ const styles = StyleSheet.create({
   },
   glow: {
     position: 'absolute',
-    width: width * 0.85,
-    height: width * 0.85,
-    borderRadius: width * 0.425,
+    width: width * 0.9,
+    height: width * 0.9,
+    borderRadius: width * 0.45,
     backgroundColor: Colors.primary[50],
-    opacity: 0.6,
+    opacity: 0.7,
   },
   logoWrapper: {
-    width: width * 0.75,
-    height: 110,
+    width: width * 0.88,
+    height: 140,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing[4],
@@ -106,9 +130,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tagline: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.md,
     color: Colors.text.secondary,
-    fontWeight: FontWeight.medium,
-    letterSpacing: 0.5,
+    fontWeight: FontWeight.semiBold,
+    letterSpacing: 0.4,
   },
 });
