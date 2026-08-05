@@ -1,12 +1,12 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
   LayoutDashboard, Stethoscope, Building2, Pill, Calendar, Droplet,
   Bot, Bell, BarChart3, ScrollText, ShieldCheck, Settings,
-  ChevronLeft, LogOut,
+  ChevronLeft, LogOut, Smartphone, Users, FileText, FlaskConical, Star, Award, Lock, Video
 } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -17,18 +17,33 @@ import type { LucideIcon } from 'lucide-react';
 // ─── Icon Registry ────────────────────────────────────────────────────────────
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard, Stethoscope, Building2, Pill, Calendar, Droplet,
-  Bot, Bell, BarChart3, ScrollText, ShieldCheck, Settings,
+  Bot, Bell, BarChart3, ScrollText, ShieldCheck, Settings, Smartphone,
+  Users, FileText, FlaskConical, Star, Award, Lock, Video
 };
 
 // ─── Nav definition (permission-gated) ────────────────────────────────────────
 const NAV_GROUPS: {
   label: string;
-  items: { href: string; label: string; icon: string; permission: Permission }[];
+  items: { href: string; label: string; icon: string; permission: Permission; badge?: string }[];
 }[] = [
   {
     label: 'Overview',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: 'LayoutDashboard', permission: 'dashboard.view' },
+    ],
+  },
+  {
+    label: 'Doctor Workspace',
+    items: [
+      { href: '/dashboard/doctor-portal?tab=queue', label: 'Consultations Queue', icon: 'Users', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=notes', label: 'SOAP Clinical Notes', icon: 'FileText', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=prescriptions', label: 'Digital E-Prescriptions', icon: 'Pill', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=blood', label: 'Blood Donor Network (App)', icon: 'Droplet', permission: 'doctor_portal.view', badge: 'App Only' },
+      { href: '/dashboard/doctor-portal?tab=ai', label: 'AI Symptom Assistant', icon: 'Bot', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=schedule', label: 'Weekly Availability', icon: 'Calendar', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=reviews', label: 'Ratings & Feedbacks', icon: 'Star', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=profile', label: 'Credentials & Bio', icon: 'Award', permission: 'doctor_portal.view' },
+      { href: '/dashboard/doctor-portal?tab=app-locked', label: 'Live HD Telehealth (App)', icon: 'Lock', permission: 'doctor_portal.view', badge: 'App Only' },
     ],
   },
   {
@@ -45,7 +60,6 @@ const NAV_GROUPS: {
     label: 'Operations',
     items: [
       { href: '/dashboard/ai-monitoring', label: 'AI Monitoring', icon: 'Bot', permission: 'ai_monitoring.view' },
-      { href: '/dashboard/notifications', label: 'Notifications', icon: 'Bell', permission: 'notifications.view' },
       { href: '/dashboard/reports', label: 'Reports', icon: 'BarChart3', permission: 'reports.view' },
     ],
   },
@@ -54,21 +68,129 @@ const NAV_GROUPS: {
     items: [
       { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: 'ScrollText', permission: 'audit_logs.view' },
       { href: '/dashboard/security', label: 'Security', icon: 'ShieldCheck', permission: 'security.view' },
-      { href: '/dashboard/settings', label: 'Settings', icon: 'Settings', permission: 'settings.view' },
     ],
   },
 ];
 
+function SidebarAppDownload({ collapsed }: { collapsed: boolean }) {
+  const handlePlayStore = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open('https://play.google.com/store/apps', '_blank');
+  };
+
+  const handleAppStore = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open('https://apps.apple.com/app', '_blank');
+  };
+
+  if (collapsed) {
+    return (
+      <div style={{ padding: '8px 0', display: 'flex', justifyContent: 'center', borderTop: '1px solid #1e293b' }}>
+        <button
+          type="button"
+          onClick={handlePlayStore}
+          title="Download OmniPulse Doctor App (Google Play & App Store)"
+          style={{
+            width: 34, height: 34, borderRadius: 8, background: '#1e293b',
+            border: '1px solid #334155', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', color: '#38bdf8', cursor: 'pointer'
+          }}
+        >
+          <Smartphone size={16} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      margin: '8px 8px 10px', padding: '12px 10px', borderRadius: 12,
+      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+      border: '1px solid #334155', display: 'flex', flexDirection: 'column', gap: 8
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{
+          width: 28, height: 28, borderRadius: 6, background: '#2563eb',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', flexShrink: 0
+        }}>
+          <Smartphone size={14} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 11.5, fontWeight: 700, color: '#f8fafc', lineHeight: 1.2 }}>Get OmniPulse App</p>
+          <span style={{ fontSize: 9.5, color: '#94a3b8' }}>Doctor Mobile Edition</span>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 2 }}>
+        {/* Google Play */}
+        <button
+          type="button"
+          onClick={handlePlayStore}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#000000', color: '#ffffff', border: '1px solid #334155',
+            borderRadius: 7, padding: '6px 10px', cursor: 'pointer',
+            textAlign: 'left', width: '100%', transition: 'background 120ms'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#0f172a'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#000000'; }}
+        >
+          <svg width="14" height="15" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+            <path d="M47.2 24.2C44.4 27.1 42.8 31.7 42.8 37.7V474.3C42.8 480.3 44.4 484.9 47.2 487.8L48.6 489.1L285.8 252V246L48.6 8.8L47.2 24.2Z" fill="#00D2FF"/>
+            <path d="M365 331.2L285.8 252V246L365 166.8L366.5 167.7L460.3 221C487.1 236.2 487.1 261.8 460.3 277L366.5 330.3L365 331.2Z" fill="#FFC900"/>
+            <path d="M366.5 330.3L285.8 249L47.2 487.8C56 497.1 70.3 498.3 86.6 489.1L366.5 330.3Z" fill="#FF3333"/>
+            <path d="M366.5 167.7L86.6 8.9C70.3-0.3 56 0.9 47.2 10.2L285.8 249L366.5 167.7Z" fill="#00E676"/>
+          </svg>
+          <div style={{ minWidth: 0 }}>
+            <span style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', display: 'block', lineHeight: 1 }}>GET IT ON</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>Google Play</span>
+          </div>
+        </button>
+
+        {/* Apple App Store */}
+        <button
+          type="button"
+          onClick={handleAppStore}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            background: '#000000', color: '#ffffff', border: '1px solid #334155',
+            borderRadius: 7, padding: '6px 10px', cursor: 'pointer',
+            textAlign: 'left', width: '100%', transition: 'background 120ms'
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#0f172a'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = '#000000'; }}
+        >
+          <svg width="14" height="15" viewBox="0 0 384 512" fill="#ffffff" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+            <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 66.2 31.9 112.5c15.4 22.3 35.3 47.7 59.9 47 23.7-.7 33.2-15 61.6-15 28.1 0 36.7 15 61.1 14.3 25-.7 42.1-22.7 57.3-45 17.6-25.5 24.8-50.2 25.1-51.5-.6-.5-48.4-18.6-48.7-67.1zM289.4 86.8c16.3-19.8 27.6-47.4 24.3-75.1-23.7 1-52.6 15.8-69.4 35.5-14.8 17.1-27.9 45.3-24.3 72.3 26.3 2 53.1-13 69.4-32.7z"/>
+          </svg>
+          <div style={{ minWidth: 0 }}>
+            <span style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', display: 'block', lineHeight: 1 }}>Download on the</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#ffffff', lineHeight: 1 }}>App Store</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams?.get('tab') || 'queue';
   const { isSidebarCollapsed, toggleSidebar, isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
   const { admin, logout } = useAuthStore();
 
   const adminRole = admin?.role || 'super_admin';
   const permissions = ROLE_PERMISSIONS[adminRole] || [];
 
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
+  const isActive = (href: string) => {
+    if (href.startsWith('/dashboard/doctor-portal')) {
+      if (!pathname.startsWith('/dashboard/doctor-portal')) return false;
+      const targetTab = href.split('tab=')[1] || 'queue';
+      return currentTab === targetTab;
+    }
+    return href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
+  };
 
   const collapsed = isSidebarCollapsed;
 
@@ -218,7 +340,19 @@ export function Sidebar() {
                       }}
                     >
                       <Icon size={16} style={{ flexShrink: 0, opacity: active ? 1 : 0.75 }} />
-                      {!collapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>}
+                      {!collapsed && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0 }}>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.label}</span>
+                          {item.badge && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, color: '#f87171', background: '#451a1a',
+                              padding: '1px 5px', borderRadius: 4, marginLeft: 4, flexShrink: 0
+                            }}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </Link>
                   );
                 })}
@@ -226,6 +360,9 @@ export function Sidebar() {
             </div>
           ))}
         </nav>
+
+        {/* Bottom App Download Box */}
+        <SidebarAppDownload collapsed={collapsed} />
 
         {/* Admin user footer */}
         {admin && (

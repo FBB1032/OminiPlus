@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function PrescriptionScreen({ route, navigation }: any) {
   const { role, user } = useAuth();
-  const { appointmentId, patientId, mode, prescriptionId } = route.params;
+  const { appointmentId = 'apt-1', patientId = 'pat-1', mode = 'create', prescriptionId } = route?.params || {};
 
   if (role !== 'doctor' && role !== 'admin') {
     return <AccessDenied onBack={() => navigation.goBack()} message="Only clinical doctors and system administrators are permitted to issue or view prescriptions." />;

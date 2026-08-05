@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, SafeAreaView, Image,
 } from 'react-native';
@@ -185,13 +185,13 @@ const styles = StyleSheet.create({
   filterRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterPill: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
   filterPillActive: { backgroundColor: Colors.patient, borderColor: Colors.patient },
-  filterPillText: { fontSize: 12, fontWeight: FontWeight.semibold, color: '#64748B' },
+  filterPillText: { fontSize: 12, fontWeight: FontWeight.semiBold, color: '#64748B' },
   filterPillTextActive: { color: '#FFFFFF' },
   sortRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingBottom: 10 },
   sortLabel: { fontSize: 12, color: '#94A3B8', marginRight: 2 },
   sortBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
   sortBtnActive: { backgroundColor: '#EFF6FF', borderColor: Colors.patient },
-  sortBtnText: { fontSize: 11, color: '#64748B', fontWeight: FontWeight.semibold },
+  sortBtnText: { fontSize: 11, color: '#64748B', fontWeight: FontWeight.semiBold },
   sortBtnTextActive: { color: Colors.patient },
   listContent: { paddingHorizontal: 16, paddingBottom: 30, gap: 10 },
   card: { backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#F1F5F9' },
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
   avatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#F1F5F9' },
   availDot: { width: 12, height: 12, borderRadius: 6, borderWidth: 2, borderColor: '#FFFFFF', position: 'absolute', bottom: 1, right: 1 },
   docName: { fontSize: 13.5, fontWeight: FontWeight.bold, color: '#0F172A' },
-  docSpec: { fontSize: 12, color: Colors.patient, fontWeight: FontWeight.semibold, marginTop: 1 },
+  docSpec: { fontSize: 12, color: Colors.patient, fontWeight: FontWeight.semiBold, marginTop: 1 },
   docHospital: { fontSize: 11, color: '#94A3B8', marginTop: 2 },
   metaRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
   metaChip: { flexDirection: 'row', alignItems: 'center', gap: 3 },
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
   feeLabel: { fontSize: 10, color: '#94A3B8' },
   feeAmount: { fontSize: 14, fontWeight: FontWeight.bold, color: '#0F172A' },
   availBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  availText: { fontSize: 10.5, fontWeight: FontWeight.semibold },
+  availText: { fontSize: 10.5, fontWeight: FontWeight.semiBold },
   emptyState: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   emptyTitle: { fontSize: 16, fontWeight: FontWeight.bold, color: '#94A3B8' },
   emptySub: { fontSize: 12, color: '#CBD5E1', textAlign: 'center' },

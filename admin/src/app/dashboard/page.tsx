@@ -5,14 +5,14 @@ import Link from 'next/link';
 import {
   Stethoscope, Building2, Pill, Calendar, Bot, Users, Activity,
   TrendingUp, TrendingDown, Clock, CheckCircle2, AlertTriangle,
-  ArrowRight, Eye, Zap, Shield, BarChart3, Globe,
+  ArrowRight, Eye, Zap, Shield, BarChart3, Globe, Star, FileText,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { useAuthStore } from '@/store/authStore';
-import { ROLE_PERMISSIONS, ROLE_LABELS, ROLE_COLORS } from '@/store/permissionStore';
+import { ROLE_PERMISSIONS, ROLE_LABELS, ROLE_COLORS, NAV_SECTIONS } from '@/store/permissionStore';
 import { timeAgo } from '@/lib/utils';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
@@ -54,20 +54,58 @@ const ACTIVITY_STYLES: Record<string, { bg: string; color: string }> = {
   warning: { bg: '#fffbeb', color: '#d97706' },
 };
 
-// ─── Quick Access Cards ───────────────────────────────────────────────────────
-
-const QUICK_ACCESS = [
-  { label: 'Doctors', href: '/dashboard/doctors', icon: Stethoscope, color: '#2563eb', bg: '#eff6ff', permission: 'doctors.view' as const },
-  { label: 'Hospitals', href: '/dashboard/hospitals', icon: Building2, color: '#0891b2', bg: '#ecfeff', permission: 'hospitals.view' as const },
-  { label: 'Reports', href: '/dashboard/reports', icon: BarChart3, color: '#d97706', bg: '#fffbeb', permission: 'reports.view' as const },
-  { label: 'AI Monitor', href: '/dashboard/ai-monitoring', icon: Bot, color: '#7c3aed', bg: '#faf5ff', permission: 'ai_monitoring.view' as const },
-];
+// Quick Access is now derived dynamically from NAV_SECTIONS based on role permissions.
+// See usage inside DashboardPage below.
 
 export default function DashboardPage() {
   const admin = useAuthStore(s => s.admin);
   const adminRole = admin?.role || 'super_admin';
   const permissions = ROLE_PERMISSIONS[adminRole] || [];
   const hasPermission = (p: string) => permissions.includes(p as any);
+
+  // Build quick-access tiles based on role
+  const ICON_MAP: Record<string, any> = {
+    Stethoscope, Building2, Pill, Calendar, Bot, BarChart3,
+    LayoutDashboard: Activity, Bell: Zap, ScrollText: Eye, ShieldCheck: Shield, Settings: Globe,
+  };
+  const TILE_COLORS: Record<string, { color: string; bg: string }> = {
+    dashboard:       { color: '#0f6e6e', bg: '#e6f4f4' },
+    'doctor-portal': { color: '#0f6e6e', bg: '#e6f4f4' },
+    doctors:         { color: '#2563eb', bg: '#eff6ff' },
+    hospitals:       { color: '#0891b2', bg: '#ecfeff' },
+    pharmacies:      { color: '#7c3aed', bg: '#faf5ff' },
+    appointments:    { color: '#16a34a', bg: '#f0fdf4' },
+    'ai-monitoring': { color: '#7c3aed', bg: '#faf5ff' },
+    reports:         { color: '#d97706', bg: '#fffbeb' },
+    'audit-logs':    { color: '#64748b', bg: '#f8fafc' },
+    security:        { color: '#dc2626', bg: '#fef2f2' },
+  };
+
+  // Doctors get portal-specific shortcuts instead of admin nav items
+  const DOCTOR_QUICK_ACCESS = [
+    { label: 'Patient Queue',   href: '/dashboard/doctor-portal?tab=queue',         icon: Users,     color: '#2563eb', bg: '#eff6ff' },
+    { label: 'SOAP Notes',      href: '/dashboard/doctor-portal?tab=notes',         icon: FileText,  color: '#0f6e6e', bg: '#f0fdfa' },
+    { label: 'Issue E-Rx',      href: '/dashboard/doctor-portal?tab=prescriptions', icon: Pill,      color: '#16a34a', bg: '#f0fdf4' },
+    { label: 'AI Differential', href: '/dashboard/doctor-portal?tab=ai',            icon: Bot,       color: '#7c3aed', bg: '#f5f3ff' },
+    { label: 'My Schedule',     href: '/dashboard/doctor-portal?tab=schedule',      icon: Calendar,  color: '#ea580c', bg: '#fff7ed' },
+    { label: 'Patient Reviews', href: '/dashboard/doctor-portal?tab=reviews',       icon: Star,      color: '#d97706', bg: '#fffbeb' },
+  ];
+
+  const quickAccessItems = adminRole === 'doctor'
+    ? DOCTOR_QUICK_ACCESS
+    : NAV_SECTIONS
+        .flatMap(s => s.items)
+        .filter(item =>
+          hasPermission(item.permission) &&
+          !['dashboard', 'notifications', 'settings'].includes(item.key)
+        )
+        .map(item => ({
+          label: item.label,
+          href: item.href,
+          icon: ICON_MAP[item.icon] || Activity,
+          color: TILE_COLORS[item.key]?.color ?? '#374151',
+          bg: TILE_COLORS[item.key]?.bg ?? '#f9fafb',
+        }));
 
   const roleLabel = ROLE_LABELS[adminRole];
   const roleColor = ROLE_COLORS[adminRole];
@@ -151,30 +189,34 @@ export default function DashboardPage() {
         {/* Quick Access */}
         <div className="card" style={{ padding: 20 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 16 }}>Quick Access</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 12 }}>
-            {QUICK_ACCESS.filter(q => hasPermission(q.permission)).map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                  padding: '16px 12px', borderRadius: 12, background: '#fafafa',
-                  border: '1px solid #f3f4f6', textDecoration: 'none',
-                  transition: 'all 150ms',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.background = item.bg; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f3f4f6'; e.currentTarget.style.background = '#fafafa'; }}
-              >
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10, background: item.bg,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.color,
-                }}>
-                  <item.icon size={20} />
-                </div>
-                <span style={{ fontSize: 12, fontWeight: 500, color: '#374151' }}>{item.label}</span>
-              </Link>
-            ))}
-          </div>
+          {quickAccessItems.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '16px 0' }}>No shortcuts available for your role.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12 }}>
+              {quickAccessItems.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                    padding: '16px 12px', borderRadius: 12, background: '#fafafa',
+                    border: '1px solid #f3f4f6', textDecoration: 'none',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = item.color; e.currentTarget.style.background = item.bg; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f3f4f6'; e.currentTarget.style.background = '#fafafa'; }}
+                >
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 10, background: item.bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', color: item.color,
+                  }}>
+                    <item.icon size={20} />
+                  </div>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: '#374151', textAlign: 'center' }}>{item.label}</span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Platform Summary */}

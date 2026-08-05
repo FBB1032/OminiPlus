@@ -181,8 +181,70 @@ export default function DoctorDashboardScreen({ navigation }: any) {
               <Ionicons name="cash" size={20} color="#EC4899" />
             </View>
             <Text style={styles.statVal}>₦{(stats.weeklyRevenue ?? 0).toLocaleString()}</Text>
-            <Text style={styles.statLabel}>Weekly Revenue</Text>
           </Card>
+        </View>
+
+        {/* Quick Issue E-Prescription Banner */}
+        <View style={{ marginBottom: Spacing[3] }}>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#0F6E6E', borderRadius: 14, padding: 16,
+              flexDirection: 'row', alignItems: 'center', gap: 14,
+              borderWidth: 1, borderColor: '#0D9488',
+              ...Shadows.sm,
+            }}
+            onPress={() => navigation.navigate('Prescription', { mode: 'create', appointmentId: 'direct-consult', patientId: 'pat-1' })}
+            activeOpacity={0.88}
+          >
+            <View style={{
+              width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.18)',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              <Ionicons name="document-text" size={22} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF', marginBottom: 2 }}>
+                Issue Digital E-Prescription
+              </Text>
+              <Text style={{ fontSize: 11.5, color: '#CCFBF1', lineHeight: 16 }}>
+                Write digital prescriptions with automated drug interaction & allergy safety checks. Dispatches instantly to patient.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#CCFBF1" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Access Shortcuts Grid */}
+        <View style={{ marginBottom: Spacing[4] }}>
+          <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: Colors.text.primary, marginBottom: 10 }}>
+            Quick Access Shortcuts
+          </Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {[
+              { label: 'Issue E-Rx', icon: 'medkit-outline', route: 'Prescription', params: { mode: 'create', appointmentId: 'direct-consult', patientId: 'pat-1' }, color: '#0D9488', bg: '#CCFBF1' },
+              { label: 'Schedule', icon: 'calendar-outline', route: 'DoctorAppointments', color: '#2563EB', bg: '#EFF6FF' },
+              { label: 'Hours', icon: 'time-outline', route: 'DoctorAvailability', color: '#7C3AED', bg: '#F5F3FF' },
+              { label: 'Blood SOS', icon: 'water-outline', route: 'BloodDonors', color: '#DC2626', bg: '#FEF2F2' },
+            ].map((item, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={{
+                  flex: 1, backgroundColor: Colors.surface, borderRadius: 12, padding: 12,
+                  alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.border,
+                  ...Shadows.sm,
+                }}
+                onPress={() => navigation.navigate(item.route, item.params)}
+                activeOpacity={0.7}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
+                  <Ionicons name={item.icon as any} size={18} color={item.color} />
+                </View>
+                <Text style={{ fontSize: 11, fontWeight: FontWeight.semiBold, color: Colors.text.primary, textAlign: 'center' }}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Today's Appointments */}

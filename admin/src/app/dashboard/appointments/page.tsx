@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Video, Phone, MapPin, Clock, Search, Eye, Filter, Download } from 'lucide-react';
+import { Calendar, Video, Phone, MapPin, Clock, Search, Eye, Filter, Download, AlertCircle } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -147,64 +147,106 @@ export default function AppointmentsPage() {
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }} className="animate-fade-in">
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, padding: '4px 0 10px' }} className="animate-fade-in">
+      {/* Minimal Header Card */}
+      <Card
+        radius="2xl"
+        style={{
+          padding: '24px 28px',
+          boxShadow: '0 10px 30px rgba(15, 23, 42, 0.06)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
             <div style={{
-              width: 38, height: 38, borderRadius: 10, background: '#eff6ff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 42, height: 42, borderRadius: 14, background: '#f8fafc',
+              border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
               <Calendar size={18} style={{ color: '#2563eb' }} />
             </div>
-            <h1 className="page-title">Appointment Oversight</h1>
+            <div>
+              <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.03em', margin: 0, lineHeight: 1.2 }}>
+                Appointment Oversight
+              </h1>
+              <p style={{ fontSize: 13.5, color: '#64748b', marginTop: 6, lineHeight: 1.5, maxWidth: 720 }}>
+                Monitor scheduled consultations, review session types, and audit transaction records.
+              </p>
+            </div>
           </div>
-          <p className="page-subtitle">Monitor scheduled consultations, review session types, and audit transaction records.</p>
+
+          <Button variant="secondary" size="sm" leftIcon={<Download size={14} />}>
+            Export CSV
+          </Button>
         </div>
+      </Card>
 
-        <button className="btn btn-secondary">
-          <Download size={14} /> Export CSV
-        </button>
-      </div>
+      {/* Minimal Controls + Table Card */}
+      <Card
+        padding="none"
+        radius="2xl"
+        style={{
+          border: '1px solid #eef2f7',
+          boxShadow: '0 8px 24px rgba(15, 23, 42, 0.05)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '24px 24px 18px', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+                Appointments
+              </h2>
+              <p style={{ fontSize: 13, color: '#64748b', marginTop: 6, lineHeight: 1.5 }}>
+                Use search and status filters to narrow the list.
+              </p>
+            </div>
 
-      {/* Filter and Table Control Card */}
-      <Card padding="none">
-        <div style={{
-          padding: '16px 20px',
-          borderBottom: '1px solid #f1f5f9',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-        }}>
-          {/* Search Box */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: '#f8fafc', border: '1px solid #e2e8f0',
-            borderRadius: 8, height: 38, padding: '0 12px', width: 320,
-          }}>
-            <Search size={14} style={{ color: '#94a3b8' }} />
-            <input
-              type="text"
-              placeholder="Search by Doctor or Patient Reference ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{
-                background: 'transparent', border: 'none', outline: 'none',
-                fontSize: 13, color: '#334155', width: '100%', fontFamily: 'inherit',
-              }}
-            />
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', height: 32, padding: '0 12px',
+              borderRadius: 999, border: '1px solid #e2e8f0', background: '#f8fafc',
+              fontSize: 12, fontWeight: 700, color: '#475569', whiteSpace: 'nowrap',
+            }}>
+              {filtered.length} records
+            </span>
           </div>
 
-          {/* Filter Options */}
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{
+            marginTop: 18,
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) auto',
+            gap: 12,
+            alignItems: 'center',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: '#ffffff', border: '1px solid #e2e8f0',
+              borderRadius: 16, height: 46, padding: '0 14px',
+              boxShadow: '0 1px 2px rgba(15, 23, 42, 0.03)',
+            }}>
+              <Search size={14} style={{ color: '#94a3b8', flexShrink: 0 }} />
+              <input
+                type="text"
+                placeholder="Search by doctor or patient reference ID"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                style={{
+                  background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 13.5, color: '#334155', width: '100%', fontFamily: 'inherit',
+                }}
+              />
+            </div>
+
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
               className="select"
-              style={{ width: 160 }}
+              style={{
+                width: 184,
+                background: '#ffffff',
+                borderRadius: 16,
+                borderColor: '#e2e8f0',
+                minHeight: 46,
+              }}
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -215,17 +257,20 @@ export default function AppointmentsPage() {
           </div>
         </div>
 
-        {/* Table representation */}
-        <Table columns={columns} data={showAll ? filtered : filtered.slice(0, 10)} keyExtractor={(a) => a.id} />
+        <div style={{ padding: '10px 8px 8px' }}>
+          <Table columns={columns} data={showAll ? filtered : filtered.slice(0, 10)} keyExtractor={(a) => a.id} />
+        </div>
 
         {filtered.length > 10 && (
           <div style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #f1f5f9',
+            padding: '16px 24px 22px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#fafafa',
+            gap: 12,
+            flexWrap: 'wrap',
+            borderTop: '1px solid #f1f5f9',
+            background: '#ffffff',
           }}>
             <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
               Showing {showAll ? filtered.length : Math.min(10, filtered.length)} of {filtered.length} appointments
@@ -265,7 +310,7 @@ export default function AppointmentsPage() {
               background: '#fffbeb', border: '1px solid #fef3c7', padding: 12, borderRadius: 8,
               display: 'flex', gap: 8, color: '#b45309', fontSize: 12.5, lineHeight: 1.4
             }}>
-              <span>⚠️</span>
+              <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
               <p>
                 <strong>Privacy Protocol Active:</strong> Patient consultation transcripts, clinical notes, and prescription detail summaries are NDPA-shielded. Admins have access to transaction, duration, and session metadata logs only.
               </p>
