@@ -33,4 +33,3 @@ export { BodyMap } from './ui/BodyMap';
 export { AIDisclaimerBanner } from './common/AIDisclaimerBanner';
 export { DoctorStatusBadge } from './common/DoctorStatusBadge';
 export { ConsentModal } from './consent/ConsentModal';
-export { FamilyProfileSelector } from './family/FamilyProfileSelector';

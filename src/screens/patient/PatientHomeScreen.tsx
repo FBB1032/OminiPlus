@@ -16,7 +16,7 @@ import { QUERY_KEYS } from '../../constants/queryKeys';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { usePatientHome, useCancelAppointment } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Avatar, ErrorState, SearchBar, AppModal, Input, Button, SkeletonHomePage, FamilyProfileSelector, DoctorStatusBadge } from '../../components';
+import { Card, Avatar, ErrorState, SearchBar, AppModal, Input, Button, SkeletonHomePage, DoctorStatusBadge } from '../../components';
 import { useToast } from '../../hooks/useAuth';
 
 // ─── Static Mock Data ─────────────────────────────────────────────────────────
@@ -218,11 +218,12 @@ export default function PatientHomeScreen({ navigation }: any) {
     { label: 'Reminders',    icon: 'alarm',          bg: '#FFF1F2', color: '#E11D48', desc: 'Pill Alarms & Medication Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('MedicationReminders'); } },
     { label: 'Check Vitals', icon: 'heart-half',     bg: '#FEF3C7', color: '#D97706', desc: 'Log BP, Heart Rate & Temp', action: () => { setIsSeeAllQuickAccessOpen(false); handleOpenVitalsEdit(); } },
     { label: 'Chronic Care', icon: 'fitness',        bg: '#F0FDFA', color: '#0D9488', desc: 'BP, Sugar & Pregnancy Tracker', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ChronicDisease'); } },
+    { label: 'AI Insights',  icon: 'analytics',      bg: '#F0FDFA', color: '#0891B2', desc: 'AI Analysis of Your Health', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AIHealthInsights'); } },
     { label: 'Who Viewed',   icon: 'eye',            bg: '#EFF6FF', color: '#1D4ED8', desc: 'Audit Trail & Access Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AccessLogs'); } },
     { label: 'My Consents',  icon: 'lock-closed',    bg: '#F0FDF4', color: '#15803D', desc: 'Data Sharing Permissions', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ConsentManagement'); } },
-    { label: 'Family',       icon: 'people',         bg: '#FDF4FF', color: '#9333EA', desc: 'Manage Family Profiles', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('FamilyAccounts'); } },
+    { label: 'Wearable Sync', icon: 'watch',           bg: '#EFF6FF', color: '#2563EB', desc: 'Apple Watch, Redmi & Health Connect', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('WearableSync'); } },
+    { label: 'Device Compat', icon: 'hardware-chip',  bg: '#F5F3FF', color: '#7C3AED', desc: 'Supported Watch & Monitor List', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('DeviceCompatibility'); } },
     { label: 'Report Incident', icon: 'shield',      bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
-    { label: 'Omini Premium', icon: 'star',          bg: '#FEF3C7', color: '#B45309', desc: 'VIP Healthcare Telehealth Plan', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Premium'); } },
   ];
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -242,8 +243,6 @@ export default function PatientHomeScreen({ navigation }: any) {
             <Text style={styles.greetName}>{user?.firstName} {user?.lastName}</Text>
           </View>
         </View>
-
-        <FamilyProfileSelector onManagePress={() => navigation.navigate('FamilyAccounts')} />
 
         <View style={{ flexDirection: 'row', gap: Spacing[2] }}>
           <TouchableOpacity
@@ -440,11 +439,41 @@ export default function PatientHomeScreen({ navigation }: any) {
           </View>
         </View>
 
+        {/* ── AI Health Insights Banner ──────────────────────────────── */}
+        <TouchableOpacity
+          style={{
+            marginHorizontal: 0,
+            borderRadius: 16,
+            overflow: 'hidden',
+            backgroundColor: '#0C1A2E',
+            padding: Spacing[4],
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: Spacing[3],
+            ...Shadows.md,
+          }}
+          activeOpacity={0.88}
+          onPress={() => navigation.navigate('AIHealthInsights')}
+        >
+          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(6,182,212,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="analytics" size={24} color={Colors.patient} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>
+              AI Health Insights
+            </Text>
+            <Text style={{ fontSize: FontSize.xs, color: '#94A3B8', marginTop: 2, lineHeight: 16 }}>
+              Personalized analysis of your vitals, records and medication history
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.patient} />
+        </TouchableOpacity>
+
         {/* ── Specialities ─────────────────────────────────────────────── */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Specialities</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('BookAppointment')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Specialists')}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -454,7 +483,7 @@ export default function PatientHomeScreen({ navigation }: any) {
                 key={s.id}
                 style={styles.specChip}
                 activeOpacity={0.75}
-                onPress={() => navigation.navigate('BookAppointment')}
+                onPress={() => navigation.navigate('Specialists', { specialty: s.name })}
               >
                 <View style={[styles.specIcon, { backgroundColor: s.bg }]}>
                   <Ionicons name={s.icon as any} size={22} color={s.color} />
@@ -469,7 +498,7 @@ export default function PatientHomeScreen({ navigation }: any) {
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <Text style={styles.sectionTitle}>Top Doctors</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('BookAppointment')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Specialists')}>
               <Text style={styles.seeAll}>See All</Text>
             </TouchableOpacity>
           </View>
@@ -719,7 +748,7 @@ export default function PatientHomeScreen({ navigation }: any) {
               activeOpacity={0.75}
               onPress={() => {
                 setIsFilterOpen(false);
-                navigation.navigate('BookAppointment', { specialty: sp.name });
+                navigation.navigate('Specialists', { specialty: sp.name });
               }}
             >
               <View style={[styles.filterIcon, { backgroundColor: sp.bg }]}>

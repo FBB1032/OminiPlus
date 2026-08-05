@@ -405,16 +405,38 @@ When `GEMINI_API_KEY` or `OPENAI_API_KEY` is provided:
 
 ---
 
-## 📝 Developer & Agent Next Steps Checklist
+## 📝 Developer & Agent Implementation Progress & Next Steps Checklist
 
-When continuing development on OminiPulse, complete tasks in the following sequence:
+### ✅ Completed Milestones (OminiPulse v2.0.0)
 
-- [ ] **Step 1**: Connect mobile state management (Zustand/React Query) to API endpoints defined in the Prisma schema.
-- [ ] **Step 2**: Deploy NestJS API backend with PostgreSQL database migrations and Paystack/Flutterwave Split Payment webhooks.
-- [ ] **Step 3**: Install `react-native-health` (iOS) and `react-native-health-connect` (Android) to activate smartwatch syncing.
-- [ ] **Step 4**: Plug in `GEMINI_API_KEY` / `OPENAI_API_KEY` in `.env` to activate Doctor Clinical Copilot & Admin MDCN OCR Engine.
-- [ ] **Step 5**: Integrate Deepgram Nova-2 Medical for ambient voice consultation SOAP note generation.
-- [ ] **Step 6**: Test closed-loop data flow from Doctor consultation ➔ E-prescription ➔ Patient Records ➔ GPS Pharmacy Radar.
+- [x] **NDPA 2023 Regulatory Compliance**: Full platform replacement of HIPAA with NDPA 2023. Integrated NDPA Article 26 Data Portability export (PDF/ZIP) and per-record privacy controls.
+- [x] **Doctor MDCN Expiry & Verification System**: MDCN license expiration enforcement with a 30-day grace period, 5 mandatory credentials verification modal (MDCN license, NIN ID, Specialty Cert, Employment Letter, Passport Photo), and indefinite suspension lockout screen.
+- [x] **OminiPulse Escrow Payment Model**: Pay-per-consultation commission model with escrow holding until session completion. Doctor non-performance triggers immediate account suspension and a 100% patient refund.
+- [x] **Blood Donor Network & Emergency Mode ("Request Blood Now")**:
+  - Emergency Mode with blood group compatibility matching (`O-` universal, etc.) and GPS proximity ranking.
+  - Urgent push notification & SMS alert broadcast dispatch to verified donors.
+  - Accredited hospital transfusion center directory & emergency hotlines (112, OminiPulse Desk).
+  - **Ethical Non-Commercial Blood Facilitation Policy**: Strictly enforces `Voluntary Donor ➔ Accredited Hospital / Blood Bank ➔ Patient`. Direct blood buying/selling is strictly prohibited.
+  - Mandatory lab report upload during registration with Admin verification modal.
+- [x] **AI Assistant & Health Insights Suite**:
+  - Top 3 doctor routing with ratings and verified patient feedback.
+  - Guided symptom checker triage with legal medical disclaimer banner.
+  - AI Health Insights Screen (`AIHealthInsightsScreen.tsx`) for vitals analysis, BP risk evaluation, and lifestyle recommendations.
+  - AI Document Summarization (OCR scan for prescriptions and lab reports).
+  - 7-Day Medication Adherence Tracker in `MedicationRemindersScreen.tsx`.
+  - AI Chronic Disease Monitoring in `ChronicDiseaseScreen.tsx` (Hypertension, Diabetes, Asthma, Pregnancy).
+- [x] **Universal Wearable Inclusivity**: Support for Apple Watch, Redmi (via Google Health Connect), Huawei Health, Bluetooth BLE medical monitors, and manual vitals logging fallback.
+
+---
+
+### 🚀 Upcoming Backend & Production Integration Checklist
+
+- [ ] **Step 1**: Connect mobile state management (Zustand/React Query) to NestJS production API endpoints.
+- [ ] **Step 2**: Deploy NestJS API backend with PostgreSQL database migrations and Paystack/Flutterwave Automated Split Payment webhooks.
+- [ ] **Step 3**: Install `react-native-health` (iOS) and `react-native-health-connect` (Android) native modules for background smartwatch syncing.
+- [ ] **Step 4**: Plug in `GEMINI_API_KEY` / `OPENAI_API_KEY` in `.env` to activate live Gemini clinical copilot & Admin MDCN OCR engine.
+- [ ] **Step 5**: Integrate Deepgram Nova-2 Medical for real-time ambient voice consultation SOAP note generation.
+- [ ] **Step 6**: Perform end-to-end load testing on Emergency Mode SMS broadcast queue and WebRTC consultation video rooms.
 
 ---
 

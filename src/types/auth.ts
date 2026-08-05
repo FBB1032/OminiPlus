@@ -10,6 +10,7 @@ export interface User {
   phone?: string;
   createdAt: string;
   isApproved?: boolean;
+  verificationStatus?: 'pending' | 'approved' | 'suspended' | 'license_expired' | 'license_renewal_pending';
   height?: number;
   weight?: number;
   bloodGroup?: string;

@@ -544,6 +544,29 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
               </View>
             </Card>
 
+            {/* Escrow Banner */}
+            <View style={{
+              backgroundColor: '#EFF6FF',
+              borderWidth: 1,
+              borderColor: '#BFDBFE',
+              borderRadius: 12,
+              padding: Spacing[3],
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 8,
+              marginBottom: Spacing[3],
+            }}>
+              <Ionicons name="shield-checkmark" size={20} color="#2563EB" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#1E40AF' }}>
+                  OminiPulse Escrow Protection Active
+                </Text>
+                <Text style={{ fontSize: 11, color: '#1D4ED8', lineHeight: 16, marginTop: 2 }}>
+                  Your payment is held securely in escrow. Funds are released to Dr. {selectedDoctor.lastName} only after they formally confirm your booking. Free cancellation applies until approval.
+                </Text>
+              </View>
+            </View>
+
             <Text style={styles.sectionHeading}>Payment Method</Text>
             <View style={styles.paymentMethodCard}>
               <Ionicons name="card-outline" size={24} color={Colors.secondary[600]} />
@@ -552,7 +575,7 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
                   Credit or Debit Card
                 </Text>
                 <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary }}>
-                  Safe & Secure checkout powered by Stripe
+                  Safe & Secure checkout powered by Paystack & Escrow Shield
                 </Text>
               </View>
               <Ionicons name="checkmark-circle" size={20} color={Colors.secondary[600]} />

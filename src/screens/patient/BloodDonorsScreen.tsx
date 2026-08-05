@@ -32,6 +32,9 @@ interface DonorItem {
   lastDonationDate: string;
   donationsCount: number;
   gender: string;
+  age?: number;
+  labReportUrl?: string;
+  labReportStatus?: 'pending' | 'verified' | 'rejected';
 }
 
 const BLOOD_GROUPS = ['ALL', 'O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
@@ -76,16 +79,24 @@ export default function BloodDonorsScreen({ navigation }: any) {
   // Modals
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
+  const [isEmergencyModeOpen, setIsEmergencyModeOpen] = useState(false);
+  const [emergencyBloodGroup, setEmergencyBloodGroup] = useState('O-');
+  const [emergencyBroadcastActive, setEmergencyBroadcastActive] = useState(false);
 
   // Registration Form State
   const [regName, setRegName] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regAge, setRegAge] = useState('26');
   const [regState, setRegState] = useState('Lagos State');
   const [regCity, setRegCity] = useState('Ikeja');
   const [regBloodGroup, setRegBloodGroup] = useState('O+');
   const [regGenotype, setRegGenotype] = useState('AA');
   const [regGender, setRegGender] = useState('Male');
   const [regAvailability, setRegAvailability] = useState('Available Anytime');
+  const [regLastDonationDate, setRegLastDonationDate] = useState('2025-11-10');
+  const [regDonationsCount, setRegDonationsCount] = useState('3');
+  const [regLabReportName, setRegLabReportName] = useState<string | null>(null);
+  const [myDonorProfile, setMyDonorProfile] = useState<DonorItem | null>(null);
   const [isEligibleConfirmed, setIsEligibleConfirmed] = useState(false);
 
   // Emergency Appeal Form State
@@ -104,7 +115,7 @@ export default function BloodDonorsScreen({ navigation }: any) {
     }, 1000);
   };
 
-  // Filtered Donors list
+  // Filtered Donors list (Only show verified AA-genotype donors in public search results)
   const filteredDonors = useMemo(() => {
     return donorsList.filter((donor) => {
       const matchBlood = selectedBloodGroup === 'ALL' || donor.bloodGroup === selectedBloodGroup;
@@ -113,7 +124,8 @@ export default function BloodDonorsScreen({ navigation }: any) {
         donor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         donor.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
         donor.bloodGroup.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchBlood && matchRadius && matchQuery;
+      // Platform policy: only AA-genotype verified donors are displayed
+      return matchBlood && matchRadius && matchQuery && donor.isVerified && donor.genotype === 'AA';
     });
   }, [donorsList, selectedBloodGroup, selectedRadius, searchQuery]);
 
@@ -157,10 +169,33 @@ export default function BloodDonorsScreen({ navigation }: any) {
     );
   };
 
+  // Simulated Lab Report Document Upload
+  const handleUploadLabReport = () => {
+    Alert.alert(
+      'Attach Blood Lab Report',
+      'Select document / lab test image from your device showing verified Blood Group & Blood Safety clearance.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Upload Lab Report Scan (PDF/JPG)',
+          onPress: () => {
+            const simulatedFilename = `blood_lab_report_${Date.now().toString().slice(-4)}.pdf`;
+            setRegLabReportName(simulatedFilename);
+            toastSuccess('Document Attached', `Selected ${simulatedFilename} for admin verification.`);
+          },
+        },
+      ]
+    );
+  };
+
   // Handle Register Donor Submit
   const handleRegisterSubmit = () => {
-    if (!regName.trim() || !regPhone.trim() || !regCity.trim()) {
-      toastError('Missing Fields', 'Please fill in your name, phone number, and city.');
+    if (!regName.trim() || !regPhone.trim() || !regCity.trim() || !regAge.trim()) {
+      toastError('Missing Fields', 'Please fill in your name, age, phone number, and city.');
+      return;
+    }
+    if (!regLabReportName) {
+      toastError('Lab Report Required', 'You must upload your blood group lab report document before submitting for admin verification.');
       return;
     }
     if (!isEligibleConfirmed) {
@@ -172,26 +207,36 @@ export default function BloodDonorsScreen({ navigation }: any) {
       id: `bd-${Date.now()}`,
       name: regName.trim(),
       bloodGroup: regBloodGroup,
-      genotype: regGenotype,
-      city: regCity.trim(),
+      genotype: 'AA', // Platform policy: immutable — only AA genotype donors are accepted
+      city: `${regCity.trim()}, ${regState.replace(' State', '')}`,
       latitude: 6.5244,
       longitude: 3.3792,
       distanceKm: 0.8,
       phone: regPhone.trim(),
       availabilityStatus: regAvailability,
-      isVerified: true,
-      lastDonationDate: new Date().toISOString().split('T')[0],
-      donationsCount: 1,
+      isVerified: false, // Requires admin verification!
+      lastDonationDate: regLastDonationDate,
+      donationsCount: parseInt(regDonationsCount, 10) || 1,
       gender: regGender,
+      age: parseInt(regAge, 10) || 26,
+      labReportUrl: regLabReportName,
+      labReportStatus: 'pending',
     };
 
     setDonorsList([newDonor, ...donorsList]);
+    setMyDonorProfile(newDonor);
     setIsRegisterModalOpen(false);
-    toastSuccess('Registration Successful!', 'You are now registered as an active voluntary blood donor.');
+    
+    Alert.alert(
+      'Registration Submitted for Admin Review',
+      'Your donor profile and uploaded blood lab report have been submitted to the Admin portal for verification. Once verified by an admin, your profile will appear in emergency blood searches.',
+      [{ text: 'OK' }]
+    );
 
     // Reset Form
     setRegName('');
     setRegPhone('');
+    setRegLabReportName(null);
     setIsEligibleConfirmed(false);
   };
 
@@ -210,6 +255,35 @@ export default function BloodDonorsScreen({ navigation }: any) {
     setAppealPhone('');
   };
 
+  // Handle Emergency Mode Broadcast
+  const handleTriggerEmergencyBroadcast = () => {
+    setEmergencyBroadcastActive(true);
+    toastSuccess('EMERGENCY BROADCAST ACTIVE!', `Instant SMS and push alerts dispatched to all verified ${emergencyBloodGroup} donors within 25km radius.`);
+  };
+
+  // Helper for Blood Compatibility Matching
+  const getCompatibleBloodGroups = (targetGroup: string): string[] => {
+    switch (targetGroup) {
+      case 'O-': return ['O-'];
+      case 'O+': return ['O-', 'O+'];
+      case 'A-': return ['O-', 'A-'];
+      case 'A+': return ['O-', 'O+', 'A-', 'A+'];
+      case 'B-': return ['O-', 'B-'];
+      case 'B+': return ['O-', 'O+', 'B-', 'B+'];
+      case 'AB-': return ['O-', 'A-', 'B-', 'AB-'];
+      case 'AB+': return ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
+      default: return ['O-', 'O+', 'A+', 'B+'];
+    }
+  };
+
+  const emergencyMatchedDonors = useMemo(() => {
+    const compatibleGroups = getCompatibleBloodGroups(emergencyBloodGroup);
+    // Platform policy: only AA-genotype verified donors appear in emergency search
+    return donorsList.filter(
+      (d) => d.isVerified && compatibleGroups.includes(d.bloodGroup) && d.genotype === 'AA'
+    );
+  }, [donorsList, emergencyBloodGroup]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       {/* ── Header ────────────────────────────────────────────────────────── */}
@@ -222,16 +296,56 @@ export default function BloodDonorsScreen({ navigation }: any) {
           <Text style={styles.headerSubtitle}>GPS Proximity & Donor Match</Text>
         </View>
         <TouchableOpacity
-          style={styles.sosHeaderBtn}
-          onPress={() => setIsAppealModalOpen(true)}
+          style={styles.emergencyModeHeaderBtn}
+          onPress={() => setIsEmergencyModeOpen(true)}
           activeOpacity={0.8}
         >
-          <Ionicons name="alert-circle" size={20} color="#FFFFFF" />
-          <Text style={styles.sosHeaderBtnText}>SOS Appeal</Text>
+          <Ionicons name="water" size={18} color="#FFFFFF" />
+          <Text style={styles.emergencyModeHeaderBtnText}>Request Blood Now</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
+        {/* ── Emergency Mode "Request Blood Now" High-Priority Banner ──────── */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: '#7F1D1D', borderRadius: 14, padding: 14,
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            borderWidth: 1.5, borderColor: '#EF4444', ...Shadows.md
+          }}
+          onPress={() => setIsEmergencyModeOpen(true)}
+          activeOpacity={0.88}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+            <View style={{
+              width: 44, height: 44, borderRadius: 22, backgroundColor: '#DC2626',
+              alignItems: 'center', justifyContent: 'center'
+            }}>
+              <Ionicons name="water" size={24} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>
+                  EMERGENCY MODE
+                </Text>
+                <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 9, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>LIFE-THREATENING</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 11.5, color: '#FCA5A5', marginTop: 2 }}>
+                Find compatible donors, dispatch urgent SMS alerts & locate nearest transfusion hospital labs
+              </Text>
+            </View>
+          </View>
+          <View style={{
+            backgroundColor: '#DC2626', paddingHorizontal: 12, paddingVertical: 8,
+            borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Request Blood Now</Text>
+            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+          </View>
+        </TouchableOpacity>
+
         {/* ── Blood Donor Medical Safety & Screening Banner ───────────────── */}
         <View style={{
           flexDirection: 'row', alignItems: 'flex-start', gap: 10,
@@ -240,11 +354,8 @@ export default function BloodDonorsScreen({ navigation }: any) {
         }}>
           <Ionicons name="shield-checkmark" size={20} color="#DC2626" style={{ marginTop: 1 }} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#DC2626' }}>
-              Medical Safety & Screening Protocol
-            </Text>
-            <Text style={{ fontSize: 11, color: '#991B1B', lineHeight: 15, marginTop: 2 }}>
-              All matched blood donors must undergo mandatory clinical blood screening (HIV, Hepatitis B/C, Syphilis, Hemoglobin) at an accredited hospital or certified blood bank laboratory prior to donation.
+            <Text style={{ fontSize: 11.5, color: '#991B1B', lineHeight: 16, fontWeight: FontWeight.medium }}>
+              Blood group matching in OmniPulse is only for emergency donor discovery. All donations must be screened and approved by a licensed healthcare facility before transfusion. Required blood safety tests must be completed according to medical guidelines.
             </Text>
           </View>
         </View>
@@ -290,6 +401,40 @@ export default function BloodDonorsScreen({ navigation }: any) {
             </ScrollView>
           </View>
         </View>
+
+        {/* ── My Donor Registration Status Card ────────────────────────────── */}
+        {myDonorProfile && (
+          <View style={{
+            backgroundColor: '#EFF6FF', borderRadius: 12, padding: 14,
+            borderWidth: 1, borderColor: '#BFDBFE', gap: 6
+          }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#1E40AF' }}>
+                My Donor Profile Status
+              </Text>
+              <View style={{
+                backgroundColor: myDonorProfile.isVerified ? '#DCFCE7' : '#FEF3C7',
+                paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6
+              }}>
+                <Text style={{
+                  fontSize: 10, fontWeight: FontWeight.bold,
+                  color: myDonorProfile.isVerified ? '#166534' : '#92400E'
+                }}>
+                  {myDonorProfile.isVerified ? 'VERIFIED ACTIVE' : 'PENDING ADMIN REVIEW'}
+                </Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: 11.5, color: '#1E3A8A' }}>
+              {myDonorProfile.name} • Blood Group: {myDonorProfile.bloodGroup} • {myDonorProfile.city}
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <Ionicons name="document-attach" size={14} color="#2563EB" />
+              <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: FontWeight.medium }}>
+                Lab Report: {myDonorProfile.labReportUrl || 'Attached'} (Under Admin Audit)
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* ── Search Bar ─────────────────────────────────────────────────── */}
         <View style={styles.searchBarContainer}>
@@ -454,7 +599,36 @@ export default function BloodDonorsScreen({ navigation }: any) {
                 onChangeText={setRegName}
               />
 
-              <Text style={styles.formLabel}>Phone Number (For Emergency Alerts)</Text>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formLabel}>Age (Years)</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. 26"
+                    keyboardType="numeric"
+                    value={regAge}
+                    onChangeText={setRegAge}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formLabel}>Gender</Text>
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {['Male', 'Female'].map((g) => (
+                      <TouchableOpacity
+                        key={g}
+                        style={[styles.selectPill, { flex: 1 }, regGender === g && styles.selectPillActive]}
+                        onPress={() => setRegGender(g)}
+                      >
+                        <Text style={[styles.selectPillText, regGender === g && styles.selectPillTextActive]}>
+                          {g}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              <Text style={styles.formLabel}>Active Phone Number (For Emergency Alerts)</Text>
               <TextInput
                 style={styles.formInput}
                 placeholder="e.g. +234 802 123 4567"
@@ -462,6 +636,52 @@ export default function BloodDonorsScreen({ navigation }: any) {
                 value={regPhone}
                 onChangeText={setRegPhone}
               />
+
+              <Text style={styles.formLabel}>Blood Group</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
+                  <TouchableOpacity
+                    key={bg}
+                    style={[styles.selectPill, regBloodGroup === bg && styles.selectPillActive]}
+                    onPress={() => setRegBloodGroup(bg)}
+                  >
+                    <Text style={[styles.selectPillText, regBloodGroup === bg && styles.selectPillTextActive]}>
+                      {bg}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.formLabel}>Genotype</Text>
+              {/* Genotype is locked to AA — platform policy only allows AA donors */}
+              <View style={{
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10,
+                borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 6
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{
+                    backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 4,
+                    borderRadius: 6
+                  }}>
+                    <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>AA</Text>
+                  </View>
+                  <Text style={{ fontSize: 12, color: '#475569', fontWeight: FontWeight.bold }}>Genotype AA</Text>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <Ionicons name="lock-closed" size={13} color="#94A3B8" />
+                  <Text style={{ fontSize: 10.5, color: '#94A3B8' }}>Immutable</Text>
+                </View>
+              </View>
+              <View style={{
+                backgroundColor: '#EFF6FF', borderRadius: 8, padding: 10,
+                borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 12, flexDirection: 'row', gap: 6
+              }}>
+                <Ionicons name="information-circle-outline" size={14} color="#2563EB" style={{ marginTop: 1 }} />
+                <Text style={{ fontSize: 10.5, color: '#1D4ED8', lineHeight: 15, flex: 1 }}>
+                  OmniPulse accepts only AA genotype donors. This ensures compatibility safety for recipients and meets our clinical screening standards. Donors with AS, AC, SS or SC genotypes cannot register on this platform.
+                </Text>
+              </View>
 
               {/* State Dropdown Selector */}
               <Text style={styles.formLabel}>State / Region</Text>
@@ -485,7 +705,7 @@ export default function BloodDonorsScreen({ navigation }: any) {
                 ))}
               </ScrollView>
 
-              {/* City / Area Dropdown Selector */}
+              {/* City / Area Selector */}
               <Text style={styles.formLabel}>City / Area ({regState})</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                 {(NIGERIA_STATES_AND_CITIES[regState] || ['Central']).map((city) => (
@@ -501,34 +721,26 @@ export default function BloodDonorsScreen({ navigation }: any) {
                 ))}
               </ScrollView>
 
-              <Text style={styles.formLabel}>Blood Group</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
-                  <TouchableOpacity
-                    key={bg}
-                    style={[styles.selectPill, regBloodGroup === bg && styles.selectPillActive]}
-                    onPress={() => setRegBloodGroup(bg)}
-                  >
-                    <Text style={[styles.selectPillText, regBloodGroup === bg && styles.selectPillTextActive]}>
-                      {bg}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.formLabel}>Genotype</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                {['AA', 'AS', 'AC', 'Other'].map((g) => (
-                  <TouchableOpacity
-                    key={g}
-                    style={[styles.selectPill, regGenotype === g && styles.selectPillActive]}
-                    onPress={() => setRegGenotype(g)}
-                  >
-                    <Text style={[styles.selectPillText, regGenotype === g && styles.selectPillTextActive]}>
-                      {g}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formLabel}>Last Donation Date</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="YYYY-MM-DD"
+                    value={regLastDonationDate}
+                    onChangeText={setRegLastDonationDate}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.formLabel}>Past Donations Count</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    placeholder="e.g. 3"
+                    keyboardType="numeric"
+                    value={regDonationsCount}
+                    onChangeText={setRegDonationsCount}
+                  />
+                </View>
               </View>
 
               <Text style={styles.formLabel}>Availability Status</Text>
@@ -546,6 +758,41 @@ export default function BloodDonorsScreen({ navigation }: any) {
                 ))}
               </View>
 
+              {/* Mandatory Upload Section for Admin Lab Report Verification */}
+              <View style={{
+                backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12,
+                borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 14, gap: 6
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#0F172A' }}>
+                  Mandatory Blood Lab Report Document
+                </Text>
+                <Text style={{ fontSize: 11, color: '#64748B', lineHeight: 15 }}>
+                  Upload a scanned lab report or photo confirming your blood group and basic infectious disease screening results for Admin verification.
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                    backgroundColor: regLabReportName ? '#DCFCE7' : '#EFF6FF',
+                    borderWidth: 1, borderColor: regLabReportName ? '#86EFAC' : '#BFDBFE',
+                    paddingVertical: 10, borderRadius: 8, marginTop: 4
+                  }}
+                  onPress={handleUploadLabReport}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={regLabReportName ? 'checkmark-circle' : 'cloud-upload-outline'}
+                    size={18}
+                    color={regLabReportName ? '#166534' : '#2563EB'}
+                  />
+                  <Text style={{
+                    fontSize: 12, fontWeight: FontWeight.bold,
+                    color: regLabReportName ? '#166534' : '#2563EB'
+                  }}>
+                    {regLabReportName ? `Attached: ${regLabReportName}` : 'Upload Lab Report / Photo'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               {/* Eligibility Checkbox */}
               <TouchableOpacity
                 style={styles.checkboxRow}
@@ -561,9 +808,224 @@ export default function BloodDonorsScreen({ navigation }: any) {
               </TouchableOpacity>
             </ScrollView>
 
-            <TouchableOpacity style={styles.submitModalBtn} onPress={handleRegisterSubmit} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={[styles.submitModalBtn, !isEligibleConfirmed && { backgroundColor: '#CBD5E1', opacity: 0.6 }]}
+              onPress={isEligibleConfirmed ? handleRegisterSubmit : undefined}
+              activeOpacity={isEligibleConfirmed ? 0.85 : 1}
+              disabled={!isEligibleConfirmed}
+            >
               <Text style={styles.submitModalBtnText}>Complete Registration</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Modal: Emergency Mode ("Request Blood Now") ───────────────── */}
+      <Modal visible={isEmergencyModeOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '92%' }]}>
+          <View style={[
+            styles.modalHeader,
+            { backgroundColor: '#7F1D1D', padding: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }
+          ]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 10 }}>
+              <Ionicons name="water" size={22} color="#FFFFFF" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>
+                  EMERGENCY MODE: Request Blood Now
+                </Text>
+                <Text style={{ fontSize: 11, color: '#FCA5A5', marginTop: 1 }} numberOfLines={1}>
+                  Life-Threatening Emergency Transfusion
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setIsEmergencyModeOpen(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Ionicons name="close" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginVertical: 10 }} contentContainerStyle={{ paddingHorizontal: 2, paddingBottom: 8 }}>
+              {/* Mandatory Non-Commercial Blood Regulatory Notice Banner */}
+              <View style={{
+                backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+                borderWidth: 1.5, borderColor: '#FCA5A5', marginBottom: 14, gap: 4
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                  <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#991B1B' }}>
+                    ETHICAL & REGULATORY FACILITATION POLICY
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 11, color: '#7F1D1D', lineHeight: 16 }}>
+                  Direct buying or selling of blood is strictly prohibited. OmniPulse facilitates discovery through ethical clinical channels:
+                </Text>
+                <View style={{
+                  backgroundColor: '#FFFFFF', padding: 8, borderRadius: 6,
+                  borderWidth: 1, borderColor: '#FCA5A5', marginTop: 4
+                }}>
+                  <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#991B1B', textAlign: 'center' }}>
+                    Voluntary Donor ➔ Accredited Hospital / Blood Bank ➔ Patient
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 10.5, color: '#991B1B', fontStyle: 'italic', marginTop: 2 }}>
+                  No donor-to-patient monetary transactions are allowed on this platform. All processing and screening are conducted strictly by licensed hospital facilities.
+                </Text>
+              </View>
+
+              {/* Patient Blood Type Selection — System finds compatible donors automatically */}
+              <View style={{
+                backgroundColor: '#FFF7ED', borderRadius: 10, padding: 12,
+                borderWidth: 1, borderColor: '#FED7AA', marginBottom: 14
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                  <Ionicons name="water-outline" size={15} color="#C2410C" />
+                  <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#9A3412' }}>
+                    Step 1: Select the Patient's Blood Group
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 10.5, color: '#92400E', marginBottom: 10, lineHeight: 15 }}>
+                  Choose the blood group needed. The system will automatically find all compatible donor types based on transfusion compatibility rules.
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
+                    <TouchableOpacity
+                      key={bg}
+                      style={[
+                        styles.selectPill,
+                        emergencyBloodGroup === bg && styles.selectPillActiveDanger,
+                        { marginBottom: 0 }
+                      ]}
+                      onPress={() => setEmergencyBloodGroup(bg)}
+                    >
+                      <Text style={[styles.selectPillText, emergencyBloodGroup === bg && styles.selectPillTextActive]}>
+                        {bg}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {emergencyBloodGroup ? (
+                  <View style={{
+                    marginTop: 8, backgroundColor: '#FEF2F2', padding: 8,
+                    borderRadius: 6, borderWidth: 1, borderColor: '#FCA5A5'
+                  }}>
+                    <Text style={{ fontSize: 10.5, color: '#991B1B', fontWeight: FontWeight.bold }}>
+                      Patient needs: {emergencyBloodGroup} — Compatible donors: {getCompatibleBloodGroups(emergencyBloodGroup).join(', ')}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Compatible Donors Broadcast Status */}
+              <View style={{
+                backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12,
+                borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14
+              }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
+                  <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#0F172A', flex: 1 }} numberOfLines={2}>
+                    Compatible Nearby Donors ({emergencyMatchedDonors.length} Found)
+                  </Text>
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: emergencyBroadcastActive ? '#059669' : '#DC2626',
+                      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6,
+                      flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0
+                    }}
+                    onPress={handleTriggerEmergencyBroadcast}
+                  >
+                    <Ionicons name="radio-outline" size={14} color="#FFFFFF" />
+                    <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>
+                      {emergencyBroadcastActive ? 'Broadcast Active' : 'Dispatch Alert'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {emergencyMatchedDonors.slice(0, 3).map((d) => (
+                  <View key={d.id} style={{
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 8
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+                      <View style={{
+                        width: 34, height: 34, borderRadius: 17, backgroundColor: '#FEF2F2',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      }}>
+                        <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#DC2626' }}>{d.bloodGroup}</Text>
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#0F172A' }} numberOfLines={1}>{d.name}</Text>
+                        <Text style={{ fontSize: 10.5, color: '#64748B' }} numberOfLines={1}>{d.city} • {d.distanceKm} km away</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, flexShrink: 0 }}
+                      onPress={() => handleCallDonor(d.phone, d.name)}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#2563EB' }}>Call</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
+              {/* Nearest Transfusion Accredited Hospitals & Blood Banks */}
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#0F172A', marginBottom: 8 }}>
+                  Nearest Accredited Transfusion Hospitals & Blood Banks
+                </Text>
+                {[
+                  { name: 'LUTH Transfusion Center & Blood Bank', area: 'Idi-Araba, Surulere', dist: '3.2 km', phone: '+234 803 111 2233' },
+                  { name: 'Lagos State Blood Transfusion Service', area: 'Ikeja General Hospital', dist: '1.8 km', phone: '+234 802 999 4455' },
+                  { name: 'Federal Medical Center Blood Bank', area: 'Yaba, Lagos', dist: '4.1 km', phone: '+234 805 777 0011' },
+                ].map((hosp, idx) => (
+                  <View key={idx} style={{
+                    backgroundColor: '#FFFFFF', padding: 12, borderRadius: 10,
+                    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8,
+                    flexDirection: 'row', alignItems: 'center', gap: 10
+                  }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#0F172A' }} numberOfLines={2}>{hosp.name}</Text>
+                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }} numberOfLines={1}>{hosp.area} • {hosp.dist}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={{ backgroundColor: '#DC2626', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 6, flexShrink: 0 }}
+                      onPress={() => handleCallDonor(hosp.phone, hosp.name)}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Call Desk</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+
+              {/* National & Platform Emergency Contacts */}
+              <View style={{
+                backgroundColor: '#FEF2F2', padding: 12, borderRadius: 10,
+                borderWidth: 1, borderColor: '#FCA5A5', gap: 8
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#991B1B' }}>
+                  National Emergency & Ambulance Hotlines
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: '#DC2626', paddingVertical: 10, borderRadius: 6, alignItems: 'center', paddingHorizontal: 4 }}
+                    onPress={() => handleCallDonor('112', 'National Emergency 112')}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>Dial 112 Ambulance</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={{ flex: 1, backgroundColor: '#991B1B', paddingVertical: 10, borderRadius: 6, alignItems: 'center', paddingHorizontal: 4 }}
+                    onPress={() => handleCallDonor('+2348001111', 'OminiPulse Emergency Desk')}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>OmniPulse Blood Desk</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+          </ScrollView>
+
+          <TouchableOpacity
+            style={{ backgroundColor: '#334155', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 4 }}
+            onPress={() => setIsEmergencyModeOpen(false)}
+          >
+            <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Close Emergency Mode</Text>
+          </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -687,6 +1149,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
+  },
+  emergencyModeHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#7F1D1D',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  emergencyModeHeaderBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: FontWeight.bold,
   },
   sosHeaderBtnText: {
     color: '#FFFFFF',

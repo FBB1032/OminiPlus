@@ -1,8 +1,9 @@
 # 🏥 OminiPulse — AI-Powered Telehealth & Medical Ecosystem
 
 > **Official Repository Documentation & Developer Quick-Start Guide**  
-> **Version**: 2.0.0  
+> **Version**: 2.0.0 (Production-Ready Edition)  
 > **Target Markets**: Nigeria & Pan-Africa  
+> **Compliance Standard**: NDPA 2023 (Nigeria Data Protection Act) & MDCN Regulatory Guidelines  
 > **Master Architecture & Technical Blueprint**: [`NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md`](./NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md)
 
 ---
@@ -35,7 +36,7 @@
 
 ---
 
-## 🧭 WHERE TO BEGIN: MASTER ROADMAP & ARCHITECTURE GUIDE
+## 🧭 Master Roadmap & Architecture Guide
 
 > [!IMPORTANT]
 > **Attention Developers & AI Coding Agents**:  
@@ -47,30 +48,46 @@
 | Role / Domain | Where To Start | Immediate Task |
 | :--- | :--- | :--- |
 | **Mobile Developer (Patient & Doctor App)** | [`src/navigation/RootNavigator.tsx`](./src/navigation/RootNavigator.tsx) & [`src/screens/`](./src/screens/) | Review closed-loop UI states for Doctor Verification Locks, Availability setup, and Patient Telehealth. |
-| **Backend Developer (API & DB)** | [Roadmap Stage 2 Architecture](./NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md#86) | Implement NestJS API Gateway, Prisma PostgreSQL schema, and Paystack/Flutterwave Automated Split Payout webhooks. |
-| **AI / Machine Learning Engineer** | [Roadmap Stage 5 AI Blueprint](./NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md#314) | Configure `.env` AI keys (`GEMINI_API_KEY`, `DEEPGRAM_API_KEY`) to activate Doctor SOAP Copilot and Admin OCR verification. |
-| **Admin Web Developer** | [`admin/src/`](./admin/src/) | Build Next.js 14 Doctor MDCN Verification Console, Incident Escalation Board, and Financial Payout Ledger. |
+| **Backend Developer (API & DB)** | [Roadmap Stage 2 Architecture](./NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md#stage-2-backend-architecture--payment-gateway-integration) | Implement NestJS API Gateway, Prisma PostgreSQL schema, and Paystack/Flutterwave Automated Split Payout webhooks. |
+| **AI / Machine Learning Engineer** | [Roadmap Stage 5 AI Blueprint](./NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md#stage-5-top-3-medical-ai-engine-blueprint) | Configure `.env` AI keys (`GEMINI_API_KEY`, `DEEPGRAM_API_KEY`) to activate Doctor SOAP Copilot, Document OCR, and AI Health Insights. |
+| **Admin Web Developer** | [`admin/src/`](./admin/src/) | Build Next.js 14 Doctor MDCN Verification Console, Blood Donor Admin Audit, Incident Escalation Board, and Financial Payout Ledger. |
+| **Future Release Roadmap** | [`NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md`](./NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md) | Multi-member Family Accounts (dedicated tier pricing), Enterprise Health Subscriptions, and Wearable Background Daemons. |
 
 ---
 
 ## ✨ Key Platform Features
 
 ### 👨‍⚕️ Doctor Portal & MDCN Verification Lock
-- **MDCN Legal Verification Lock**: Unverified doctors are strictly locked from consultation messaging, video calls, e-prescribing, and schedule availability.
-- **Platform Fee Breakdown**: Transparent fee calculation (e.g. ₦15,000 fee ➔ ₦1,500 10% platform commission, ₦13,500 net doctor payout).
-- **Clean Payout Account Card**: Streamlined Wema Bank account display with in-card edit controls.
-- **Practice Analytics**: Displays total **Patients Treated** and **Average Rating (★)** across consultations.
+- **MDCN Legal Verification Lock**: Unverified doctors are strictly locked from consultation messaging, video calls, e-prescribing, and schedule availability until approved by Admin.
+- **5 Mandatory Credentials Verification**: MDCN License (with expiration enforcement & 30-day renewal grace period), NIN National ID, Specialty Certificate, Hospital Employment Letter, and Passport Photo.
+- **Escrow Payment & Non-Performance Policy**: Consultation fees are held in OminiPulse Escrow until session completion. Doctor non-performance results in immediate account suspension and a 100% patient refund.
+- **SOAP Clinical Notes & Prescriptions**: Write structured SOAP consultation notes and digitally signed e-prescriptions with automated multi-drug interaction safety warnings.
 
 ### 🩺 Patient Telehealth & AI Intelligence
-- **24/7 AI Symptom Checker**: Medical guidance powered by Google Gemini 1.5 Pro.
-- **Smartwatch Vitals Sync**: Real-time integration with Apple HealthKit & Google Health Connect (Heart Rate, SpO2, Blood Pressure).
-- **GPS Pharmacy & Hospital Radar**: Locate open certified pharmacies for 1-tap prescription dispatch and emergency hospitals nearby.
-- **Blood Donor Network**: Find and request compatible blood donors based on blood group & location.
+- **AI Assistant & Triage Engine**: Google Gemini 1.5 Pro-powered symptom guidance with prominent medical disclaimers, top 3 doctor routing with ratings and verified patient feedback.
+- **AI Health Insights**: Personalized vitals analysis (BP risk, heart rate trends, BMI category, lifestyle recommendations) in [`AIHealthInsightsScreen.tsx`](./src/screens/patient/AIHealthInsightsScreen.tsx).
+- **AI Document Summarization (OCR)**: Scan prescription labels and lab test reports with 1-tap AI value extraction and EHR cross-referencing.
+- **7-Day Medication Adherence Tracker**: Interactive adherence tracking chart with pill alarms and dose logging in [`MedicationRemindersScreen.tsx`](./src/screens/patient/MedicationRemindersScreen.tsx).
+- **Chronic Disease Monitoring**: AI-driven condition tracking for Hypertension (BP), Diabetes (Glucose), Asthma (Peak Flow), and Pregnancy (Maternal Health) in [`ChronicDiseaseScreen.tsx`](./src/screens/patient/ChronicDiseaseScreen.tsx).
+- **Smartwatch & Universal Wearable Inclusivity**: Integration with Apple Watch, Redmi (via Google Health Connect), Huawei Health, Bluetooth BLE medical monitors, and manual vitals logging fallback. Works with or without a watch.
 
-### 🛡️ Admin Governance & Regulatory Escalation
-- **MDCN Verification Moderation**: Review doctor license numbers, medical certificates, and government IDs.
-- **Incident & Fraud Investigation**: Investigate patient reports of unprofessional conduct, apply fines, suspend accounts, or escalate severe cases to the **Medical and Dental Council of Nigeria (MDCN)** and law enforcement.
-- **Role-Based Data Isolation**: Enforces strict patient-doctor privacy and isolated notification channels.
+### 🚨 Emergency Mode & Blood Donor Network
+- **"Request Blood Now" (Emergency Mode)**: Life-threatening emergency blood request flow featuring:
+  - Instant compatible blood group matching (`O-` universal, `O+`, `A+`, `B+`, etc.) ranked by GPS proximity.
+  - Urgent push notification and SMS alert broadcast to nearby verified donors.
+  - Directory of nearest accredited hospital blood banks (LUTH, Lagos State Transfusion Service, FMC Yaba).
+  - One-tap emergency dials (National Emergency 112, OminiPulse Blood Desk, Hospital Transfusion Desk).
+- **Strict Non-Commercial Blood Regulatory Facilitation**:
+  - Direct buying/selling of blood is strictly prohibited. The platform facilitates:
+    `Voluntary Donor ➔ Accredited Hospital / Blood Bank ➔ Patient`
+  - No donor-to-patient monetary transactions are allowed.
+- **Admin Donor Verification**: Mandatory lab report upload during registration. Profiles are audited and approved by Admin before appearing in public donor searches.
+
+### 🛡️ NDPA 2023 Data Privacy & Compliance
+- **100% NDPA Compliant**: Full alignment with the Nigeria Data Protection Act (NDPA 2023).
+- **NDPA Article 26 Data Export**: 1-click encrypted PDF/ZIP export of complete EHR history and medical reports.
+- **Per-Record Access Controls**: Patients can set records to "Visible to me only (Hidden from doctors)".
+- **Real-Time Audit Trail**: Automated audit logging tracks every instance a doctor or provider views a patient record.
 
 ---
 
@@ -79,43 +96,14 @@
 - **Mobile Frontend**: React Native, Expo SDK 54, TypeScript, React Navigation v6, React Query (TanStack Query), Zustand state management.
 - **Web Admin Console**: Next.js 14 (App Router), Tailwind CSS, TypeScript.
 - **Backend Architecture**: NestJS, PostgreSQL 16+, Prisma ORM, Redis, BullMQ queues.
-- **Payment Processing**: Paystack API & Flutterwave Split Payments API (Automated 90/10 split payouts).
-- **AI & ML Engine**: Google Gemini 1.5 Pro / Med-PaLM 2 (Clinical CDS), Deepgram Nova-2 Medical (Voice SOAP Notes), TensorFlow Lite (Edge Watch Sentinel).
-
----
-
-## 🔑 AI API Key Activation (`.env`)
-
-All AI features for Doctor, Patient, and Admin portals operate on a **Plug-and-Play Architecture**. To activate AI services:
-
-1. Create a `.env` file in the project root.
-2. Add your API keys:
-
-```env
-# ─── OMINIPULSE AI ENGINE CONFIGURATION (.env) ─────────────────────────────────
-EXPO_PUBLIC_ENABLE_AI_COPILOT=true
-
-# 1. Primary Clinical Intelligence (Google Gemini 1.5 Pro / Med-PaLM 2)
-GEMINI_API_KEY=your_google_gemini_api_key_here
-
-# 2. Ambient Voice SOAP Note Transcription (Deepgram Nova-2 Medical / Whisper)
-DEEPGRAM_API_KEY=your_deepgram_medical_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-
-# 3. Vision OCR & MDCN Credential Verification (Google Cloud Vision / AWS Textract)
-AI_VISION_API_KEY=your_ocr_vision_api_key_here
-```
+- **Payment Processing**: Paystack API & Flutterwave Split Payments API (Automated 90/10 split payouts & Escrow holding).
+- **AI & ML Engine**: Google Gemini 1.5 Pro (Clinical CDS & Insights), Deepgram Nova-2 Medical (Voice SOAP Notes), OCR Vision (Document Scanning).
 
 ---
 
 ## 🚀 Quick Start Guide
 
-### 1. Prerequisites
-- Node.js `v18+` or `v20+`
-- npm or yarn
-- Expo Go app on iOS/Android or Xcode / Android Studio simulators
-
-### 2. Mobile App Setup
+### 1. Mobile App Setup
 ```bash
 # Clone the repository
 git clone https://github.com/omini-pulse/omini-pulse.git
@@ -128,7 +116,7 @@ npm install
 npx expo start -c
 ```
 
-### 3. Admin Web Console Setup
+### 2. Admin Web Console Setup
 ```bash
 # Navigate to admin directory
 cd admin
@@ -140,13 +128,17 @@ npm install
 npm run dev
 ```
 
-### 4. Running Type Safety Checks
+### 3. Running Type Safety Verification
 ```bash
-# Run TypeScript compilation check
+# Run TypeScript compilation check across codebase
 npx tsc --noEmit
 ```
 
 ---
+
+## 📄 License
+
+Copyright © 2026 OminiPulse Health Technologies Ltd. All rights reserved.
 
 ## 📂 Project Structure
 

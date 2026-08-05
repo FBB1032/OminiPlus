@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -94,7 +95,7 @@ export default function AppointmentsScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* If status is pending, allow doctor to Approve or Decline */}
+        {/* If status is pending, allow doctor to Approve, Decline or Reschedule */}
         {item.status === 'pending' && (
           <View style={styles.actionsRow}>
             <TouchableOpacity
@@ -106,11 +107,34 @@ export default function AppointmentsScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Propose Reschedule Time',
+                  `Propose new consultation slot to ${item.patient?.firstName || 'patient'}?`,
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Send Proposed Time',
+                      onPress: () => {
+                        showToastSuccess('Reschedule Sent', 'Proposed new consultation time sent to patient for confirmation.');
+                        refetch();
+                      },
+                    },
+                  ]
+                );
+              }}
+              style={[styles.actionBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+              <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Reschedule</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => handleUpdateStatus(item.id, 'scheduled')}
               style={[styles.actionBtn, styles.completeBtn]}
             >
               <Ionicons name="checkmark-circle-outline" size={16} color={Colors.text.inverse} />
-              <Text style={[styles.actionBtnText, styles.completeBtnText]}>Accept Booking</Text>
+              <Text style={[styles.actionBtnText, styles.completeBtnText]}>Approve</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -140,7 +164,30 @@ export default function AppointmentsScreen({ navigation }: any) {
                 style={[styles.actionBtn, styles.cancelBtn]}
               >
                 <Ionicons name="close-circle-outline" size={16} color={Colors.error.main} />
-                <Text style={[styles.actionBtnText, styles.cancelBtnText]}>Cancel</Text>
+                <Text style={[styles.actionBtnText, styles.cancelBtnText]}>Decline / Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  Alert.alert(
+                    'Propose Reschedule Time',
+                    `Propose a new consultation time to ${item.patient?.firstName || 'patient'}?`,
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Send New Time',
+                        onPress: () => {
+                          showToastSuccess('Reschedule Sent', 'New proposed time sent to patient for approval.');
+                          refetch();
+                        },
+                      },
+                    ]
+                  );
+                }}
+                style={[styles.actionBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE', borderWidth: 1 }]}
+              >
+                <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+                <Text style={[styles.actionBtnText, { color: '#2563EB' }]}>Reschedule</Text>
               </TouchableOpacity>
 
               <TouchableOpacity

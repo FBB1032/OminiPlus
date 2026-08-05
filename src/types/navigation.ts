@@ -31,6 +31,9 @@ export type DoctorStackParamList = {
   ConsultationChat: { appointmentId: string };
   HelpCenter: undefined;
   PrivacyPolicy: undefined;
+  SuspendedAccount: undefined;
+  DoctorTerms: undefined;
+  BloodDonors: undefined;
 };
 
 // ─── Patient Tabs ─────────────────────────────────────────────────────────────
@@ -63,8 +66,11 @@ export type PatientStackParamList = {
   PrivacyPolicy: undefined;
   ConsentManagement: undefined;
   AccessLogs: undefined;
-  FamilyAccounts: undefined;
   ChronicDisease: { initialTab?: 'hypertension' | 'diabetes' | 'asthma' | 'pregnancy' } | undefined;
+  DeviceCompatibility: undefined;
+  WearableSync: undefined;
+  AIHealthInsights: undefined;
+  Specialists: { specialty?: string } | undefined;
 };
 
 // ─── Root Navigator ─────────────────────────────────────────────────────────

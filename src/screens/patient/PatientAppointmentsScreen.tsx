@@ -24,16 +24,24 @@ export default function PatientAppointmentsScreen({ navigation }: any) {
   const cancelMutation = useCancelAppointment();
   const { success: showToastSuccess, error: showToastError } = useToast();
 
-  const handleCancelAppointment = (id: string) => {
-    Alert.alert('Cancel Appointment', 'Are you sure you want to cancel this appointment?', [
-      { text: 'No', style: 'cancel' },
+  const handleCancelAppointment = (id: string, isDoctorApproved?: boolean) => {
+    const title = isDoctorApproved === false || isDoctorApproved === undefined
+      ? 'Free Cancellation (Pre-Approval)'
+      : 'Cancel Appointment';
+
+    const message = isDoctorApproved === false || isDoctorApproved === undefined
+      ? 'This appointment has not been confirmed by the doctor yet. You are entitled to an instant 100% full refund to your payment account under OminiPulse Escrow terms.'
+      : 'Doctor has confirmed this booking. Cancellations >24h receive 100% refund, 6–24h receive 50% refund, and <6h are non-refundable.';
+
+    Alert.alert(title, message, [
+      { text: 'Keep Appointment', style: 'cancel' },
       {
-        text: 'Yes, Cancel',
+        text: 'Confirm Cancellation',
         style: 'destructive',
         onPress: async () => {
           try {
             await cancelMutation.mutateAsync(id);
-            showToastSuccess('Success', 'Your appointment has been cancelled.');
+            showToastSuccess('Appointment Cancelled', 'Your cancellation was processed and escrow refund initiated.');
             refetch();
           } catch {
             showToastError('Error', 'Could not cancel appointment. Try again.');
@@ -118,13 +126,24 @@ export default function PatientAppointmentsScreen({ navigation }: any) {
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={[styles.cancelBtn, item.type === 'video' && { flex: 1 }]}
-              onPress={() => handleCancelAppointment(item.id)}
+              style={[styles.cancelBtn, { flex: 1, backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+              onPress={() => navigation.navigate('BookAppointment', { doctorId: item.doctorId })}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="calendar" size={16} color="#2563EB" />
+              <Text style={[styles.cancelBtnText, { color: '#2563EB' }]} numberOfLines={1}>
+                Reschedule
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.cancelBtn, { flex: 1 }]}
+              onPress={() => handleCancelAppointment(item.id, item.isDoctorApproved)}
               activeOpacity={0.7}
             >
               <Ionicons name="close-circle-outline" size={16} color={Colors.error.main} />
               <Text style={styles.cancelBtnText} numberOfLines={1}>
-                {item.type === 'video' ? 'Cancel' : 'Cancel Consultation'}
+                Cancel
               </Text>
             </TouchableOpacity>
           </View>

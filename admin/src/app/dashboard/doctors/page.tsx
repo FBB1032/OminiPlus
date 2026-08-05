@@ -589,85 +589,114 @@ export default function DoctorsPage() {
                 </h4>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-                  {/* Government ID */}
-                  <div style={{
-                    border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, background: '#fff',
-                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer', transition: 'border-color 150ms'
-                  }}
-                    onClick={() => {
-                      setPreviewDocUrl({ title: 'Government ID Document', url: '/images/mock-gov-id.png', type: 'image' });
-                      setIsPreviewOpen(true);
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2563eb'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                  >
-                    <div style={{
-                      height: 100, background: '#f1f5f9', borderRadius: 6, display: 'flex',
-                      alignItems: 'center', justifyContent: 'center', color: '#64748b'
-                    }}>
-                      <Award size={28} />
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 12.5, fontWeight: 600, color: '#334155' }}>Government ID</p>
-                      <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{selectedDoc.govIdUrl || 'gov_id.png'}</p>
-                    </div>
-                    <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Eye size={12} /> Preview Document
-                    </span>
-                  </div>
-
                   {/* Medical License */}
                   <div style={{
                     border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, background: '#fff',
-                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer', transition: 'border-color 150ms'
+                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer'
                   }}
                     onClick={() => {
-                      setPreviewDocUrl({ title: 'Medical License Certificate', url: '/images/mock-license.png', type: 'image' });
+                      setPreviewDocUrl({ title: 'MDCN Medical License Certificate', url: '/images/mock-license.png', type: 'image' });
                       setIsPreviewOpen(true);
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2563eb'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
                   >
                     <div style={{
-                      height: 100, background: '#f1f5f9', borderRadius: 6, display: 'flex',
+                      height: 80, background: '#f1f5f9', borderRadius: 6, display: 'flex',
                       alignItems: 'center', justifyContent: 'center', color: '#64748b'
                     }}>
-                      <FileText size={28} />
+                      <FileText size={24} />
                     </div>
                     <div>
-                      <p style={{ fontSize: 12.5, fontWeight: 600, color: '#334155' }}>Medical License</p>
-                      <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{selectedDoc.licenseUrl || 'medical_license.pdf'}</p>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>1. MDCN License</p>
+                      <p style={{ fontSize: 10.5, color: '#059669', fontWeight: 600, marginTop: 1 }}>Valid until Dec 2026</p>
                     </div>
-                    <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Eye size={12} /> Preview Document
-                    </span>
                   </div>
 
-                  {/* Selfie / Profile photo */}
+                  {/* Government ID */}
                   <div style={{
                     border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, background: '#fff',
-                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer', transition: 'border-color 150ms'
+                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer'
                   }}
                     onClick={() => {
-                      setPreviewDocUrl({ title: 'Verification Selfie Photo', url: '/images/mock-selfie.png', type: 'image' });
+                      setPreviewDocUrl({ title: 'Government ID / NIN', url: '/images/mock-gov-id.png', type: 'image' });
                       setIsPreviewOpen(true);
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2563eb'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e2e8f0'; }}
                   >
                     <div style={{
-                      height: 100, background: '#f1f5f9', borderRadius: 6, display: 'flex',
+                      height: 80, background: '#f1f5f9', borderRadius: 6, display: 'flex',
                       alignItems: 'center', justifyContent: 'center', color: '#64748b'
                     }}>
-                      <UserCheck size={28} />
+                      <Award size={24} />
                     </div>
                     <div>
-                      <p style={{ fontSize: 12.5, fontWeight: 600, color: '#334155' }}>Selfie Photo</p>
-                      <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{selectedDoc.selfieUrl || 'selfie.png'}</p>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>2. National ID / NIN</p>
+                      <p style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>gov_id.png</p>
                     </div>
-                    <span style={{ fontSize: 11, color: '#2563eb', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Eye size={12} /> Preview Document
-                    </span>
+                  </div>
+
+                  {/* Specialty Certificate - Mandatory for all */}
+                  <div style={{
+                    border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, background: '#f0fdf4',
+                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer'
+                  }}
+                    onClick={() => {
+                      setPreviewDocUrl({ title: 'Specialty / Fellowship Certificate (WACP/FWACP)', url: '/images/mock-specialty.png', type: 'image' });
+                      setIsPreviewOpen(true);
+                    }}
+                  >
+                    <div style={{
+                      height: 80, background: '#dcfce7', borderRadius: 6, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', color: '#15803d'
+                    }}>
+                      <Award size={24} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#065F46' }}>3. Specialty Cert (Mandatory)</p>
+                      <p style={{ fontSize: 10.5, color: '#047857', fontWeight: 600, marginTop: 1 }}>WACP Fellowship Verified</p>
+                    </div>
+                  </div>
+
+                  {/* Employment Letter */}
+                  <div style={{
+                    border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, background: '#fff',
+                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer'
+                  }}
+                    onClick={() => {
+                      setPreviewDocUrl({ title: 'Clinic Affiliation / Employment Letter', url: '/images/mock-employment.png', type: 'image' });
+                      setIsPreviewOpen(true);
+                    }}
+                  >
+                    <div style={{
+                      height: 80, background: '#f1f5f9', borderRadius: 6, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', color: '#64748b'
+                    }}>
+                      <FileText size={24} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>4. Employment Letter</p>
+                      <p style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>clinic_letter.pdf</p>
+                    </div>
+                  </div>
+
+                  {/* Passport Photo */}
+                  <div style={{
+                    border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, background: '#fff',
+                    display: 'flex', flexDirection: 'column', gap: 8, cursor: 'pointer'
+                  }}
+                    onClick={() => {
+                      setPreviewDocUrl({ title: 'Professional Passport Photo', url: '/images/mock-selfie.png', type: 'image' });
+                      setIsPreviewOpen(true);
+                    }}
+                  >
+                    <div style={{
+                      height: 80, background: '#f1f5f9', borderRadius: 6, display: 'flex',
+                      alignItems: 'center', justifyContent: 'center', color: '#64748b'
+                    }}>
+                      <UserCheck size={24} />
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>5. Passport Photo</p>
+                      <p style={{ fontSize: 10.5, color: '#94a3b8', marginTop: 1 }}>photo_headshot.jpg</p>
+                    </div>
                   </div>
                 </div>
               </div>

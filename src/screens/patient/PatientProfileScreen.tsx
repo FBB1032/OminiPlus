@@ -31,11 +31,6 @@ export default function PatientProfileScreen({ navigation }: any) {
       onPress: () => navigation.navigate('ProfileEdit'),
     },
     {
-      icon: 'people-outline',
-      label: 'Family Accounts',
-      onPress: () => navigation.navigate('FamilyAccounts'),
-    },
-    {
       icon: 'document-text-outline',
       label: 'Prescription History',
       onPress: () => navigation.navigate('PrescriptionHistory'),
@@ -54,6 +49,16 @@ export default function PatientProfileScreen({ navigation }: any) {
       icon: 'lock-closed-outline',
       label: 'Consent Management',
       onPress: () => navigation.navigate('ConsentManagement'),
+    },
+    {
+      icon: 'watch-outline',
+      label: 'Wearables & Health Devices',
+      onPress: () => navigation.navigate('WearableSync'),
+    },
+    {
+      icon: 'hardware-chip-outline',
+      label: 'Device Compatibility List',
+      onPress: () => navigation.navigate('DeviceCompatibility'),
     },
     {
       icon: 'eye-outline',

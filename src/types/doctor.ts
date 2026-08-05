@@ -21,7 +21,20 @@ export interface Doctor {
   availabilityStatus?: 'available' | 'busy' | 'offline';
   estimatedWaitTime?: string; // e.g. "Available Now", "~15 mins wait", "Next slot: Tomorrow 9:00 AM"
   workingHours: WorkingHours[];
+  verificationStatus?: 'pending' | 'approved' | 'suspended' | 'license_expired' | 'license_renewal_pending';
+  licenseExpiryDate?: string;
+  suspensionReason?: string;
+  suspendedAt?: string;
+  verificationDocuments?: DoctorVerificationDocument[];
   createdAt: string;
+}
+
+export interface DoctorVerificationDocument {
+  id: string;
+  type: 'mdcn_license' | 'national_id' | 'specialty_certificate' | 'employment_letter' | 'passport_photo';
+  url: string;
+  uploadedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export interface WorkingHours {
@@ -51,6 +64,12 @@ export interface Appointment {
     assessment: string;
     plan: string;
   };
+  isDoctorApproved?: boolean;
+  doctorApprovedAt?: string;
+  paymentStatus?: 'held' | 'released' | 'refunded' | 'pending';
+  paymentHeldAt?: string;
+  cancellationReason?: string;
+  refundAmount?: number;
   createdAt: string;
 }
 

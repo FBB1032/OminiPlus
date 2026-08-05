@@ -5,5 +5,6 @@ export { ApiResponse, PaginatedResponse, PaginationParams, ApiError } from './ap
 export { RootStackParamList, AuthStackParamList, DoctorStackParamList, DoctorTabParamList, PatientStackParamList, PatientTabParamList, AuthScreenProps, DoctorScreenProps, PatientScreenProps, DoctorTabScreenProps, PatientTabScreenProps } from './navigation';
 export * from './consent';
 export * from './auditLog';
-export * from './family';
 export * from './chronic';
+export * from './medicalRecord';
+export * from './wearable';

@@ -308,25 +308,31 @@ export default function PrescriptionScreen({ route, navigation }: any) {
 
               <Divider spacing={3} />
 
-              <FormInput
-                control={control}
-                name="instructions"
-                label="General Instructions"
-                placeholder="Overall guidelines, diet rest, or precautions"
-                multiline
-                numberOfLines={3}
-                style={styles.textArea}
-                error={errors.instructions}
-              />
+              <View style={{ gap: 8 }}>
+                <Text style={{ fontSize: 13, fontWeight: 'bold', color: Colors.text.primary }}>
+                  SOAP Clinical Consultation Notes
+                </Text>
 
-              <DatePicker
-                control={control}
-                name="followUpDate"
-                label="Follow-up Date"
-                placeholder="Select date (optional)"
-                minimumDate={new Date()}
-                error={errors.followUpDate}
-              />
+                <FormInput
+                  control={control}
+                  name="instructions"
+                  label="Subjective & Objective Notes"
+                  placeholder="Patient chief complaint, history, temperature, BP, exam findings"
+                  multiline
+                  numberOfLines={3}
+                  style={styles.textArea}
+                  error={errors.instructions}
+                />
+
+                <DatePicker
+                  control={control}
+                  name="followUpDate"
+                  label="Follow-up Date"
+                  placeholder="Select date (optional)"
+                  minimumDate={new Date()}
+                  error={errors.followUpDate}
+                />
+              </View>
 
               <Button
                 label="Save & Issue Prescription"

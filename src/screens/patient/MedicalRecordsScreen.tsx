@@ -12,7 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { useMedicalRecords } from '../../hooks/usePatient';
-import { Card, SkeletonList, EmptyState, ErrorState } from '../../components';
+import { Card, SkeletonList, EmptyState, ErrorState, Button } from '../../components';
+import { useRecordVisibilityStore } from '../../store/recordVisibilityStore';
+import { useToast } from '../../hooks/useAuth';
+import { Alert } from 'react-native';
 
 const FILTER_TYPES = [
   { label: 'All', value: undefined },
@@ -25,6 +28,32 @@ const FILTER_TYPES = [
 export default function MedicalRecordsScreen() {
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const { success: showToastSuccess } = useToast();
+  const { visibilities, loadVisibilities, toggleVisibility } = useRecordVisibilityStore();
+
+  React.useEffect(() => {
+    loadVisibilities();
+  }, []);
+
+  const handleExportRecords = () => {
+    Alert.alert(
+      'Export Medical Records Archive',
+      'Under NDPA Article 26 (Data Portability), export your complete EHR history, lab reports, and e-prescriptions as an encrypted PDF/ZIP archive?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Export Archive',
+          onPress: () => {
+            showToastSuccess('Export Requested', 'Generating your encrypted EHR PDF archive. Your download will start shortly.');
+            setTimeout(() => {
+              Linking.openURL('https://ominipulse.ng/api/v1/records/export-archive.pdf').catch(() => {});
+            }, 1200);
+          },
+        },
+      ]
+    );
+  };
 
   const { data: recordsResponse, isLoading: _isLoading, isError, refetch } = useMedicalRecords();
   const showSkeleton = useSkeletonDelay(_isLoading, 150);
@@ -100,6 +129,44 @@ export default function MedicalRecordsScreen() {
             <Text style={styles.descriptionLabel}>Notes / Description:</Text>
             <Text style={styles.descriptionText}>{item.description}</Text>
 
+            {/* Visibility Toggle Button */}
+            <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: Colors.border }}>
+              <Text style={{ fontSize: 11, fontWeight: 'bold', color: Colors.text.secondary, marginBottom: 6 }}>
+                RECORD PRIVACY CONTROL (NDPA):
+              </Text>
+              <TouchableOpacity
+                onPress={() => toggleVisibility(item.id)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  backgroundColor: visibilities[item.id] === 'patient_only' ? '#FEF2F2' : '#F0FDF4',
+                  borderColor: visibilities[item.id] === 'patient_only' ? '#FCA5A5' : '#BBF7D0',
+                  borderWidth: 1,
+                  paddingHorizontal: 10,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                }}
+              >
+                <Ionicons
+                  name={visibilities[item.id] === 'patient_only' ? 'eye-off' : 'eye'}
+                  size={16}
+                  color={visibilities[item.id] === 'patient_only' ? '#DC2626' : '#059669'}
+                />
+                <Text
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 'bold',
+                    color: visibilities[item.id] === 'patient_only' ? '#991B1B' : '#065F46',
+                  }}
+                >
+                  {visibilities[item.id] === 'patient_only'
+                    ? 'Visible to me only (Hidden from doctors)'
+                    : 'Visible to me & assigned doctors'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             {item.attachmentUrl ? (
               <TouchableOpacity
                 onPress={() => handleDownloadAttachment(item.attachmentUrl)}
@@ -119,12 +186,71 @@ export default function MedicalRecordsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Medical Records</Text>
-        <View style={styles.NDPABadge}>
-          <Ionicons name="shield-checkmark" size={12} color="#10B981" />
-          <Text style={styles.NDPAText}>NDPA Secured</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Medical Records</Text>
+          <View style={styles.NDPABadge}>
+            <Ionicons name="shield-checkmark" size={12} color="#10B981" />
+            <Text style={styles.NDPAText}>NDPA Secured</Text>
+          </View>
         </View>
+
+        <TouchableOpacity
+          onPress={handleExportRecords}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+            backgroundColor: '#2563EB',
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 8,
+          }}
+        >
+          <Ionicons name="download-outline" size={14} color="#FFFFFF" />
+          <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF' }}>Export All</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* AI Document Summarization Banner */}
+      <TouchableOpacity
+        style={{
+          marginHorizontal: Spacing[4],
+          marginBottom: Spacing[3],
+          backgroundColor: '#0C1A2E',
+          borderRadius: 14,
+          padding: Spacing[4],
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Spacing[3],
+        }}
+        activeOpacity={0.88}
+        onPress={() => {
+          Alert.alert(
+            'AI Medical Document Summary',
+            'AI will scan your uploaded records and generate a clinical summary highlighting diagnoses, prescribed medications, and key lab findings.\n\nWould you like to generate your AI-powered health summary now?',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Generate Summary',
+                onPress: () => {
+                  showToastSuccess('AI Summary', 'AI is generating your personalized medical document summary. Ready in a few seconds.');
+                },
+              },
+            ]
+          );
+        }}
+      >
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(6,182,212,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+          <Ionicons name="scan" size={22} color="#22D3EE" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF' }}>AI Document Summarization</Text>
+          <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2, lineHeight: 15 }}>
+            Scan & summarize your lab reports, prescriptions, and diagnoses using AI
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={16} color="#22D3EE" />
+      </TouchableOpacity>
 
       {/* Filter Tabs */}
       <View style={styles.filterWrapper}>

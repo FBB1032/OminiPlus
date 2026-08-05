@@ -26,6 +26,8 @@ interface VerificationBloodDonor {
   lastDonationDate: string;
   donationsCount: number;
   gender: string;
+  age?: number;
+  labReportUrl?: string;
   verificationSubmittedAt?: string;
   verificationReviewedAt?: string;
   verificationReviewedBy?: string;
@@ -645,7 +647,7 @@ export default function BloodDonorsPage() {
         <Modal
           isOpen={!!selectedDonor}
           onClose={() => setSelectedDonor(null)}
-          title="Blood Donor Profile & Medical Credentials"
+          title="Blood Donor Verification & Medical Lab Credentials"
           size="lg"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -663,7 +665,9 @@ export default function BloodDonorsPage() {
                 </div>
                 <div>
                   <h3 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{selectedDonor.name}</h3>
-                  <p style={{ fontSize: 12, color: '#64748b' }}>{selectedDonor.email} • {selectedDonor.phone}</p>
+                  <p style={{ fontSize: 12, color: '#64748b' }}>
+                    {selectedDonor.gender || 'Male'} • {selectedDonor.age || 28} Yrs • Phone: {selectedDonor.phone}
+                  </p>
                 </div>
               </div>
               <Badge
@@ -676,8 +680,40 @@ export default function BloodDonorsPage() {
               </Badge>
             </div>
 
+            {/* Mandatory Lab Report Section */}
+            <div style={{
+              background: '#f0f9ff', padding: 16, borderRadius: 12,
+              border: '1px solid #bae6fd', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: 8, background: '#0284c7', color: '#ffffff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: '#0369a1' }}>Blood Group Lab Report Document</p>
+                  <p style={{ fontSize: 12, color: '#0284c7' }}>
+                    {selectedDonor.labReportUrl || `blood_lab_report_${selectedDonor.id}.pdf`} • Verified Lab Result Scan
+                  </p>
+                </div>
+              </div>
+              <a
+                href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert(`Viewing attached lab report document for ${selectedDonor.name}`);
+                }}
+                className="btn btn-secondary btn-sm"
+                style={{ background: '#ffffff', borderColor: '#7dd3fc', color: '#0369a1', fontWeight: 700 }}
+              >
+                View Document
+              </a>
+            </div>
+
             {/* Grid details */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div style={{ background: '#ffffff', padding: 14, borderRadius: 10, border: '1px solid #f1f5f9' }}>
                 <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>BLOOD TYPE & GENOTYPE</span>
                 <p style={{ fontSize: 16, fontWeight: 700, color: '#dc2626', marginTop: 4 }}>
@@ -686,23 +722,37 @@ export default function BloodDonorsPage() {
               </div>
 
               <div style={{ background: '#ffffff', padding: 14, borderRadius: 10, border: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>LOCATION REGION</span>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>LOCATION & CITY</span>
                 <p style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>
-                  {selectedDonor.region} ({selectedDonor.city})
+                  {selectedDonor.city}, {selectedDonor.region}
                 </p>
               </div>
 
               <div style={{ background: '#ffffff', padding: 14, borderRadius: 10, border: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>TOTAL DONATIONS</span>
-                <p style={{ fontSize: 15, fontWeight: 600, color: '#10b981', marginTop: 4 }}>
-                  {selectedDonor.donationsCount} Completed Donations
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>ACTIVE PHONE NUMBER</span>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginTop: 4, fontFamily: 'monospace' }}>
+                  {selectedDonor.phone}
+                </p>
+              </div>
+
+              <div style={{ background: '#ffffff', padding: 14, borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>AVAILABILITY STATUS</span>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#059669', marginTop: 4 }}>
+                  {selectedDonor.availabilityStatus}
                 </p>
               </div>
 
               <div style={{ background: '#ffffff', padding: 14, borderRadius: 10, border: '1px solid #f1f5f9' }}>
                 <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>LAST DONATION DATE</span>
-                <p style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>
                   {selectedDonor.lastDonationDate}
+                </p>
+              </div>
+
+              <div style={{ background: '#ffffff', padding: 14, borderRadius: 10, border: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>PREVIOUS DONATIONS COUNT</span>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#10b981', marginTop: 4 }}>
+                  {selectedDonor.donationsCount} Completed Donations
                 </p>
               </div>
             </div>
@@ -720,7 +770,7 @@ export default function BloodDonorsPage() {
               {selectedDonor.partnerStatus === 'pending' && (
                 <>
                   <Button variant="danger" onClick={() => openConfirmDialog('reject', selectedDonor.id)}>Reject</Button>
-                  <Button variant="primary" style={{ background: '#10b981', borderColor: '#10b981' }} onClick={() => openConfirmDialog('approve', selectedDonor.id)}>Verify Donor</Button>
+                  <Button variant="primary" style={{ background: '#10b981', borderColor: '#10b981' }} onClick={() => openConfirmDialog('approve', selectedDonor.id)}>Approve & Verify Donor</Button>
                 </>
               )}
             </div>

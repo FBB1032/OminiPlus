@@ -32,23 +32,23 @@ const PATIENT_FAQS: FAQItem[] = [
     role: 'patient',
     question: 'How do I book a telehealth consultation on OminiPulse?',
     answer:
-      'Browse verified specialists by department or availability, select a convenient time slot, and conduct secure HD video, audio, or chat consultations directly inside the app.',
+      'Browse verified specialists by specialization or live availability status, choose a convenient time slot, and conduct secure HD video, phone, or chat consultations directly inside the app. Your payment is held in escrow and only released to the doctor after they confirm your booking.',
   },
   {
     id: 'p-faq-2',
-    category: 'pharmacy',
+    category: 'billing',
     role: 'patient',
-    question: 'How do I receive and fulfill my Electronic Prescriptions (E-Prescriptions)?',
+    question: 'What is the appointment cancellation and refund policy?',
     answer:
-      'After your consultation, your doctor issues a digitally signed e-prescription to your Medical Records. You can use our GPS Pharmacy Radar to locate nearby open pharmacies or request doorstep delivery.',
+      'Free Cancellation: You can cancel any booking for a full 100% refund at any time before the doctor confirms (approves) your appointment — no questions asked. After the doctor confirms: cancellations more than 24 hours before get a 100% refund; 6–24 hours before get a 50% refund; less than 6 hours before are non-refundable. Doctor-initiated cancellations always qualify for a 100% full refund. Refunds are processed in 3–5 business days or instantly as in-app wallet credit.',
   },
   {
     id: 'p-faq-3',
     category: 'billing',
     role: 'patient',
-    question: 'What is the appointment cancellation and refund policy?',
+    question: 'How does the OminiPulse payment escrow work?',
     answer:
-      'You can cancel any scheduled appointment up to 2 hours prior to the start time for a 100% full refund to your payment account. Cancellations within 2 hours are subject to a 50% late fee.',
+      'When you book and pay for a consultation, your money is held securely by OminiPulse and not sent to the doctor until they formally confirm your appointment. If a doctor confirms and then fails to conduct the session, you receive an automatic full refund. This protects you from no-show doctors.',
   },
   {
     id: 'p-faq-4',
@@ -56,23 +56,47 @@ const PATIENT_FAQS: FAQItem[] = [
     role: 'patient',
     question: 'How is my Electronic Health Record (EHR) kept private?',
     answer:
-      'All patient medical histories, lab results, and consultation notes are encrypted with 256-bit AES encryption in strict accordance with Nigerian Data Protection Regulation (NDPR) and NDPA standards. We never sell or share patient health data.',
+      'All your medical records, lab results, and consultation notes are encrypted with 256-bit AES encryption under the Nigeria Data Protection Act (NDPA) 2023. You can control exactly which records are visible to doctors using the per-record visibility toggle on your Medical Records screen. You can also view a full audit trail of every access to your records under "Who Viewed My Records" in your profile.',
   },
   {
     id: 'p-faq-5',
+    category: 'privacy',
+    role: 'patient',
+    question: 'Can I export or download all my medical records?',
+    answer:
+      'Yes. Under your NDPA data portability rights, you can export a complete archive of all your medical records in PDF or ZIP format at any time using the "Export My Records" button on your Medical Records screen.',
+  },
+  {
+    id: 'p-faq-6',
+    category: 'privacy',
+    role: 'patient',
+    question: 'Can I hide a medical record from my doctor?',
+    answer:
+      'Yes. Each record in your Medical Records screen has a visibility toggle. You can set any individual record to "Visible to me only" to prevent it from being seen by doctors while keeping it accessible to yourself. You can change this at any time.',
+  },
+  {
+    id: 'p-faq-7',
     category: 'booking',
     role: 'patient',
     question: 'What should I do in case of a medical emergency?',
     answer:
-      'OminiPulse is designed for non-emergency medical consultations. In case of life-threatening emergencies (severe chest pain, acute respiratory distress, severe hemorrhage), call national emergency hotlines (112 / 767) or navigate to the nearest hospital emergency room immediately using our GPS Hospital Navigator.',
+      'OminiPulse is designed for non-emergency medical consultations. In case of life-threatening emergencies (severe chest pain, acute respiratory distress, severe hemorrhage, loss of consciousness), call national emergency hotlines (112 / 767) or navigate to the nearest hospital emergency room immediately using our GPS Hospital Navigator.',
   },
   {
-    id: 'p-faq-6',
+    id: 'p-faq-8',
+    category: 'pharmacy',
+    role: 'patient',
+    question: 'How do I receive and fulfill my Electronic Prescriptions?',
+    answer:
+      'After your consultation, your doctor issues a digitally signed e-prescription directly to your Medical Records. Use our GPS Pharmacy Radar to locate nearby certified pharmacies for in-person pickup. Doorstep delivery is coming soon.',
+  },
+  {
+    id: 'p-faq-9',
     category: 'billing',
     role: 'patient',
-    question: 'What are the legal consequences of providing false medical information or prescription fraud?',
+    question: 'What are the legal consequences of providing false medical information?',
     answer:
-      'Providing false health details, lying to doctors, attempting prescription fraud, or making fraudulent malicious reports is strictly illegal. Offenders will face immediate account termination and may be fined, sued for civil damages, or arrested and prosecuted under Nigerian law.',
+      'Providing false health details, lying to doctors, attempting prescription fraud, or making fraudulent malicious reports is strictly illegal. Offenders will face immediate permanent account termination and may be fined, sued for civil damages, or arrested and prosecuted under Nigerian law.',
   },
 ];
 
@@ -81,49 +105,65 @@ const DOCTOR_FAQS: FAQItem[] = [
     id: 'd-faq-1',
     category: 'payouts',
     role: 'doctor',
-    question: 'How does the 10% platform service fee and payout work for doctors?',
+    question: 'How does the 10% platform fee and payout work?',
     answer:
-      'OminiPulse retains a flat 10% platform service fee on completed consultation fees to cover HD video streaming, EHR cloud hosting, payment processing, and 24/7 technical support. The remaining 90% net earnings are disbursed directly into your verified bank payout account.',
+      'OminiPulse retains a flat 10% platform service fee from each completed consultation, covering HD video infrastructure, EHR hosting, payment processing, and NDPA compliance. The remaining 90% is disbursed to your verified bank account within 24 hours of marking the consultation as completed.',
   },
   {
     id: 'd-faq-2',
-    category: 'verification',
+    category: 'payouts',
     role: 'doctor',
-    question: 'What credentials are required for doctor verification?',
+    question: 'How does the appointment confirmation and escrow system work?',
     answer:
-      'Practitioners must upload a valid Government ID (National ID/Passport), Medical License Number issued by the Medical and Dental Council of Nigeria (MDCN), and specialty certificates. Compliance Officers verify all credentials prior to account activation.',
+      'When a patient books you, their payment is held in escrow by OminiPulse. You must formally confirm (approve) the booking through your Appointments screen to release the funds. Unconfirmed bookings are automatically refunded to the patient after 24 hours. IMPORTANT: Confirming a booking and then failing to conduct the consultation is a serious breach — it results in immediate account suspension and a full refund to the patient at your expense.',
   },
   {
     id: 'd-faq-3',
-    category: 'schedule',
+    category: 'verification',
     role: 'doctor',
-    question: 'How do I set and manage my consultation availability?',
+    question: 'What credentials are required for account verification?',
     answer:
-      'You can set your weekly consultation time slots, video vs chat consultation fees, and emergency availability toggles inside the Doctor Availability screen under your Profile.',
+      'All five documents are mandatory with no exceptions: (1) MDCN Medical License with expiry date, (2) National Identity Number (NIN) or Government-Issued ID, (3) Specialty Certificate (required for all doctors including GPs — WACP, FWACP, Fellowship, or equivalent), (4) Current Employer or Clinic Affiliation Letter, (5) Professional Passport-Style Photo. Your account remains pending until all five are approved by a Compliance Officer.',
   },
   {
     id: 'd-faq-4',
+    category: 'verification',
+    role: 'doctor',
+    question: 'What happens when my MDCN license expires?',
+    answer:
+      'Your account validity is tied to your MDCN license expiry date. You will receive renewal notifications 30 days and 7 days before expiry. Upon expiry, you enter a 30-day grace period where you can view your dashboard but cannot accept new bookings. After the grace period, your account is fully restricted until a Compliance Officer verifies your renewed license.',
+  },
+  {
+    id: 'd-faq-5',
+    category: 'verification',
+    role: 'doctor',
+    question: 'What happens if my account is suspended?',
+    answer:
+      'Suspensions on OminiPulse are indefinite — there is no automatic expiry date. A suspended account can still be logged into to view your suspension reason, past appointments, and contact compliance support. All clinical features are disabled. To appeal, contact compliance@ominipulse.ng. Reinstatement requires a fresh document review and Compliance Officer approval.',
+  },
+  {
+    id: 'd-faq-6',
+    category: 'schedule',
+    role: 'doctor',
+    question: 'How do I set my consultation availability and live status?',
+    answer:
+      'In the Doctor Availability screen under your Profile, you can configure your weekly schedule by day and time, set slot durations, and toggle your live status between Available Now, Busy, and Offline. Your live status is visible to patients on all booking and doctor listing screens.',
+  },
+  {
+    id: 'd-faq-7',
     category: 'clinical',
     role: 'doctor',
     question: 'What are the guidelines for issuing E-Prescriptions?',
     answer:
-      'E-prescriptions issued via OminiPulse are digitally signed and verifiable by partner pharmacies. Controlled Schedule II narcotics or habit-forming medications cannot be prescribed via remote telemedicine.',
+      'E-prescriptions are digitally signed, tamper-evident, and verifiable by partner pharmacies. Schedule II controlled narcotics, opioids, or habit-forming medications cannot be prescribed via telehealth under any circumstances.',
   },
   {
-    id: 'd-faq-5',
+    id: 'd-faq-8',
     category: 'clinical',
     role: 'doctor',
-    question: 'What is my clinical liability during virtual consultations?',
+    question: 'What happens if a patient reports me for misconduct or malpractice?',
     answer:
-      'Medical Practitioners act as independent licensed professionals and retain full clinical discretion and liability for diagnoses, advice, and treatment recommendations provided during consultations.',
-  },
-  {
-    id: 'd-faq-6',
-    category: 'clinical',
-    role: 'doctor',
-    question: 'What happens if a doctor is reported for unprofessional conduct or medical malpractice?',
-    answer:
-      'OminiPulse Compliance Officers launch an immediate internal investigation upon receiving evidence of unprofessional conduct or malpractice. If found guilty, the doctor faces account suspension or a permanent ban. Serious medical offenses are reported to the Medical and Dental Council of Nigeria (MDCN), which may result in medical license revocation, arrest, and criminal prosecution.',
+      'OminiPulse Compliance Officers launch an immediate internal investigation upon receiving evidence-backed reports. If found guilty, your account faces suspension or a permanent ban. Serious offenses are reported to the MDCN, which may result in license revocation, arrest, and criminal prosecution under Nigerian law.',
   },
 ];
 

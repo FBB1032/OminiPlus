@@ -112,6 +112,53 @@ export default function ChronicDiseaseScreen({ navigation, route }: any) {
           </View>
         </Card>
 
+        {/* AI Chronic Disease Monitoring Insight */}
+        <Card style={{ marginBottom: Spacing[3], padding: Spacing[4], backgroundColor: '#0C1A2E', borderRadius: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing[3], marginBottom: 10 }}>
+            <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(6,182,212,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="analytics" size={20} color="#22D3EE" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: 'bold', color: '#FFFFFF' }}>AI Chronic Monitoring</Text>
+              <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>Automated analysis of your condition trends</Text>
+            </View>
+          </View>
+          <View style={{ gap: 8 }}>
+            {activeTab === 'hypertension' && (
+              <View style={{ backgroundColor: 'rgba(239,68,68,0.12)', borderRadius: 8, padding: 10, borderLeftWidth: 3, borderLeftColor: '#EF4444' }}>
+                <Text style={{ fontSize: 12, color: '#FCA5A5', fontWeight: 'bold' }}>Hypertension Pattern Detected</Text>
+                <Text style={{ fontSize: 11, color: '#CBD5E1', marginTop: 4, lineHeight: 17 }}>
+                  AI has detected an upward trend in your systolic readings over the past 7 days. Consider reducing sodium intake and logging your readings more consistently. Schedule a Cardiology review if readings exceed 150/95 mmHg.
+                </Text>
+              </View>
+            )}
+            {activeTab === 'diabetes' && (
+              <View style={{ backgroundColor: 'rgba(245,158,11,0.12)', borderRadius: 8, padding: 10, borderLeftWidth: 3, borderLeftColor: '#F59E0B' }}>
+                <Text style={{ fontSize: 12, color: '#FCD34D', fontWeight: 'bold' }}>Blood Sugar Fluctuation Noted</Text>
+                <Text style={{ fontSize: 11, color: '#CBD5E1', marginTop: 4, lineHeight: 17 }}>
+                  Post-meal glucose readings are higher than fasting readings. Maintain a consistent low-GI diet and log meals alongside glucose for better pattern analysis.
+                </Text>
+              </View>
+            )}
+            {activeTab === 'asthma' && (
+              <View style={{ backgroundColor: 'rgba(59,130,246,0.12)', borderRadius: 8, padding: 10, borderLeftWidth: 3, borderLeftColor: '#3B82F6' }}>
+                <Text style={{ fontSize: 12, color: '#93C5FD', fontWeight: 'bold' }}>Peak Flow Monitor Active</Text>
+                <Text style={{ fontSize: 11, color: '#CBD5E1', marginTop: 4, lineHeight: 17 }}>
+                  Log daily peak flow readings to track your green/amber/red zone status. AI detects deterioration early, enabling preventive inhaler use before a full asthma episode.
+                </Text>
+              </View>
+            )}
+            {activeTab === 'pregnancy' && (
+              <View style={{ backgroundColor: 'rgba(168,85,247,0.12)', borderRadius: 8, padding: 10, borderLeftWidth: 3, borderLeftColor: '#A855F7' }}>
+                <Text style={{ fontSize: 12, color: '#D8B4FE', fontWeight: 'bold' }}>Maternal Health Tracking Active</Text>
+                <Text style={{ fontSize: 11, color: '#CBD5E1', marginTop: 4, lineHeight: 17 }}>
+                  Log weekly weight, BP, fetal movement, and symptoms. AI flags anomalies like sudden weight gain (edema risk) or elevated BP (pre-eclampsia risk) for prompt medical review.
+                </Text>
+              </View>
+            )}
+          </View>
+        </Card>
+
         {/* Condition Tabs */}
         <View style={styles.tabsRow}>
           {[

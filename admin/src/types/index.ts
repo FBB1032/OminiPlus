@@ -26,7 +26,7 @@ export type Permission =
   | 'settings.view' | 'settings.manage';
 
 export type UserRole = 'doctor' | 'patient' | 'admin';
-export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended';
+export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended' | 'license_expired' | 'license_renewal_pending';
 export type AppointmentStatus = 'pending' | 'approved' | 'completed' | 'cancelled';
 export type PartnerStatus = 'active' | 'pending' | 'inactive' | 'suspended' | 'rejected';
 

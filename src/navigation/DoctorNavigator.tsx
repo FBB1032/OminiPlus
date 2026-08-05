@@ -22,6 +22,9 @@ import ConsultationChatScreen from './../screens/shared/ConsultationChatScreen';
 import DoctorAvailabilityScreen from '../screens/doctor/DoctorAvailabilityScreen';
 import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
 import PrivacyPolicyScreen from '../screens/shared/PrivacyPolicyScreen';
+import SuspendedAccountScreen from '../screens/doctor/SuspendedAccountScreen';
+import DoctorTermsScreen from '../screens/doctor/DoctorTermsScreen';
+import BloodDonorsScreen from '../screens/patient/BloodDonorsScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -81,6 +84,9 @@ export const DoctorNavigator = () => (
     />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen as React.ComponentType} />
     <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen as React.ComponentType} />
+    <Stack.Screen name="SuspendedAccount" component={SuspendedAccountScreen as React.ComponentType} />
+    <Stack.Screen name="DoctorTerms" component={DoctorTermsScreen as React.ComponentType} />
+    <Stack.Screen name="BloodDonors" component={BloodDonorsScreen as React.ComponentType} />
   </Stack.Navigator>
 );
 

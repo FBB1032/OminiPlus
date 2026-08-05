@@ -275,7 +275,7 @@ export default function SettingsPage() {
 
           {activeTab === 'data' && (
             <Card padding="lg">
-              <CardHeader title="GDPR & NDPA Compliance Policies" subtitle="Overview of operational records retention periods" />
+              <CardHeader title="NDPA 2023 Compliance & Data Retention Policies" subtitle="Overview of operational records retention periods and privacy controls" />
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
                 <div style={{
@@ -284,24 +284,25 @@ export default function SettingsPage() {
                 }}>
                   <Server size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
                   <p style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.5 }}>
-                    Omini Pulse administrative servers operate in <strong>strict NDPA-compliance mode</strong>. No patient identifiers are stored directly in dashboard log databases.
+                    Omini Pulse administrative servers operate in <strong>strict NDPA 2023 compliance mode</strong>. Audit logs track all record view/export operations, and payment escrow mechanisms enforce provider non-performance penalties.
                   </p>
                 </div>
 
                 {[
-                  { label: 'Oversight Audit Retention', value: '18 Months', percent: 100 },
-                  { label: 'Flagged Interaction Log Lifetime', value: '12 Months', percent: 75 },
-                  { label: 'Secure Backup Redundancy', value: 'Database Snapshots (24h intervals)', percent: 50 },
-                  { label: 'GDPR Compliance Audit Mode', value: 'Enforced', percent: 100 },
+                  { label: 'NDPA Data Protection Officer Audit Log Retention', value: '24 Months', percent: 100 },
+                  { label: 'Patient Record Access Audit Trail (Who Viewed My Records)', value: 'Permanent & Immutably Encrypted', percent: 100 },
+                  { label: 'Escrow Auto-Release Window', value: '24 Hours Post-Appointment Confirmation', percent: 100 },
+                  { label: 'Doctor License Expiry Check & Lock', value: 'Enforced at MDCN Expiry Date', percent: 100 },
+                  { label: 'NDPA Article 26 Data Portability Archive Export', value: 'Enabled (PDF / ZIP)', percent: 100 },
                 ].map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 0', borderBottom: '1px solid #f1f5f9' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ fontSize: 13, color: '#334155', fontWeight: 600 }}>{item.label}</span>
-                      <span style={{ fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>{item.value}</span>
+                      <span style={{ fontSize: 12.5, color: '#059669', fontWeight: 600 }}>{item.value}</span>
                     </div>
                     {/* Status Bar */}
                     <div style={{ height: 6, width: '100%', background: '#f1f5f9', borderRadius: 100, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${item.percent}%`, background: '#22c55e', borderRadius: 100 }} />
+                      <div style={{ height: '100%', width: `${item.percent}%`, background: '#10b981', borderRadius: 100 }} />
                     </div>
                   </div>
                 ))}

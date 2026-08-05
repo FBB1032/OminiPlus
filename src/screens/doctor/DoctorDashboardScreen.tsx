@@ -17,6 +17,13 @@ import { Card, Avatar, EmptyState, ErrorState, SkeletonDoctorDashboard } from '.
 
 export default function DoctorDashboardScreen({ navigation }: any) {
   const { user } = useAuth();
+
+  // If doctor account is suspended, lock out dashboard and show SuspendedAccountScreen component
+  if (user?.verificationStatus === 'suspended' || (user as any)?.isSuspended) {
+    const SuspendedAccountScreen = require('./SuspendedAccountScreen').default;
+    return <SuspendedAccountScreen />;
+  }
+
   const { data: dashboardData, isLoading: _isLoading, isError, refetch } = useDoctorDashboard();
   const showSkeleton = useSkeletonDelay(_isLoading, 150);
 
@@ -226,6 +233,42 @@ export default function DoctorDashboardScreen({ navigation }: any) {
             />
           )}
         </View>
+
+        {/* Blood Donor Network */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Blood Donor Network</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('BloodDonors')}>
+              <Text style={styles.seeAll}>Open</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#7F1D1D', borderRadius: 14, padding: 16,
+              flexDirection: 'row', alignItems: 'center', gap: 14,
+              borderWidth: 1.5, borderColor: '#EF4444',
+            }}
+            onPress={() => navigation.navigate('BloodDonors')}
+            activeOpacity={0.88}
+          >
+            <View style={{
+              width: 48, height: 48, borderRadius: 24, backgroundColor: '#DC2626',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              <Ionicons name="water" size={24} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF', marginBottom: 2 }}>
+                Emergency Blood Discovery
+              </Text>
+              <Text style={{ fontSize: 11.5, color: '#FCA5A5', lineHeight: 16 }}>
+                Find compatible AA-genotype donors nearby. Use for life-threatening transfusion emergencies. All donations must be screened by a licensed blood bank.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FCA5A5" />
+          </TouchableOpacity>
+        </View>
+
       </ScrollView>
     </SafeAreaView>
   );
