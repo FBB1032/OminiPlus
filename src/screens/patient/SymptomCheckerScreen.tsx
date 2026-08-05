@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { Card, Button, StepIndicator, BodyMap, AppModal } from '../../components';
+import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
 import { BodyPartId } from '../../components/ui/BodyMap';
 import { PainLog } from '../../types';
 
@@ -194,6 +195,8 @@ export default function SymptomCheckerScreen({ navigation }: any) {
         <Text style={styles.headerTitle}>AI Symptom Checker</Text>
         <View style={styles.placeholder} />
       </View>
+
+      <AIDisclaimerBanner />
 
       <StepIndicator
         steps={STEPS}

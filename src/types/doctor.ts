@@ -18,6 +18,8 @@ export interface Doctor {
   rating: number;
   reviewCount: number;
   isAvailable: boolean;
+  availabilityStatus?: 'available' | 'busy' | 'offline';
+  estimatedWaitTime?: string; // e.g. "Available Now", "~15 mins wait", "Next slot: Tomorrow 9:00 AM"
   workingHours: WorkingHours[];
   createdAt: string;
 }

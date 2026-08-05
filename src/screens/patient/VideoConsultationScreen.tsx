@@ -125,9 +125,9 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
               <Text style={styles.timerText}>{formatTime(seconds)}</Text>
             </View>
           </View>
-          <View style={styles.hipaaBadge}>
+          <View style={styles.NDPABadge}>
             <Ionicons name="shield-checkmark" size={14} color="#10B981" />
-            <Text style={styles.hipaaText}>HIPAA Secured</Text>
+            <Text style={styles.NDPAText}>NDPA Secured</Text>
           </View>
         </View>
       </View>
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  hipaaBadge: {
+  NDPABadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     gap: 4,
   },
-  hipaaText: {
+  NDPAText: {
     color: '#10B981',
     fontSize: 10,
     fontWeight: 'bold',

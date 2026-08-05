@@ -451,11 +451,11 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
         )}
       </View>
 
-      {/* HIPAA Compliance Indicator */}
-      <View style={styles.hipaaBanner}>
+      {/* NDPA Compliance Indicator */}
+      <View style={styles.NDPABanner}>
         <Ionicons name="shield-checkmark" size={14} color="#10B981" />
-        <Text style={styles.hipaaText}>
-          HIPAA Secure • Messages are end-to-end encrypted and medically compliant
+        <Text style={styles.NDPAText}>
+          NDPA Secure • Messages are end-to-end encrypted and medically compliant
         </Text>
       </View>
 
@@ -888,7 +888,7 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: FontWeight.bold,
   },
-  hipaaBanner: {
+  NDPABanner: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ECFDF5',
@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#A7F3D0',
     gap: 8,
   },
-  hipaaText: {
+  NDPAText: {
     fontSize: 10,
     color: '#065F46',
     fontWeight: FontWeight.semiBold,

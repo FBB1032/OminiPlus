@@ -33,7 +33,7 @@ export const PATIENT_LEGAL_DOC: RoleLegalDoc = {
       title: '2. Patient Privacy & EHR Data Protection',
       icon: 'shield-checkmark-outline',
       content: [
-        'All patient health records (EHR), lab results, vital signs, and consultation chats are encrypted in transit and at rest in accordance with Nigerian Data Protection Regulation (NDPR) and HIPAA standards.',
+        'All patient health records (EHR), lab results, vital signs, and consultation chats are encrypted in transit and at rest in accordance with Nigerian Data Protection Regulation (NDPR) and NDPA standards.',
         'Your medical data is strictly private and accessible only to you and healthcare practitioners explicitly authorized during your consultations.',
         'We do not sell, rent, or monetize personal health information to third-party advertisers or insurance agencies.',
       ],

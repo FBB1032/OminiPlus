@@ -16,7 +16,7 @@ import { QUERY_KEYS } from '../../constants/queryKeys';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { usePatientHome, useCancelAppointment } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Avatar, ErrorState, SearchBar, AppModal, Input, Button, SkeletonHomePage } from '../../components';
+import { Card, Avatar, ErrorState, SearchBar, AppModal, Input, Button, SkeletonHomePage, FamilyProfileSelector, DoctorStatusBadge } from '../../components';
 import { useToast } from '../../hooks/useAuth';
 
 // ─── Static Mock Data ─────────────────────────────────────────────────────────
@@ -217,7 +217,11 @@ export default function PatientHomeScreen({ navigation }: any) {
     { label: 'Records',      icon: 'document-text',  bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History & Files', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('PatientRecords'); } },
     { label: 'Reminders',    icon: 'alarm',          bg: '#FFF1F2', color: '#E11D48', desc: 'Pill Alarms & Medication Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('MedicationReminders'); } },
     { label: 'Check Vitals', icon: 'heart-half',     bg: '#FEF3C7', color: '#D97706', desc: 'Log BP, Heart Rate & Temp', action: () => { setIsSeeAllQuickAccessOpen(false); handleOpenVitalsEdit(); } },
-    { label: 'Report Incident', icon: 'shield-alert', bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
+    { label: 'Chronic Care', icon: 'fitness',        bg: '#F0FDFA', color: '#0D9488', desc: 'BP, Sugar & Pregnancy Tracker', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ChronicDisease'); } },
+    { label: 'Who Viewed',   icon: 'eye',            bg: '#EFF6FF', color: '#1D4ED8', desc: 'Audit Trail & Access Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AccessLogs'); } },
+    { label: 'My Consents',  icon: 'lock-closed',    bg: '#F0FDF4', color: '#15803D', desc: 'Data Sharing Permissions', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ConsentManagement'); } },
+    { label: 'Family',       icon: 'people',         bg: '#FDF4FF', color: '#9333EA', desc: 'Manage Family Profiles', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('FamilyAccounts'); } },
+    { label: 'Report Incident', icon: 'shield',      bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
     { label: 'Omini Premium', icon: 'star',          bg: '#FEF3C7', color: '#B45309', desc: 'VIP Healthcare Telehealth Plan', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Premium'); } },
   ];
 
@@ -238,6 +242,9 @@ export default function PatientHomeScreen({ navigation }: any) {
             <Text style={styles.greetName}>{user?.firstName} {user?.lastName}</Text>
           </View>
         </View>
+
+        <FamilyProfileSelector onManagePress={() => navigation.navigate('FamilyAccounts')} />
+
         <View style={{ flexDirection: 'row', gap: Spacing[2] }}>
           <TouchableOpacity
             style={styles.msgBtn}

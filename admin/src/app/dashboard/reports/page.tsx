@@ -324,7 +324,7 @@ export default function ReportsPage() {
             <div class="grid">
               <div><div class="label">Report ID</div><div class="value">${selectedReport.id}</div></div>
               <div><div class="label">Submission Date</div><div class="value">${dateStr}</div></div>
-              <div><div class="label">Reporter (HIPAA Anonymized)</div><div class="value">${maskedReporter}</div></div>
+              <div><div class="label">Reporter (NDPA Anonymized)</div><div class="value">${maskedReporter}</div></div>
               <div><div class="label">Consultation ID</div><div class="value">${selectedReport.consultationId || 'APT-2026-AUDIT'}</div></div>
             </div>
           </div>
@@ -594,7 +594,7 @@ export default function ReportsPage() {
             {/* Incident Details Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div style={{ background: '#ffffff', padding: 12, borderRadius: 10, border: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>REPORTER (HIPAA MASKED)</span>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>REPORTER (NDPA MASKED)</span>
                 <p style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>
                   {getMaskedReporter(selectedReport.reporterId, selectedReport.reporterName)}
                 </p>

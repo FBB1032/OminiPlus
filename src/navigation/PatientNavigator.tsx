@@ -29,6 +29,10 @@ import ConsultationChatScreen from '../screens/shared/ConsultationChatScreen';
 import ReportIncidentScreen from '../screens/patient/ReportIncidentScreen';
 import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
 import PrivacyPolicyScreen from '../screens/shared/PrivacyPolicyScreen';
+import ConsentManagementScreen from '../screens/patient/ConsentManagementScreen';
+import AccessLogsScreen from '../screens/patient/AccessLogsScreen';
+import FamilyAccountsScreen from '../screens/patient/FamilyAccountsScreen';
+import ChronicDiseaseScreen from '../screens/patient/ChronicDiseaseScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -98,6 +102,10 @@ export const PatientNavigator = () => (
     <Stack.Screen name="ConsultationChat" component={ConsultationChatScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
     <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+    <Stack.Screen name="ConsentManagement" component={ConsentManagementScreen} />
+    <Stack.Screen name="AccessLogs" component={AccessLogsScreen} />
+    <Stack.Screen name="FamilyAccounts" component={FamilyAccountsScreen} />
+    <Stack.Screen name="ChronicDisease" component={ChronicDiseaseScreen} />
   </Stack.Navigator>
 );
 

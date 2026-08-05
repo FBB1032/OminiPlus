@@ -852,7 +852,7 @@ export default function HospitalsPage() {
             </div>
             
             <p style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>
-              For security and HIPAA compliance, all facility license logs are served through access-controlled channels.
+              For security and NDPA compliance, all facility license logs are served through access-controlled channels.
             </p>
           </div>
         </Modal>

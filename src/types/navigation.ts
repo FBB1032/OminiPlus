@@ -61,6 +61,10 @@ export type PatientStackParamList = {
   ConsultationChat: { appointmentId: string };
   HelpCenter: undefined;
   PrivacyPolicy: undefined;
+  ConsentManagement: undefined;
+  AccessLogs: undefined;
+  FamilyAccounts: undefined;
+  ChronicDisease: { initialTab?: 'hypertension' | 'diabetes' | 'asthma' | 'pregnancy' } | undefined;
 };
 
 // ─── Root Navigator ─────────────────────────────────────────────────────────

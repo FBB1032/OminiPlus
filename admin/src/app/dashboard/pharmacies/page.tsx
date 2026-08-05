@@ -819,7 +819,7 @@ export default function PharmaciesPage() {
             </div>
             
             <p style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>
-              For security and HIPAA compliance, all pharmaceutical license logs are served through access-controlled channels.
+              For security and NDPA compliance, all pharmaceutical license logs are served through access-controlled channels.
             </p>
           </div>
         </Modal>

@@ -359,7 +359,7 @@ export default function DoctorPortalPage() {
         <Card padding="lg">
           <CardHeader
             title="SOAP Medical Notes & Clinical Records"
-            subtitle="HIPAA-compliant subjective, objective, assessment, and treatment plans"
+            subtitle="NDPA-compliant subjective, objective, assessment, and treatment plans"
           />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
             {TODAY_CONSULTATIONS.map((c) => (
@@ -687,7 +687,7 @@ export default function DoctorPortalPage() {
           size="xl"
           footer={
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: '#64748b' }}>HIPAA Audit Session ID: #{selectedConsult.id}</span>
+              <span style={{ fontSize: 12, color: '#64748b' }}>NDPA Audit Session ID: #{selectedConsult.id}</span>
               <div style={{ display: 'flex', gap: 10 }}>
                 <Button variant="ghost" onClick={() => setSelectedConsult(null)}>Cancel</Button>
                 <Button variant="teal" leftIcon={<CheckCircle2 size={14} />} onClick={handleCompleteConsultation}>

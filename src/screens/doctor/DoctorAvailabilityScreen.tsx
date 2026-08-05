@@ -15,6 +15,9 @@ import { WorkingHours } from '../../types';
 import { useDoctorAvailability, useUpdateDoctorAvailability } from '../../hooks/useDoctor';
 import { useAuth, useToast } from '../../hooks/useAuth';
 import { Button, Card, Divider, SkeletonList, ErrorState, AppModal } from '../../components';
+import { storageService } from '../../services/storageService';
+
+const LIVE_STATUS_KEY = 'ominipulse_doctor_live_status';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -143,6 +146,29 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
 
   const [schedule, setSchedule] = useState<WorkingHours[]>(DEFAULT_HOURS);
   const [hasChanges, setHasChanges] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<'available' | 'busy' | 'offline'>('available');
+
+  // Load live status from storage
+  useEffect(() => {
+    storageService.get(LIVE_STATUS_KEY).then((val) => {
+      if (val === 'busy' || val === 'offline' || val === 'available') {
+        setLiveStatus(val as 'available' | 'busy' | 'offline');
+      }
+    });
+  }, []);
+
+  const handleSetLiveStatus = async (status: 'available' | 'busy' | 'offline') => {
+    setLiveStatus(status);
+    await storageService.set(LIVE_STATUS_KEY, status);
+    showSuccess(
+      'Status Updated',
+      status === 'available'
+        ? 'Your status is now Available Now. Patients can see and book you.'
+        : status === 'busy'
+        ? 'Your status is now Busy. Patients see you are in consultation.'
+        : 'Your status is now Offline. No new bookings will show.'
+    );
+  };
 
   // Time picker state
   const [timePicker, setTimePicker] = useState<{
@@ -301,6 +327,32 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
           </Text>
         </View>
       )}
+
+      {/* Live Status Selector */}
+      <View style={styles.liveStatusCard}>
+        <Text style={styles.liveStatusTitle}>Live Consultation Status</Text>
+        <Text style={styles.liveStatusSubtitle}>Patients see this on doctor listing and booking screens.</Text>
+        <View style={styles.liveStatusRow}>
+          {([
+            { key: 'available', label: 'Available Now', dotColor: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', textColor: '#065F46' },
+            { key: 'busy', label: 'Busy', dotColor: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', textColor: '#92400E' },
+            { key: 'offline', label: 'Offline', dotColor: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', textColor: '#475569' },
+          ] as const).map(({ key, label, dotColor, bg, border, textColor }) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => handleSetLiveStatus(key)}
+              style={[
+                styles.liveStatusBtn,
+                { backgroundColor: bg, borderColor: border },
+                liveStatus === key && styles.liveStatusBtnSelected,
+              ]}
+            >
+              <View style={[styles.liveStatusDot, { backgroundColor: dotColor }]} />
+              <Text style={[styles.liveStatusBtnText, { color: textColor }]}>{label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
 
       {/* Info Banner */}
       <View style={styles.infoBanner}>
@@ -643,5 +695,52 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: '#92400E',
     lineHeight: 16,
+  },
+  liveStatusCard: {
+    marginHorizontal: Spacing[4],
+    marginTop: Spacing[3],
+    backgroundColor: Colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing[4],
+    gap: Spacing[3],
+    ...Shadows.xs,
+  },
+  liveStatusTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  liveStatusSubtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.text.secondary,
+    marginTop: -8,
+  },
+  liveStatusRow: {
+    flexDirection: 'row',
+    gap: Spacing[2],
+  },
+  liveStatusBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[2],
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 6,
+  },
+  liveStatusBtnSelected: {
+    borderWidth: 2,
+  },
+  liveStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  liveStatusBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
   },
 });

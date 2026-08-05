@@ -836,7 +836,7 @@ export default function DoctorsPage() {
             </div>
             
             <p style={{ fontSize: 12.5, color: '#64748b', textAlign: 'center' }}>
-              For security and HIPAA compliance, all patient and doctor document logs are served through access-controlled channels.
+              For security and NDPA compliance, all patient and doctor document logs are served through access-controlled channels.
             </p>
           </div>
         </Modal>

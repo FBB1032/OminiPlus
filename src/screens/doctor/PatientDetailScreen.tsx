@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSkeletonDelay } from '../../hooks/useSkeletonDelay';
 import {
   View,
@@ -16,6 +16,7 @@ import { Avatar, Card, Divider, SkeletonDetail, EmptyState, ErrorState, Skeleton
 import { BodyMap } from '../../components/ui/BodyMap';
 import { useAuth } from '../../hooks/useAuth';
 import { PainLog, Prescription, Medication, DoctorScreenProps } from '../../types';
+import { useAuditLogStore } from '../../store/auditLogStore';
 
 type TabType = 'info' | 'prescriptions' | 'bodymap';
 
@@ -37,6 +38,26 @@ export default function PatientDetailScreen({ route, navigation }: DoctorScreenP
 
   const showPatientSkeleton = useSkeletonDelay(isPatientLoading, 150);
   const showPrescriptionsSkeleton = useSkeletonDelay(isPrescriptionsLoading, 150);
+
+  const { logEvent } = useAuditLogStore();
+
+  // Emit audit log: doctor viewed patient record
+  useEffect(() => {
+    if (patientId && user) {
+      logEvent({
+        patientId,
+        patientName: 'Patient Record',
+        actorId: user.id,
+        actorName: `Dr. ${user.firstName} ${user.lastName}`,
+        actorRole: 'doctor',
+        actorTitle: (user as any).specialization || 'Healthcare Provider',
+        action: 'view',
+        recordId: patientId,
+        recordName: 'Patient Profile & Medical History Summary',
+        recordCategory: 'medical_history',
+      });
+    }
+  }, [patientId]);
 
   const handleRefetch = () => {
     refetchPatient();

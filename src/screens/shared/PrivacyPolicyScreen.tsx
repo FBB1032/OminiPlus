@@ -32,7 +32,7 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>Privacy Policy & EHR Data Protection</Text>
-          <Text style={styles.headerSubtitle}>NDPR & HIPAA Compliance Standards</Text>
+          <Text style={styles.headerSubtitle}>NDPR & NDPA Compliance Standards</Text>
         </View>
         <View style={styles.roleTag}>
           <Text style={styles.roleTagText}>{isDoctor ? 'Doctor Terms' : 'Patient Privacy'}</Text>

@@ -98,7 +98,7 @@ export default function LoginPage() {
             Unified administrative systems for modern healthcare networks.
           </h1>
           <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.6 }}>
-            Verify credentials, audit HIPAA-compliant patient operations, and supervise platform analytics with state-of-the-art role-based permissions.
+            Verify credentials, audit NDPA-compliant patient operations, and supervise platform analytics with state-of-the-art role-based permissions.
           </p>
 
           <div style={{ display: 'flex', gap: 24, marginTop: 40 }}>

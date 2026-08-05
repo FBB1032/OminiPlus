@@ -120,9 +120,9 @@ export default function MedicalRecordsScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Medical Records</Text>
-        <View style={styles.hipaaBadge}>
+        <View style={styles.NDPABadge}>
           <Ionicons name="shield-checkmark" size={12} color="#10B981" />
-          <Text style={styles.hipaaText}>HIPAA Secured</Text>
+          <Text style={styles.NDPAText}>NDPA Secured</Text>
         </View>
       </View>
 
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hipaaBadge: {
+  NDPABadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     gap: 4,
   },
-  hipaaText: {
+  NDPAText: {
     color: '#10B981',
     fontSize: 10,
     fontWeight: 'bold',

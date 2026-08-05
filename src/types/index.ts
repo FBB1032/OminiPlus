@@ -3,3 +3,7 @@ export { Doctor, Patient, PainLog, Appointment, AppointmentStatus, WorkingHours,
 export { PatientHome, HealthSummary, MedicalRecord, BookAppointmentPayload, BookingStep, BookingState, PatientNotification, AvailableSlot } from './patient';
 export { ApiResponse, PaginatedResponse, PaginationParams, ApiError } from './api';
 export { RootStackParamList, AuthStackParamList, DoctorStackParamList, DoctorTabParamList, PatientStackParamList, PatientTabParamList, AuthScreenProps, DoctorScreenProps, PatientScreenProps, DoctorTabScreenProps, PatientTabScreenProps } from './navigation';
+export * from './consent';
+export * from './auditLog';
+export * from './family';
+export * from './chronic';

@@ -56,7 +56,7 @@ const PATIENT_FAQS: FAQItem[] = [
     role: 'patient',
     question: 'How is my Electronic Health Record (EHR) kept private?',
     answer:
-      'All patient medical histories, lab results, and consultation notes are encrypted with 256-bit AES encryption in strict accordance with Nigerian Data Protection Regulation (NDPR) and HIPAA standards. We never sell or share patient health data.',
+      'All patient medical histories, lab results, and consultation notes are encrypted with 256-bit AES encryption in strict accordance with Nigerian Data Protection Regulation (NDPR) and NDPA standards. We never sell or share patient health data.',
   },
   {
     id: 'p-faq-5',

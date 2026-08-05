@@ -180,7 +180,7 @@ Omini Pulse/
 ## ⚖️ Legal & Regulatory Standards
 
 - **MDCN Compliance**: Built in compliance with Medical and Dental Council of Nigeria regulations. Unverified practice is strictly blocked.
-- **Data Protection**: Designed in accordance with NDPR (Nigeria Data Protection Regulation) and HIPAA standards for encrypted EHR transmission.
+- **Data Protection**: Designed in accordance with NDPR (Nigeria Data Protection Regulation) and NDPA standards for encrypted EHR transmission.
 
 ---
 

@@ -267,7 +267,7 @@ export default function AppointmentsPage() {
             }}>
               <span>⚠️</span>
               <p>
-                <strong>Privacy Protocol Active:</strong> Patient consultation transcripts, clinical notes, and prescription detail summaries are HIPAA-shielded. Admins have access to transaction, duration, and session metadata logs only.
+                <strong>Privacy Protocol Active:</strong> Patient consultation transcripts, clinical notes, and prescription detail summaries are NDPA-shielded. Admins have access to transaction, duration, and session metadata logs only.
               </p>
             </div>
 

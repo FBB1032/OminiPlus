@@ -31,9 +31,34 @@ export default function PatientProfileScreen({ navigation }: any) {
       onPress: () => navigation.navigate('ProfileEdit'),
     },
     {
+      icon: 'people-outline',
+      label: 'Family Accounts',
+      onPress: () => navigation.navigate('FamilyAccounts'),
+    },
+    {
       icon: 'document-text-outline',
       label: 'Prescription History',
       onPress: () => navigation.navigate('PrescriptionHistory'),
+    },
+    {
+      icon: 'alarm-outline',
+      label: 'Medication Reminders',
+      onPress: () => navigation.navigate('MedicationReminders'),
+    },
+    {
+      icon: 'fitness-outline',
+      label: 'Chronic Disease Tracker',
+      onPress: () => navigation.navigate('ChronicDisease'),
+    },
+    {
+      icon: 'lock-closed-outline',
+      label: 'Consent Management',
+      onPress: () => navigation.navigate('ConsentManagement'),
+    },
+    {
+      icon: 'eye-outline',
+      label: 'Who Viewed My Records',
+      onPress: () => navigation.navigate('AccessLogs'),
     },
     {
       icon: 'settings-outline',

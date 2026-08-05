@@ -275,7 +275,7 @@ export default function SettingsPage() {
 
           {activeTab === 'data' && (
             <Card padding="lg">
-              <CardHeader title="GDPR & HIPAA Compliance Policies" subtitle="Overview of operational records retention periods" />
+              <CardHeader title="GDPR & NDPA Compliance Policies" subtitle="Overview of operational records retention periods" />
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12 }}>
                 <div style={{
@@ -284,7 +284,7 @@ export default function SettingsPage() {
                 }}>
                   <Server size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
                   <p style={{ fontSize: 12.5, color: '#475569', lineHeight: 1.5 }}>
-                    Omini Pulse administrative servers operate in <strong>strict HIPAA-compliance mode</strong>. No patient identifiers are stored directly in dashboard log databases.
+                    Omini Pulse administrative servers operate in <strong>strict NDPA-compliance mode</strong>. No patient identifiers are stored directly in dashboard log databases.
                   </p>
                 </div>
 

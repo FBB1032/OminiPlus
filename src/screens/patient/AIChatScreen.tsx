@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
 import { usePatientHome } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
+import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
 
 const { width } = Dimensions.get('window');
 
@@ -806,23 +807,14 @@ export default function AIChatScreen({ route, navigation }: any) {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
             <Ionicons name="shield-checkmark" size={10} color="#10B981" />
-            <Text style={{ fontSize: 9, color: '#10B981', fontWeight: 'bold' }}>HIPAA</Text>
+            <Text style={{ fontSize: 9, color: '#10B981', fontWeight: 'bold' }}>NDPA</Text>
           </View>
         </View>
         <Text style={styles.headerSubtitle}>Medical AI Companion • Online</Text>
       </View>
 
       {/* ── Legal Medical Disclaimer Banner ─────────────────────────────── */}
-      <View style={{
-        flexDirection: 'row', alignItems: 'center', gap: 8,
-        backgroundColor: '#FFFBEB', borderBottomWidth: 1, borderBottomColor: '#FCD34D',
-        paddingHorizontal: 12, paddingVertical: 8
-      }}>
-        <Ionicons name="information-circle" size={16} color="#D97706" />
-        <Text style={{ flex: 1, fontSize: 10.5, color: '#92400E', lineHeight: 14, fontWeight: '600' }}>
-          Omini Pulse AI is a triage assistant and does not replace emergency ER care or a licensed doctor's diagnosis.
-        </Text>
-      </View>
+      <AIDisclaimerBanner />
 
 
       <KeyboardAvoidingView

@@ -15,11 +15,11 @@ import { useUIStore } from '../../store/uiStore';
 // Inactivity timeout: 5 minutes (300,000 milliseconds)
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
 
-interface HIPAAGuardProps {
+interface NDPAGuardProps {
   children: React.ReactNode;
 }
 
-export const HIPAAGuard = ({ children }: HIPAAGuardProps) => {
+export const NDPAGuard = ({ children }: NDPAGuardProps) => {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const logout = useAuthStore((s) => s.logout);
   const addToast = useUIStore((s) => s.addToast);
@@ -38,7 +38,7 @@ export const HIPAAGuard = ({ children }: HIPAAGuardProps) => {
         message: 'You have been logged out due to inactivity.',
       });
     } catch (error) {
-      console.error('[HIPAAGuard] Auto-logout failed:', error);
+      console.error('[NDPAGuard] Auto-logout failed:', error);
     }
   };
 
@@ -123,7 +123,7 @@ export const HIPAAGuard = ({ children }: HIPAAGuardProps) => {
             <View style={styles.iconContainer}>
               <Ionicons name="lock-closed" size={40} color={Colors.primary[600]} />
             </View>
-            <Text style={styles.title}>HIPAA Secure Session</Text>
+            <Text style={styles.title}>NDPA Secure Session</Text>
             <Text style={styles.subtitle}>
               For your security and privacy, this medical session has been masked.
             </Text>
