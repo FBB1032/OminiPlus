@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -18,10 +18,16 @@ import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
 import { AuthScreenProps } from '../../../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../../store/authStore';
 
 export default function ForgotPasswordScreen({ navigation }: AuthScreenProps<'ForgotPassword'>) {
   const [loading, setLoading] = useState(false);
   const { error: showToastError, success: showToastSuccess } = useToast();
+  const clearOtpVerifiedForReset = useAuthStore((s) => s.clearOtpVerifiedForReset);
+
+  useEffect(() => {
+    clearOtpVerifiedForReset();
+  }, [clearOtpVerifiedForReset]);
 
   const {
     control,

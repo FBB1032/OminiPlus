@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { useMedicalRecords } from '../../hooks/usePatient';
-import { Card, SkeletonList, EmptyState, ErrorState, Button } from '../../components';
+import { Card, SkeletonList, EmptyState, ErrorState, Button, MedicalRecordsHeader } from '../../components';
 import { useRecordVisibilityStore } from '../../store/recordVisibilityStore';
 import { useToast } from '../../hooks/useAuth';
 import { Alert } from 'react-native';
@@ -28,32 +28,23 @@ const FILTER_TYPES = [
 export default function MedicalRecordsScreen() {
   const [selectedType, setSelectedType] = useState<string | undefined>(undefined);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibilityStoreReady, setVisibilityStoreReady] = useState(false);
 
   const { success: showToastSuccess } = useToast();
   const { visibilities, loadVisibilities, toggleVisibility } = useRecordVisibilityStore();
 
   React.useEffect(() => {
-    loadVisibilities();
+    let cancelled = false;
+    const init = async () => {
+      try {
+        await loadVisibilities();
+      } finally {
+        if (!cancelled) setVisibilityStoreReady(true);
+      }
+    };
+    init();
+    return () => { cancelled = true; };
   }, []);
-
-  const handleExportRecords = () => {
-    Alert.alert(
-      'Export Medical Records Archive',
-      'Under NDPA Article 26 (Data Portability), export your complete EHR history, lab reports, and e-prescriptions as an encrypted PDF/ZIP archive?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Export Archive',
-          onPress: () => {
-            showToastSuccess('Export Requested', 'Generating your encrypted EHR PDF archive. Your download will start shortly.');
-            setTimeout(() => {
-              Linking.openURL('https://ominipulse.ng/api/v1/records/export-archive.pdf').catch(() => {});
-            }, 1200);
-          },
-        },
-      ]
-    );
-  };
 
   const { data: recordsResponse, isLoading: _isLoading, isError, refetch } = useMedicalRecords();
   const showSkeleton = useSkeletonDelay(_isLoading, 150);
@@ -185,31 +176,12 @@ export default function MedicalRecordsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Medical Records</Text>
-          <View style={styles.NDPABadge}>
-            <Ionicons name="shield-checkmark" size={12} color="#10B981" />
-            <Text style={styles.NDPAText}>NDPA Secured</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          onPress={handleExportRecords}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 4,
-            backgroundColor: '#2563EB',
-            paddingHorizontal: 10,
-            paddingVertical: 6,
-            borderRadius: 8,
-          }}
-        >
-          <Ionicons name="download-outline" size={14} color="#FFFFFF" />
-          <Text style={{ fontSize: 11, fontWeight: 'bold', color: '#FFFFFF' }}>Export All</Text>
-        </TouchableOpacity>
-      </View>
+      <MedicalRecordsHeader
+        records={recordsResponse?.data ?? []}
+        visibilities={visibilities}
+        visibilityStoreReady={visibilityStoreReady}
+        activeFilter={selectedType}
+      />
 
       {/* AI Document Summarization Banner */}
       <TouchableOpacity
@@ -313,21 +285,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
-    backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  headerTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
   filterWrapper: {
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
@@ -382,22 +339,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  NDPABadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderWidth: 1,
-    borderColor: '#10B981',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 4,
-  },
-  NDPAText: {
-    color: '#10B981',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   headerInfo: {
     flex: 1,

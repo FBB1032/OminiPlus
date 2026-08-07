@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,35 +9,39 @@ import {
   TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { resetPasswordSchema, ResetPasswordFormValues } from '../../../utils/validators';
-import { authService } from '../../../services/authService';
-import { Button, FormInput, OTPInput, LoadingOverlay } from '../../../components';
+import { Button, OTPInput, LoadingOverlay } from '../../../components';
 import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
 import { AuthScreenProps } from '../../../types';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '../../../store/authStore';
+import { authService } from '../../../services/authService';
 
 export default function OTPVerificationScreen({ route, navigation }: AuthScreenProps<'OTPVerification'>) {
   const { email, mode } = route.params;
-  const [step, setStep] = useState<'otp' | 'password'>('otp');
   const [otpVal, setOtpVal] = useState('');
   const [otpError, setOtpError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { error: showToastError, success: showToastSuccess } = useToast();
+  const setOtpVerifiedForReset = useAuthStore((s) => s.setOtpVerifiedForReset);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ResetPasswordFormValues>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-      newPassword: '',
-      confirmPassword: '',
-    },
-  });
+  const canResend = cooldown === 0;
+
+  useEffect(() => {
+    if (cooldown > 0) {
+      cooldownTimerRef.current = setInterval(() => {
+        setCooldown((c) => Math.max(0, c - 1));
+      }, 1000);
+    }
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearInterval(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+    };
+  }, [cooldown]);
 
   const handleVerifyOTP = async () => {
     if (otpVal.length < 6) {
@@ -45,44 +49,27 @@ export default function OTPVerificationScreen({ route, navigation }: AuthScreenP
       return;
     }
     setOtpError(null);
-
-    if (mode === 'verify') {
-      setLoading(true);
-      try {
+    setLoading(true);
+    try {
+      if (mode === 'verify') {
         await authService.verifyOTP({ email, otp: otpVal });
         showToastSuccess('Success', 'Email verified successfully.');
         navigation.replace('Login');
-      } catch (err: any) {
-        const message = err?.response?.data?.message || 'Invalid or expired OTP.';
-        showToastError('Verification Failed', message);
-      } finally {
-        setLoading(false);
+      } else {
+        setOtpVerifiedForReset(email);
+        showToastSuccess('OTP Verified', 'Email confirmed. Proceed to set a new password.');
+        navigation.replace('ResetPasswordSuccess', { email });
       }
-    } else {
-      // mode === 'reset' -> proceed to new password screen
-      setStep('password');
-    }
-  };
-
-  const handleResetPassword = async (data: ResetPasswordFormValues) => {
-    setLoading(true);
-    try {
-      await authService.resetPassword({
-        email,
-        otp: otpVal,
-        newPassword: data.newPassword,
-      });
-      showToastSuccess('Success', 'Your password has been reset successfully.');
-      navigation.replace('Login');
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Failed to reset password. Try again.';
-      showToastError('Reset Failed', message);
+      const message = err?.response?.data?.message || 'Invalid or expired OTP.';
+      showToastError('Verification Failed', message);
     } finally {
       setLoading(false);
     }
   };
 
   const handleResendOTP = async () => {
+    if (!canResend) return;
     setLoading(true);
     try {
       await authService.forgotPassword({ email });
@@ -92,6 +79,7 @@ export default function OTPVerificationScreen({ route, navigation }: AuthScreenP
     } finally {
       setLoading(false);
     }
+    setCooldown(60);
   };
 
   return (
@@ -107,94 +95,54 @@ export default function OTPVerificationScreen({ route, navigation }: AuthScreenP
         >
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => (step === 'password' ? setStep('otp') : navigation.goBack())}
+            onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
             <Ionicons name="arrow-back-outline" size={24} color={Colors.text.primary} />
             <Text style={styles.backBtnText}>Back</Text>
           </TouchableOpacity>
 
-          {step === 'otp' ? (
-            <>
-              <View style={styles.headerContainer}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="shield-checkmark-outline" size={32} color={Colors.primary[600]} />
-                </View>
-                <Text style={styles.title}>Enter OTP Code</Text>
-                <Text style={styles.subtitle}>
-                  We've sent a 6-digit confirmation code to{'\n'}
-                  <Text style={styles.emailHighlight}>{email}</Text>
-                </Text>
-              </View>
+          <View style={styles.headerContainer}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="shield-checkmark-outline" size={32} color={Colors.primary[600]} />
+            </View>
+            <Text style={styles.title}>Enter OTP Code</Text>
+            <Text style={styles.subtitle}>
+              We've sent a 6-digit confirmation code to{'\n'}
+              <Text style={styles.emailHighlight}>{email}</Text>
+            </Text>
+          </View>
 
-              <View style={styles.formContainer}>
-                <OTPInput
-                  length={6}
-                  value={otpVal}
-                  onChange={setOtpVal}
-                  error={otpError || undefined}
-                />
+          <View style={styles.formContainer}>
+            <OTPInput
+              length={6}
+              value={otpVal}
+              onChange={(v) => {
+                setOtpVal(v);
+                if (otpError) setOtpError(null);
+              }}
+              error={otpError || undefined}
+              onComplete={handleVerifyOTP}
+            />
 
-                <Button
-                  label="Verify Code"
-                  onPress={handleVerifyOTP}
-                  isLoading={loading}
-                  style={styles.submitBtn}
-                />
+            <Button
+              label="Verify Code"
+              onPress={handleVerifyOTP}
+              isLoading={loading}
+              style={styles.submitBtn}
+            />
 
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={handleResendOTP}
-                  style={styles.resendContainer}
-                >
-                  <Text style={styles.resendText}>Didn't receive code? Resend</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <>
-              <View style={styles.headerContainer}>
-                <View style={styles.iconContainer}>
-                  <Ionicons name="lock-open-outline" size={32} color={Colors.primary[600]} />
-                </View>
-                <Text style={styles.title}>New Password</Text>
-                <Text style={styles.subtitle}>
-                  Please choose a strong password for your account security.
-                </Text>
-              </View>
-
-              <View style={styles.formContainer}>
-                <FormInput
-                  control={control}
-                  name="newPassword"
-                  label="New Password"
-                  placeholder="At least 8 chars, 1 uppercase, 1 number"
-                  isPassword
-                  autoCapitalize="none"
-                  leftIcon="lock-closed-outline"
-                  error={errors.newPassword}
-                />
-
-                <FormInput
-                  control={control}
-                  name="confirmPassword"
-                  label="Confirm Password"
-                  placeholder="Re-enter your password"
-                  isPassword
-                  autoCapitalize="none"
-                  leftIcon="lock-closed-outline"
-                  error={errors.confirmPassword}
-                />
-
-                <Button
-                  label="Reset Password"
-                  onPress={handleSubmit(handleResetPassword)}
-                  isLoading={loading}
-                  style={styles.submitBtn}
-                />
-              </View>
-            </>
-          )}
+            <TouchableOpacity
+              activeOpacity={canResend ? 0.7 : 1}
+              onPress={handleResendOTP}
+              style={styles.resendContainer}
+              disabled={!canResend}
+            >
+              <Text style={[styles.resendText, !canResend && styles.resendDisabled]}>
+                Didn't receive code? {canResend ? 'Resend' : `Resend in ${cooldown}s`}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
       <LoadingOverlay visible={loading} message="Processing..." />
@@ -267,12 +215,6 @@ const styles = StyleSheet.create({
     gap: Spacing[5],
     ...Shadows.sm,
   },
-  errorText: {
-    color: Colors.error.main,
-    fontSize: FontSize.xs,
-    textAlign: 'center',
-    marginTop: -Spacing[2],
-  },
   submitBtn: {
     marginTop: Spacing[2],
   },
@@ -284,5 +226,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     color: Colors.primary[600],
     fontWeight: FontWeight.medium,
+  },
+  resendDisabled: {
+    color: Colors.text.disabled,
   },
 });

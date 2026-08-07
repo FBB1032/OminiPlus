@@ -15,9 +15,10 @@ interface OTPInputProps {
   onChange: (val: string) => void;
   length?: number;
   error?: string;
+  onComplete?: (code: string) => void;
 }
 
-export const OTPInput = memo<OTPInputProps>(({ value, onChange, length = 6, error }) => {
+export const OTPInput = memo<OTPInputProps>(({ value, onChange, length = 6, error, onComplete }) => {
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const handleChange = (text: string, index: number) => {
@@ -28,6 +29,9 @@ export const OTPInput = memo<OTPInputProps>(({ value, onChange, length = 6, erro
     onChange(newVal);
     if (digit && index < length - 1) {
       inputRefs.current[index + 1]?.focus();
+    }
+    if (newVal.length === length && onComplete) {
+      setTimeout(() => onComplete(newVal), 50);
     }
   };
 

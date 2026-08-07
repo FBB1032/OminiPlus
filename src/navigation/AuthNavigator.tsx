@@ -9,6 +9,8 @@ import LoginScreen from '../features/auth/screens/LoginScreen';
 import RegisterScreen from '../features/auth/screens/RegisterScreen';
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen';
 import OTPVerificationScreen from '../features/auth/screens/OTPVerificationScreen';
+import ResetPasswordSuccessScreen from '../features/auth/screens/ResetPasswordSuccessScreen';
+import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen';
 import PendingApprovalScreen from '../features/auth/screens/PendingApprovalScreen';
 
 export const AuthNavigator = () => (
@@ -23,6 +25,8 @@ export const AuthNavigator = () => (
     <Stack.Screen name="Register" component={RegisterScreen as any} />
     <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen as any} />
     <Stack.Screen name="OTPVerification" component={OTPVerificationScreen as any} />
+    <Stack.Screen name="ResetPasswordSuccess" component={ResetPasswordSuccessScreen as any} />
+    <Stack.Screen name="ResetPassword" component={ResetPasswordScreen as any} />
     <Stack.Screen name="PendingApproval" component={PendingApprovalScreen as any} />
   </Stack.Navigator>
 );

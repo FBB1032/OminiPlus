@@ -45,7 +45,11 @@ export const registerSchema = z
     password: z
       .string()
       .min(1, 'Password is required')
-      .min(6, 'Password must be at least 6 characters'),
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password must contain at least one special character (!@#$%^&* etc.)'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
     agreeToTerms: z.boolean().refine((val) => val === true, {
       message: 'You must agree to the Terms & Conditions',
@@ -235,7 +239,9 @@ export const resetPasswordSchema = z
       .min(1, 'Password is required')
       .min(8, 'Password must be at least 8 characters')
       .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
-      .regex(/[0-9]/, 'Password must contain at least one number'),
+      .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+      .regex(/[0-9]/, 'Password must contain at least one number')
+      .regex(/[!@#$%^&*(),.?":{}|<>]/, 'Password must contain at least one special character (!@#$%^&* etc.)'),
     confirmPassword: z.string().min(1, 'Please confirm your password'),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -244,6 +250,35 @@ export const resetPasswordSchema = z
   });
 
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
+// ─── Password Strength Helpers ────────────────────────────────────────────────
+
+export const SPECIAL_CHAR_REGEX = /[!@#$%^&*(),.?":{}|<>]/;
+
+export function evaluatePasswordCriteria(pw: string) {
+  return {
+    length: pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    lower: /[a-z]/.test(pw),
+    number: /\d/.test(pw),
+    special: SPECIAL_CHAR_REGEX.test(pw),
+  };
+}
+
+export type PasswordStrengthLevel = 'weak' | 'medium' | 'strong';
+
+export function getPasswordStrength(pw: string): PasswordStrengthLevel {
+  if (!pw) return 'weak';
+  const c = evaluatePasswordCriteria(pw);
+  const met = Object.values(c).filter(Boolean).length;
+  if (met <= 2) return 'weak';
+  if (met <= 4) return 'medium';
+  return 'strong';
+}
+
+export function isPasswordStrong(pw: string): boolean {
+  return getPasswordStrength(pw) === 'strong';
+}
 
 // ─── Prescription Schema ──────────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, LoginFormValues } from '../../../utils/validators';
 import { authService } from '../../../services/authService';
-import { Button, FormInput, LoadingOverlay } from '../../../components';
+import { Button, FormInput, LoadingOverlay, SocialLoginButtons } from '../../../components';
 import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -113,6 +113,8 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
               isLoading={loading}
               style={styles.submitBtn}
             />
+
+            <SocialLoginButtons variant="login" />
           </View>
 
           <View style={styles.footerContainer}>

@@ -5,10 +5,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   ViewStyle,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Avatar } from '../ui/Avatar';
-import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
+import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
 
 export interface DoctorAppointmentItemData {
   id: string;
@@ -18,52 +19,79 @@ export interface DoctorAppointmentItemData {
     lastName: string;
     avatarUrl?: string;
   };
+  patientId?: string;
   scheduledAt: string;
-  status: 'scheduled' | 'pending' | 'completed' | 'cancelled' | 'no_show';
+  status: 'scheduled' | 'pending' | 'completed' | 'cancelled' | 'no_show' | string;
   reason: string;
   notes?: string;
   hasPrescription?: boolean;
+  prescription?: { id: string };
+  type?: 'video' | 'in_person' | 'phone';
 }
 
 interface DoctorAppointmentItemProps {
   item: DoctorAppointmentItemData;
-  onPress: () => void;
-  onUpdateStatus?: (status: string) => void;
+  onPress?: () => void;
+  onDecline?: () => void;
+  onReschedule?: () => void;
+  onApprove?: () => void;
+  onComplete?: () => void;
+  onJoinVideo?: () => void;
   onWritePrescription?: () => void;
   onViewPrescription?: () => void;
+  onChat?: () => void;
+  onViewChatHistory?: () => void;
+  onUpdateStatus?: (status: string) => void;
   showActions?: boolean;
+  approvedDoctor?: boolean;
   containerStyle?: ViewStyle;
 }
 
-const statusColors = {
+const statusColors: Record<string, { bg: string; text: string }> = {
   scheduled: { bg: Colors.status.scheduled, text: Colors.status.scheduledText },
   pending: { bg: Colors.status.pending, text: Colors.status.pendingText },
   completed: { bg: Colors.status.completed, text: Colors.status.completedText },
   cancelled: { bg: Colors.status.cancelled, text: Colors.status.cancelledText },
   no_show: { bg: Colors.status.cancelled, text: Colors.status.cancelledText },
+  approved: { bg: Colors.status.scheduled, text: Colors.status.scheduledText },
 };
 
 export const DoctorAppointmentItem = memo<DoctorAppointmentItemProps>(({
   item,
   onPress,
-  onUpdateStatus,
+  onDecline,
+  onReschedule,
+  onApprove,
+  onComplete,
+  onJoinVideo,
   onWritePrescription,
   onViewPrescription,
-  showActions = false,
+  onChat,
+  onViewChatHistory,
+  showActions = true,
+  approvedDoctor = true,
   containerStyle,
 }) => {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 380;
+
   const appointmentDate = new Date(item.scheduledAt).toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
   });
-
   const appointmentTime = new Date(item.scheduledAt).toLocaleTimeString(undefined, {
     hour: '2-digit',
     minute: '2-digit',
   });
 
-  const statusColor = statusColors[item.status];
+  const statusColor = statusColors[item.status] || statusColors.pending;
+  const hasPrescription = !!item.prescription || !!item.hasPrescription;
+
+  const isPending = item.status === 'pending';
+  const isScheduled = item.status === 'scheduled' || item.status === 'approved';
+  const isCompleted = item.status === 'completed';
+  const isCancelled = item.status === 'cancelled';
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -71,6 +99,9 @@ export const DoctorAppointmentItem = memo<DoctorAppointmentItemProps>(({
         onPress={onPress}
         activeOpacity={0.7}
         style={styles.cardHeader}
+        accessibilityRole="button"
+        accessibilityLabel={`Appointment with ${item.patient.firstName} ${item.patient.lastName}`}
+        accessibilityHint="Tap to view patient details"
       >
         <Avatar
           name={`${item.patient.firstName} ${item.patient.lastName}`}
@@ -78,68 +109,326 @@ export const DoctorAppointmentItem = memo<DoctorAppointmentItemProps>(({
           size="md"
         />
         <View style={styles.headerInfo}>
-          <Text style={styles.patientName}>
+          <Text
+            style={styles.patientName}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {item.patient.firstName} {item.patient.lastName}
           </Text>
-          <Text style={styles.dateTime}>
+          <Text
+            style={styles.dateTime}
+            numberOfLines={1}
+          >
             {appointmentDate} at {appointmentTime}
           </Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
-          <Text style={[styles.statusText, { color: statusColor.text }]}>
-            {item.status.toUpperCase()}
+          <Text
+            style={[styles.statusText, { color: statusColor.text }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            {String(item.status).toUpperCase()}
           </Text>
         </View>
       </TouchableOpacity>
 
       <View style={styles.cardBody}>
         <Text style={styles.reasonLabel}>Reason for visit:</Text>
-        <Text style={styles.reasonText} numberOfLines={2}>{item.reason}</Text>
-
+        <Text
+          style={styles.reasonText}
+          numberOfLines={3}
+          ellipsizeMode="tail"
+        >
+          {item.reason}
+        </Text>
         {item.notes && (
           <>
             <Text style={styles.notesLabel}>Notes:</Text>
-            <Text style={styles.notesText} numberOfLines={2}>{item.notes}</Text>
+            <Text
+              style={styles.notesText}
+              numberOfLines={3}
+              ellipsizeMode="tail"
+            >
+              {item.notes}
+            </Text>
           </>
         )}
       </View>
 
-      {showActions && item.status === 'scheduled' && (
-        <View style={styles.actionsRow}>
+      {showActions && isPending && (
+        <View style={styles.actionsRowWrap}>
           <TouchableOpacity
-            onPress={() => onUpdateStatus?.('cancelled')}
-            style={[styles.actionBtn, styles.cancelBtn]}
+            onPress={onDecline}
+            disabled={!approvedDoctor}
+            style={[styles.actionBtn, styles.cancelBtn, !approvedDoctor && styles.btnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={isCompact ? 'Decline appointment' : undefined}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
             <Ionicons name="close-circle-outline" size={16} color={Colors.error.main} />
-            <Text style={styles.cancelBtnText}>Cancel</Text>
+            {!isCompact && (
+              <Text
+                style={[styles.actionBtnText, styles.cancelBtnText]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                Decline
+              </Text>
+            )}
           </TouchableOpacity>
+
           <TouchableOpacity
-            onPress={() => onUpdateStatus?.('completed')}
-            style={[styles.actionBtn, styles.completeBtn]}
+            onPress={onReschedule}
+            disabled={!approvedDoctor}
+            style={[styles.actionBtn, styles.rescheduleBtn, !approvedDoctor && styles.btnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={isCompact ? 'Reschedule appointment' : undefined}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           >
-            <Ionicons name="checkmark-circle-outline" size={16} color={Colors.success.main} />
-            <Text style={styles.completeBtnText}>Mark Complete</Text>
+            <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+            {!isCompact && (
+              <Text
+                style={[styles.actionBtnText, styles.rescheduleBtnText]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                Reschedule
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={onApprove}
+            disabled={!approvedDoctor}
+            style={[styles.actionBtn, styles.completeBtn, !approvedDoctor && styles.btnDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={isCompact ? 'Approve appointment' : undefined}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          >
+            <Ionicons name="checkmark-circle-outline" size={16} color={Colors.text.inverse} />
+            {!isCompact && (
+              <Text
+                style={[styles.actionBtnText, styles.completeBtnText]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                Approve
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       )}
 
-      {showActions && (
-        <View style={styles.prescriptionRow}>
-          {!item.hasPrescription ? (
+      {showActions && isScheduled && (
+        <View style={styles.verticalActionGroup}>
+          {item.type === 'video' && (
             <TouchableOpacity
-              onPress={onWritePrescription}
-              style={styles.prescriptionBtn}
+              style={styles.joinBtn}
+              onPress={onJoinVideo}
+              disabled={!approvedDoctor}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Join video call"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             >
-              <Ionicons name="add-circle-outline" size={16} color={Colors.text.inverse} />
-              <Text style={styles.prescriptionBtnText}>Write Prescription</Text>
+              <Ionicons name="videocam" size={16} color="#fff" />
+              <Text
+                style={styles.joinBtnText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                Join Video Call
+              </Text>
             </TouchableOpacity>
-          ) : (
+          )}
+
+          <View style={styles.actionsRowWrap}>
             <TouchableOpacity
-              onPress={onViewPrescription}
-              style={[styles.prescriptionBtn, styles.prescriptionBtnOutline]}
+              onPress={onDecline}
+              disabled={!approvedDoctor}
+              style={[styles.actionBtn, styles.cancelBtn, !approvedDoctor && styles.btnDisabled]}
+              accessibilityRole="button"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             >
-              <Ionicons name="eye-outline" size={16} color={Colors.primary[600]} />
-              <Text style={styles.prescriptionBtnTextOutline}>View Prescription</Text>
+              <Ionicons name="close-circle-outline" size={16} color={Colors.error.main} />
+              <Text
+                style={[styles.actionBtnText, styles.cancelBtnText]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                {isCompact ? 'Cancel' : 'Decline / Cancel'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onReschedule}
+              disabled={!approvedDoctor}
+              style={[styles.actionBtn, styles.rescheduleBtn, !approvedDoctor && styles.btnDisabled]}
+              accessibilityRole="button"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            >
+              <Ionicons name="calendar-outline" size={16} color="#2563EB" />
+              {!isCompact && (
+                <Text
+                  style={[styles.actionBtnText, styles.rescheduleBtnText]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                >
+                  Reschedule
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={onComplete}
+              disabled={!approvedDoctor}
+              style={[styles.actionBtn, styles.completeBtn, !approvedDoctor && styles.btnDisabled]}
+              accessibilityRole="button"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color={Colors.text.inverse} />
+              <Text
+                style={[styles.actionBtnText, styles.completeBtnText]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                {isCompact ? 'Done' : 'Complete'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {showActions && isCompleted && !hasPrescription && (
+        <TouchableOpacity
+          style={styles.prescriptionBtn}
+          onPress={onWritePrescription}
+          disabled={!approvedDoctor}
+          accessibilityRole="button"
+          accessibilityLabel="Write prescription"
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Ionicons name="document-text-outline" size={16} color={Colors.primary[600]} />
+          <Text
+            style={styles.prescriptionBtnText}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            Write Prescription
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {showActions && hasPrescription && (
+        <TouchableOpacity
+          style={styles.prescriptionBtnOutline}
+          onPress={onViewPrescription}
+          accessibilityRole="button"
+          accessibilityLabel="View prescription"
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+        >
+          <Ionicons name="eye-outline" size={16} color={Colors.primary[600]} />
+          <Text
+            style={styles.prescriptionBtnTextOutline}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            View Prescription
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      {showActions && (isPending || isScheduled || isCompleted || isCancelled) && (
+        <View style={styles.chatRow}>
+          {isPending && (
+            <TouchableOpacity
+              style={[styles.chatBtn, styles.chatBtnLocked]}
+              disabled={true}
+              activeOpacity={1}
+              accessibilityRole="button"
+              accessibilityLabel="Chat locked pending approval"
+            >
+              <Ionicons name="lock-closed-outline" size={16} color={Colors.neutral[400]} />
+              <Text
+                style={styles.chatBtnTextLocked}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                Chat Locked (Pending Approval)
+              </Text>
+            </TouchableOpacity>
+          )}
+          {isCancelled && (
+            <TouchableOpacity
+              style={[styles.chatBtn, styles.chatBtnLocked]}
+              disabled={true}
+              activeOpacity={1}
+              accessibilityRole="button"
+              accessibilityLabel="Chat locked cancelled"
+            >
+              <Ionicons name="lock-closed-outline" size={16} color={Colors.neutral[400]} />
+              <Text
+                style={styles.chatBtnTextLocked}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
+              >
+                Chat Locked (Cancelled)
+              </Text>
+            </TouchableOpacity>
+          )}
+          {isScheduled && (
+            <TouchableOpacity
+              style={styles.chatBtn}
+              onPress={onChat}
+              disabled={!approvedDoctor}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Open consultation chat"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            >
+              <Ionicons name="chatbubbles-outline" size={16} color="#fff" />
+              <Text
+                style={styles.chatBtnText}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                Open Consultation Chat
+              </Text>
+            </TouchableOpacity>
+          )}
+          {isCompleted && (
+            <TouchableOpacity
+              style={styles.chatBtnOutline}
+              onPress={onViewChatHistory}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="View chat history"
+              hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            >
+              <Ionicons name="archive-outline" size={16} color={Colors.primary[600]} />
+              <Text
+                style={styles.chatBtnTextOutline}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+              >
+                View Chat History (Archived)
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -155,9 +444,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     padding: Spacing[4],
     gap: Spacing[3],
+    overflow: 'hidden',
     ...Shadows.xs,
   },
   cardHeader: {
@@ -167,28 +457,36 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     flex: 1,
+    flexShrink: 1,
     gap: 2,
   },
   patientName: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
+    flexShrink: 1,
   },
   dateTime: {
     fontSize: FontSize.xs,
     color: Colors.text.secondary,
+    flexShrink: 1,
   },
   statusBadge: {
     paddingHorizontal: Spacing[2],
     paddingVertical: 4,
     borderRadius: 8,
+    flexShrink: 0,
+    maxWidth: 110,
   },
   statusText: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
   },
   cardBody: {
-    gap: Spacing[2],
+    backgroundColor: Colors.background,
+    borderRadius: BorderRadius.md,
+    padding: Spacing[3],
+    gap: 4,
   },
   reasonLabel: {
     fontSize: FontSize.xs,
@@ -211,64 +509,150 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     lineHeight: FontSize.sm * 1.4,
   },
-  actionsRow: {
-    flexDirection: 'row',
+  verticalActionGroup: {
     gap: Spacing[2],
-    marginTop: Spacing[2],
+  },
+  actionsRowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing[2],
   },
   actionBtn: {
     flex: 1,
+    minWidth: 96,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing[2],
-    paddingVertical: Spacing[2],
-    borderRadius: 8,
-    borderWidth: 1,
+    gap: 6,
+    paddingVertical: Spacing[3],
+    paddingHorizontal: Spacing[2],
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    minHeight: 48,
+  },
+  btnDisabled: {
+    opacity: 0.5,
   },
   cancelBtn: {
-    backgroundColor: Colors.error.light,
     borderColor: Colors.error.main,
+    backgroundColor: Colors.surface,
   },
   cancelBtnText: {
     color: Colors.error.main,
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semiBold,
+  },
+  rescheduleBtn: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#EFF6FF',
+  },
+  rescheduleBtnText: {
+    color: '#2563EB',
   },
   completeBtn: {
-    backgroundColor: Colors.success.light,
-    borderColor: Colors.success.main,
+    borderColor: Colors.primary[600],
+    backgroundColor: Colors.primary[600],
   },
   completeBtnText: {
-    color: Colors.success.main,
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semiBold,
+    color: Colors.text.inverse,
   },
-  prescriptionRow: {
-    marginTop: Spacing[2],
+  actionBtnText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    flexShrink: 1,
+  },
+  joinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary[600],
+    minHeight: 48,
+  },
+  joinBtnText: {
+    color: Colors.text.inverse,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    flexShrink: 1,
   },
   prescriptionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing[2],
-    backgroundColor: Colors.primary[600],
-    paddingVertical: Spacing[2],
-    borderRadius: 8,
+    gap: 6,
+    paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary[50],
+    minHeight: 48,
   },
   prescriptionBtnText: {
-    color: Colors.text.inverse,
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semiBold,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary[600],
+    flexShrink: 1,
   },
   prescriptionBtnOutline: {
-    backgroundColor: Colors.primary[50],
-    borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
     borderColor: Colors.primary[600],
+    minHeight: 48,
   },
   prescriptionBtnTextOutline: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary[600],
+    flexShrink: 1,
+  },
+  chatRow: {
+    marginTop: 0,
+  },
+  chatBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary[600],
+    minHeight: 48,
+  },
+  chatBtnText: {
+    color: Colors.text.inverse,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    flexShrink: 1,
+  },
+  chatBtnLocked: {
+    backgroundColor: Colors.neutral[200],
+    borderWidth: 1,
+    borderColor: Colors.neutral[300],
+  },
+  chatBtnTextLocked: {
+    color: Colors.neutral[400],
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    flexShrink: 1,
+  },
+  chatBtnOutline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.primary[600],
+    minHeight: 48,
+  },
+  chatBtnTextOutline: {
     color: Colors.primary[600],
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semiBold,
+    fontWeight: FontWeight.bold,
+    flexShrink: 1,
   },
 });

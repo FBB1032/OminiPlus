@@ -8,6 +8,8 @@ export type AuthStackParamList = {
   Register: undefined;
   ForgotPassword: undefined;
   OTPVerification: { email: string; mode: 'reset' | 'verify' };
+  ResetPasswordSuccess: { email: string };
+  ResetPassword: { email: string };
   PendingApproval: undefined;
 };
 

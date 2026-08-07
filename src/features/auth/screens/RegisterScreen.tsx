@@ -12,10 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { registerSchema, RegisterFormValues } from '../../../utils/validators';
+import { registerSchema, RegisterFormValues, isPasswordStrong } from '../../../utils/validators';
 import { authService } from '../../../services/authService';
 import { authApi } from '../../../api/auth';
-import { Button, FormInput, FormSelect, LoadingOverlay, DocumentUploadPicker, DatePicker } from '../../../components';
+import { Button, FormInput, FormSelect, LoadingOverlay, DocumentUploadPicker, DatePicker, PasswordInput, SocialLoginButtons } from '../../../components';
 import { RoleLegalModal } from '../../../components/legal/RoleLegalModal';
 import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
@@ -40,6 +40,7 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
     control,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -69,6 +70,9 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
 
   const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor'>('patient');
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+
+  const pwWatch = watch('password');
+  const pwIsStrong = isPasswordStrong(pwWatch);
 
   const onFormError = (formErrors: any) => {
     const firstKey = Object.keys(formErrors)[0];
@@ -357,26 +361,33 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
               </View>
             )}
 
-            <FormInput
-              control={control}
+            <PasswordInput
+              control={control as any}
               name="password"
-              label="Password"
-              placeholder="Minimum 8 characters (A-Z, 0-9)"
-              isPassword
-              autoCapitalize="none"
-              leftIcon="lock-closed-outline"
+              label="Password*"
+              placeholder="At least 8 chars with uppercase, lowercase, number & special symbol"
               error={errors.password}
+              showStrengthMeter
+              showRequirements
             />
 
-            <FormInput
-              control={control}
+            {pwWatch && !pwIsStrong && (
+              <View style={styles.weakHintRow}>
+                <Ionicons name="alert-circle-outline" size={14} color={Colors.warning.main} />
+                <Text style={styles.weakPwHint}>
+                  Please create a strong password that meets all criteria above.
+                </Text>
+              </View>
+            )}
+
+            <PasswordInput
+              control={control as any}
               name="confirmPassword"
               label="Confirm Password"
-              placeholder="Confirm your password"
-              isPassword
-              autoCapitalize="none"
-              leftIcon="lock-closed-outline"
+              placeholder="Re-enter your password"
               error={errors.confirmPassword}
+              showStrengthMeter={false}
+              showRequirements={false}
             />
 
             <Controller
@@ -442,8 +453,11 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
               label="Sign Up"
               onPress={handleSubmit(onSubmit, onFormError)}
               isLoading={loading}
+              disabled={!pwIsStrong}
               style={styles.submitBtn}
             />
+
+            <SocialLoginButtons variant="register" />
           </View>
 
           <View style={styles.footerContainer}>
@@ -660,5 +674,19 @@ const styles = StyleSheet.create({
     color: Colors.error.main,
     marginTop: 6,
     marginLeft: 30,
+  },
+  weakHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    paddingHorizontal: Spacing[1],
+    marginTop: -Spacing[2],
+    marginBottom: Spacing[1],
+  },
+  weakPwHint: {
+    flex: 1,
+    fontSize: FontSize.xs,
+    color: Colors.warning.dark,
+    fontWeight: FontWeight.medium,
   },
 });

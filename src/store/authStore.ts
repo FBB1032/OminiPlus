@@ -13,6 +13,8 @@ interface AuthStore {
   isInitialized: boolean;
   role: UserRole | null;
   onboardingCompleted: boolean;
+  otpVerifiedForReset: boolean;
+  resetEmail: string | null;
 
   // Actions
   setAuth: (user: User, tokens: AuthTokens) => Promise<void>;
@@ -20,6 +22,8 @@ interface AuthStore {
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  setOtpVerifiedForReset: (email: string) => void;
+  clearOtpVerifiedForReset: () => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -30,6 +34,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   isInitialized: false,
   role: null,
   onboardingCompleted: false,
+  otpVerifiedForReset: false,
+  resetEmail: null,
 
   setAuth: async (user, tokens) => {
     try {
@@ -62,6 +68,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
   completeOnboarding: async () => {
     // Update in-memory state only (not saved to storage) so reloads show onboarding
     set({ onboardingCompleted: true });
+  },
+
+  setOtpVerifiedForReset: (email) => {
+    set({ otpVerifiedForReset: true, resetEmail: email });
+  },
+
+  clearOtpVerifiedForReset: () => {
+    set({ otpVerifiedForReset: false, resetEmail: null });
   },
 
   initialize: async () => {

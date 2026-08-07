@@ -12,6 +12,7 @@ import {
 import { Controller, Control, FieldValues, Path, FieldError } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadows } from '../../theme';
+import { evaluatePasswordCriteria, getPasswordStrength, PasswordStrengthLevel } from '../../utils/validators';
 
 interface PasswordInputProps<T extends FieldValues> {
   control: Control<T>;
@@ -25,43 +26,30 @@ interface PasswordInputProps<T extends FieldValues> {
   inputStyle?: TextStyle;
 }
 
-type PasswordStrength = 'weak' | 'fair' | 'good' | 'strong';
+type PasswordStrength = PasswordStrengthLevel;
 
-const calculateStrength = (password: string): PasswordStrength => {
-  if (!password) return 'weak';
-
-  let strength = 0;
-
-  // Length
-  if (password.length >= 8) strength++;
-  if (password.length >= 12) strength++;
-
-  // Uppercase
-  if (/[A-Z]/.test(password)) strength++;
-
-  // Lowercase
-  if (/[a-z]/.test(password)) strength++;
-
-  // Numbers
-  if (/\d/.test(password)) strength++;
-
-  // Special characters
-  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) strength++;
-
-  if (strength < 2) return 'weak';
-  if (strength < 3) return 'fair';
-  if (strength < 5) return 'good';
-  return 'strong';
+const strengthColor = (strength: PasswordStrength) => {
+  switch (strength) {
+    case 'weak': return Colors.error.main;
+    case 'medium': return Colors.warning.main;
+    case 'strong': return Colors.success.main;
+  }
 };
 
-const getRequirements = (password: string) => {
-  return {
-    length: password.length >= 8,
-    uppercase: /[A-Z]/.test(password),
-    lowercase: /[a-z]/.test(password),
-    number: /\d/.test(password),
-    special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-  };
+const strengthLabel = (strength: PasswordStrength) => {
+  switch (strength) {
+    case 'weak': return 'Weak';
+    case 'medium': return 'Medium';
+    case 'strong': return 'Strong';
+  }
+};
+
+const strengthBarsFilled = (strength: PasswordStrength) => {
+  switch (strength) {
+    case 'weak': return 1;
+    case 'medium': return 2;
+    case 'strong': return 3;
+  }
 };
 
 export const PasswordInput = memo(<T extends FieldValues>({
@@ -86,8 +74,18 @@ export const PasswordInput = memo(<T extends FieldValues>({
         control={control}
         name={name}
         render={({ field: { onChange, value } }) => {
-          const strength = calculateStrength(value);
-          const requirements = getRequirements(value);
+          const strength: PasswordStrength = value ? getPasswordStrength(value) : 'weak';
+          const req = evaluatePasswordCriteria(value);
+          const requirements = {
+            length: req.length,
+            uppercase: req.upper,
+            lowercase: req.lower,
+            number: req.number,
+            special: req.special,
+          };
+          const color = strengthColor(strength);
+          const bars = strengthBarsFilled(strength);
+          const label = strengthLabel(strength);
 
           return (
             <>
@@ -125,21 +123,14 @@ export const PasswordInput = memo(<T extends FieldValues>({
               {showStrengthMeter && value && (
                 <View style={styles.strengthMeterContainer}>
                   <View style={styles.strengthBarsContainer}>
-                    {[1, 2, 3, 4].map((bar) => (
+                    {[1, 2, 3].map((bar) => (
                       <View
                         key={bar}
                         style={[
                           styles.strengthBar,
                           {
-                            backgroundColor:
-                              strength === 'weak'
-                                ? Colors.error.main
-                                : strength === 'fair'
-                                  ? Colors.warning.main
-                                  : strength === 'good'
-                                    ? Colors.info.main
-                                    : Colors.success.main,
-                            opacity: bar <= (strength === 'weak' ? 1 : strength === 'fair' ? 2 : strength === 'good' ? 3 : 4) ? 1 : 0.2,
+                            backgroundColor: color,
+                            opacity: bar <= bars ? 1 : 0.2,
                           },
                         ]}
                       />
@@ -148,19 +139,10 @@ export const PasswordInput = memo(<T extends FieldValues>({
                   <Text
                     style={[
                       styles.strengthText,
-                      {
-                        color:
-                          strength === 'weak'
-                            ? Colors.error.main
-                            : strength === 'fair'
-                              ? Colors.warning.main
-                              : strength === 'good'
-                                ? Colors.info.main
-                                : Colors.success.main,
-                      },
+                      { color },
                     ]}
                   >
-                    {strength.charAt(0).toUpperCase() + strength.slice(1)}
+                    {label}
                   </Text>
                 </View>
               )}
