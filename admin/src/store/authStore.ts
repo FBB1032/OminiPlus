@@ -2,53 +2,18 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Admin, AdminRole } from '@/types';
 
-// ─── Mock Admin Presets (one per role for testing) ────────────────────────────
+// ─── Mock Admin Presets ───────────────────────────────────────────────────────
+// MVP Freeze: collapsed from 6 roles to 2 (admin / doctor).
 
 export const MOCK_ADMINS: Record<AdminRole, Admin> = {
-  super_admin: {
+  admin: {
     id: 'admin-1',
     email: 'admin@ominipulse.ai',
     firstName: 'Admin',
     lastName: 'User',
-    role: 'super_admin',
+    role: 'admin',
     createdAt: new Date().toISOString(),
     isTwoFactorEnabled: true,
-  },
-  verification_admin: {
-    id: 'admin-2',
-    email: 'verify@ominipulse.ai',
-    firstName: 'Sarah',
-    lastName: 'Chen',
-    role: 'verification_admin',
-    createdAt: new Date().toISOString(),
-    isTwoFactorEnabled: true,
-  },
-  support_admin: {
-    id: 'admin-3',
-    email: 'support@ominipulse.ai',
-    firstName: 'Mark',
-    lastName: 'Davis',
-    role: 'support_admin',
-    createdAt: new Date().toISOString(),
-    isTwoFactorEnabled: false,
-  },
-  security_admin: {
-    id: 'admin-4',
-    email: 'security@ominipulse.ai',
-    firstName: 'Priya',
-    lastName: 'Sharma',
-    role: 'security_admin',
-    createdAt: new Date().toISOString(),
-    isTwoFactorEnabled: true,
-  },
-  moderator: {
-    id: 'admin-5',
-    email: 'mod@ominipulse.ai',
-    firstName: 'Felix',
-    lastName: 'Okafor',
-    role: 'moderator',
-    createdAt: new Date().toISOString(),
-    isTwoFactorEnabled: false,
   },
   doctor: {
     id: 'doc-admin-1',

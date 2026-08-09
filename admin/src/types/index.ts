@@ -1,14 +1,17 @@
 // Omini Pulse Admin — Shared TypeScript Types
 
-// ─── Admin Roles & Permissions ────────────────────────────────────────────────
+// ─── Admin Roles & Permissions ───────────────────────────────────────────────
+//
+// MVP Freeze: 6-tier RBAC collapsed to 2 roles.
+// Managing 6 permission tiers adds backend logic bloat before having active
+// users. Full RBAC will be re-introduced in Phase 2 once user roles are
+// established in production.
+//
+// Two roles:
+//   'admin'  — full platform access (replaces super_admin + all specialist admins)
+//   'doctor' — doctor workspace access only (isAdmin: false)
 
-export type AdminRole =
-  | 'super_admin'
-  | 'verification_admin'
-  | 'support_admin'
-  | 'security_admin'
-  | 'moderator'
-  | 'doctor';
+export type AdminRole = 'admin' | 'doctor';
 
 export type Permission =
   | 'dashboard.view'

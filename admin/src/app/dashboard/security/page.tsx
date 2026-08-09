@@ -19,9 +19,9 @@ const INITIAL_EVENTS = [
 ];
 
 const INITIAL_ADMINS: Admin[] = [
-  { id: 'adm-1', email: 'sarah.chen@ominipulse.ai', firstName: 'Sarah', lastName: 'Chen', role: 'super_admin', isTwoFactorEnabled: true, createdAt: '2025-01-01', lastLogin: '2 min ago' },
-  { id: 'adm-2', email: 'mark.davis@ominipulse.ai', firstName: 'Mark', lastName: 'Davis', role: 'moderator', isTwoFactorEnabled: true, createdAt: '2025-02-15', lastLogin: '1 hr ago' },
-  { id: 'adm-3', email: 'security.admin@ominipulse.ai', firstName: 'Security', lastName: 'Officer', role: 'security_admin', isTwoFactorEnabled: false, createdAt: '2025-03-10', lastLogin: '3 hr ago' },
+  { id: 'adm-1', email: 'sarah.chen@ominipulse.ai',      firstName: 'Sarah',    lastName: 'Chen',    role: 'admin',  isTwoFactorEnabled: true,  createdAt: '2025-01-01', lastLogin: '2 min ago' },
+  { id: 'adm-2', email: 'mark.davis@ominipulse.ai',       firstName: 'Mark',     lastName: 'Davis',   role: 'admin',  isTwoFactorEnabled: true,  createdAt: '2025-02-15', lastLogin: '1 hr ago' },
+  { id: 'adm-3', email: 'doctor.portal@ominipulse.ai',    firstName: 'Dr. Folake', lastName: 'Ademola', role: 'doctor', isTwoFactorEnabled: false, createdAt: '2025-03-10', lastLogin: '3 hr ago' },
 ];
 
 const EVENT_STYLES: Record<string, { bg: string; color: string; border: string }> = {
@@ -42,7 +42,7 @@ export default function SecurityPage() {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<AdminRole>('moderator');
+  const [role, setRole] = useState<AdminRole>('admin');
 
   // Policy Settings state
   const [policies, setPolicies] = useState([
@@ -328,11 +328,8 @@ export default function SecurityPage() {
                 value={role}
                 onChange={e => setRole(e.target.value as any)}
               >
-                <option value="super_admin">Super Admin</option>
-                <option value="verification_admin">Verification Admin</option>
-                <option value="support_admin">Support Admin</option>
-                <option value="security_admin">Security Admin</option>
-                <option value="moderator">Moderator</option>
+                <option value="admin">Admin</option>
+                <option value="doctor">Doctor</option>
               </select>
             </div>
 

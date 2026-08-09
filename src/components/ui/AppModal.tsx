@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
     gap: Spacing[2],
   },
   contentContainer: {
-    paddingBottom: Spacing[2],
+    flexShrink: 1,
+    overflow: 'hidden',
   },
 });

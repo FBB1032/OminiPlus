@@ -31,11 +31,13 @@ export type DoctorStackParamList = {
   Settings: undefined;
   ProfileEdit: undefined;
   ConsultationChat: { appointmentId: string };
+  VideoConsultation: { appointmentId: string; doctorName: string };
   HelpCenter: undefined;
   PrivacyPolicy: undefined;
   SuspendedAccount: undefined;
   DoctorTerms: undefined;
   BloodDonors: undefined;
+  ChangePassword: undefined;
 };
 
 // ─── Patient Tabs ─────────────────────────────────────────────────────────────
@@ -73,6 +75,17 @@ export type PatientStackParamList = {
   WearableSync: undefined;
   AIHealthInsights: undefined;
   Specialists: { specialty?: string } | undefined;
+  ChangePassword: undefined;
+  PaymentResult: {
+    outcome: 'success' | 'failure';
+    amount: string;
+    doctorName: string;
+    format: string;
+    date: string;
+    slot: string;
+    referenceId: string;
+    failureReason?: string;
+  };
 };
 
 // ─── Root Navigator ─────────────────────────────────────────────────────────

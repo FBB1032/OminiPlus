@@ -441,6 +441,28 @@ function DoctorPortalContent() {
             </span>
           </div>
 
+          {/* MVP Notice: Voice-to-SOAP frozen */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', gap: 12,
+            background: '#fffbeb', border: '1px solid #fde68a',
+            borderRadius: 14, padding: '14px 18px',
+          }}>
+            <div style={{ flexShrink: 0, marginTop: 1 }}>
+              <Smartphone size={16} style={{ color: '#b45309' }} />
+            </div>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 3 }}>
+                Voice-to-SOAP Generator — Coming in Phase 2
+              </p>
+              <p style={{ fontSize: 12.5, color: '#b45309', lineHeight: 1.6 }}>
+                Ambient AI voice transcription (Deepgram Nova-2 Medical) is frozen for MVP due to API latency,
+                cost per call, and poor recognition of regional accents and medical slang.
+                Use the structured text fields below to record your SOAP notes — they are saved to the
+                NDPA-compliant encrypted audit vault exactly as voice notes would be.
+              </p>
+            </div>
+          </div>
+
           {/* SOAP Notes Cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {TODAY_CONSULTATIONS.map((c, idx) => (

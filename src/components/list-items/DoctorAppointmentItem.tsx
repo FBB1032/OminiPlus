@@ -26,7 +26,8 @@ export interface DoctorAppointmentItemData {
   notes?: string;
   hasPrescription?: boolean;
   prescription?: { id: string };
-  type?: 'video' | 'in_person' | 'phone';
+  type?: 'video' | 'in_person' | 'phone' | 'chat';
+  fee?: number;
 }
 
 interface DoctorAppointmentItemProps {
@@ -93,6 +94,24 @@ export const DoctorAppointmentItem = memo<DoctorAppointmentItemProps>(({
   const isCompleted = item.status === 'completed';
   const isCancelled = item.status === 'cancelled';
 
+  // Format badge configuration
+  const getFormatConfig = () => {
+    switch (item.type) {
+      case 'video':
+        return { icon: 'videocam', label: 'Video', color: '#DC2626', bg: '#FEF2F2' };
+      case 'in_person':
+        return { icon: 'person', label: 'In Person', color: '#059669', bg: '#F0FDF4' };
+      case 'phone':
+        return { icon: 'call', label: 'Audio', color: '#2563EB', bg: '#EFF6FF' };
+      case 'chat':
+        return { icon: 'chatbubble', label: 'Chat', color: '#7C3AED', bg: '#F5F3FF' };
+      default:
+        return { icon: 'calendar', label: 'Appt', color: '#64748B', bg: '#F8FAFC' };
+    }
+  };
+
+  const formatConfig = getFormatConfig();
+
   return (
     <View style={[styles.container, containerStyle]}>
       <TouchableOpacity
@@ -116,22 +135,41 @@ export const DoctorAppointmentItem = memo<DoctorAppointmentItemProps>(({
           >
             {item.patient.firstName} {item.patient.lastName}
           </Text>
-          <Text
-            style={styles.dateTime}
-            numberOfLines={1}
-          >
-            {appointmentDate} at {appointmentTime}
-          </Text>
+          <View style={styles.headerMetaRow}>
+            <Text
+              style={styles.dateTime}
+              numberOfLines={1}
+            >
+              {appointmentDate} at {appointmentTime}
+            </Text>
+            {/* Format Badge */}
+            {item.type && (
+              <View style={[styles.formatBadge, { backgroundColor: formatConfig.bg }]}>
+                <Ionicons name={formatConfig.icon as any} size={12} color={formatConfig.color} />
+                <Text style={[styles.formatBadgeText, { color: formatConfig.color }]}>
+                  {formatConfig.label}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
-          <Text
-            style={[styles.statusText, { color: statusColor.text }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.8}
-          >
-            {String(item.status).toUpperCase()}
-          </Text>
+        <View style={styles.headerRight}>
+          <View style={[styles.statusBadge, { backgroundColor: statusColor.bg }]}>
+            <Text
+              style={[styles.statusText, { color: statusColor.text }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+            >
+              {String(item.status).toUpperCase()}
+            </Text>
+          </View>
+          {/* Fee Display */}
+          {item.fee && (
+            <Text style={styles.feeText}>
+              ₦{item.fee.toLocaleString()}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
 
@@ -466,10 +504,34 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
     flexShrink: 1,
   },
+  headerMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    flexWrap: 'wrap',
+  },
   dateTime: {
     fontSize: FontSize.xs,
     color: Colors.text.secondary,
     flexShrink: 1,
+  },
+  formatBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
+  formatBadgeText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+    flexShrink: 0,
   },
   statusBadge: {
     paddingHorizontal: Spacing[2],
@@ -481,6 +543,11 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
+  },
+  feeText: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary[700] ?? Colors.primary[600],
   },
   cardBody: {
     backgroundColor: Colors.background,

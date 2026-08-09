@@ -18,7 +18,9 @@ import PrescriptionScreen from '../screens/doctor/PrescriptionScreen';
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 import ProfileEditScreen from '../screens/shared/ProfileEditScreen';
+import ChangePasswordScreen from '../screens/shared/ChangePasswordScreen';
 import ConsultationChatScreen from './../screens/shared/ConsultationChatScreen';
+import VideoConsultationScreen from '../screens/patient/VideoConsultationScreen';
 import DoctorAvailabilityScreen from '../screens/doctor/DoctorAvailabilityScreen';
 import HelpCenterScreen from '../screens/shared/HelpCenterScreen';
 import PrivacyPolicyScreen from '../screens/shared/PrivacyPolicyScreen';
@@ -76,7 +78,13 @@ export const DoctorNavigator = () => (
     <Stack.Screen name="Notifications" component={NotificationsScreen as React.ComponentType} />
     <Stack.Screen name="Settings" component={SettingsScreen as React.ComponentType} />
     <Stack.Screen name="ProfileEdit" component={ProfileEditScreen as React.ComponentType} />
+    <Stack.Screen name="ChangePassword" component={ChangePasswordScreen as React.ComponentType} options={{ animation: 'slide_from_right' }} />
     <Stack.Screen name="ConsultationChat" component={ConsultationChatScreen as React.ComponentType} />
+    <Stack.Screen
+      name="VideoConsultation"
+      component={VideoConsultationScreen as React.ComponentType}
+      options={{ animation: 'slide_from_right' }}
+    />
     <Stack.Screen
       name="DoctorAvailability"
       component={DoctorAvailabilityScreen as React.ComponentType}

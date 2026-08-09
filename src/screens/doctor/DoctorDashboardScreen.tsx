@@ -111,7 +111,13 @@ export default function DoctorDashboardScreen({ navigation }: any) {
           />
           <View>
             <Text style={styles.welcomeText}>Welcome,</Text>
-            <Text style={styles.doctorName}>Dr. {user?.lastName}</Text>
+            <View style={styles.nameBadgeRow}>
+              <Text style={styles.doctorName}>Dr. {user?.lastName}</Text>
+              <View style={styles.mdcnBadge}>
+                <Ionicons name="shield-checkmark" size={12} color="#0F6E6E" />
+                <Text style={styles.mdcnBadgeText}>MDCN Verified</Text>
+              </View>
+            </View>
           </View>
         </View>
         <View style={styles.headerRight}>
@@ -214,6 +220,49 @@ export default function DoctorDashboardScreen({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
+        {/* Tiered Fee Summary Banner */}
+        <View style={{ marginBottom: Spacing[3] }}>
+          <View style={{
+            backgroundColor: '#F0FDF4', borderRadius: 14, padding: 16,
+            flexDirection: 'row', alignItems: 'center', gap: 14,
+            borderWidth: 1, borderColor: '#BBF7D0',
+            ...Shadows.sm,
+          }}>
+            <View style={{
+              width: 44, height: 44, borderRadius: 22, backgroundColor: '#DCFCE7',
+              alignItems: 'center', justifyContent: 'center', flexShrink: 0
+            }}>
+              <Ionicons name="layers" size={22} color="#059669" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#065F46', marginBottom: 2 }}>
+                Tiered Consultation Fees
+              </Text>
+              <Text style={{ fontSize: 11.5, color: '#047857', lineHeight: 16 }}>
+                Chat: ₦8,000 • Audio: ₦10,000 • Video: ₦15,000
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 4, marginTop: 6 }}>
+                <View style={{ backgroundColor: '#86EFAC', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: FontWeight.bold, color: '#065F46' }}>10% Platform Fee on Chat</Text>
+                </View>
+                <View style={{ backgroundColor: '#FDE68A', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                  <Text style={{ fontSize: 10, fontWeight: FontWeight.bold, color: '#92400E' }}>₦2,000 Floor</Text>
+                </View>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('DoctorProfile')}
+              style={{
+                backgroundColor: '#059669', paddingHorizontal: 10, paddingVertical: 6,
+                borderRadius: 8, flexShrink: 0
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Adjust</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Quick Access Shortcuts Grid */}
         <View style={{ marginBottom: Spacing[4] }}>
           <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: Colors.text.primary, marginBottom: 10 }}>
@@ -224,7 +273,7 @@ export default function DoctorDashboardScreen({ navigation }: any) {
               { label: 'Issue E-Rx', icon: 'medkit-outline', route: 'Prescription', params: { mode: 'create', appointmentId: 'direct-consult', patientId: 'pat-1' }, color: '#0D9488', bg: '#CCFBF1' },
               { label: 'Schedule', icon: 'calendar-outline', route: 'DoctorAppointments', color: '#2563EB', bg: '#EFF6FF' },
               { label: 'Hours', icon: 'time-outline', route: 'DoctorAvailability', color: '#7C3AED', bg: '#F5F3FF' },
-              { label: 'Blood SOS', icon: 'water-outline', route: 'BloodDonors', color: '#DC2626', bg: '#FEF2F2' },
+              { label: 'Profile', icon: 'person-outline', route: 'DoctorProfile', color: '#0F6E6E', bg: '#E6F4F4' },
             ].map((item, idx) => (
               <TouchableOpacity
                 key={idx}
@@ -296,41 +345,6 @@ export default function DoctorDashboardScreen({ navigation }: any) {
           )}
         </View>
 
-        {/* Blood Donor Network */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Blood Donor Network</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('BloodDonors')}>
-              <Text style={styles.seeAll}>Open</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#7F1D1D', borderRadius: 14, padding: 16,
-              flexDirection: 'row', alignItems: 'center', gap: 14,
-              borderWidth: 1.5, borderColor: '#EF4444',
-            }}
-            onPress={() => navigation.navigate('BloodDonors')}
-            activeOpacity={0.88}
-          >
-            <View style={{
-              width: 48, height: 48, borderRadius: 24, backgroundColor: '#DC2626',
-              alignItems: 'center', justifyContent: 'center', flexShrink: 0
-            }}>
-              <Ionicons name="water" size={24} color="#FFFFFF" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF', marginBottom: 2 }}>
-                Emergency Blood Discovery
-              </Text>
-              <Text style={{ fontSize: 11.5, color: '#FCA5A5', lineHeight: 16 }}>
-                Find compatible AA-genotype donors nearby. Use for life-threatening transfusion emergencies. All donations must be screened by a licensed blood bank.
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#FCA5A5" />
-          </TouchableOpacity>
-        </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -361,10 +375,32 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.text.secondary,
   },
+  nameBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
   doctorName: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
+  },
+  mdcnBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E6F4F4',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#0F6E6E',
+  },
+  mdcnBadgeText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: '#0F6E6E',
   },
   headerRight: {
     flexDirection: 'row',

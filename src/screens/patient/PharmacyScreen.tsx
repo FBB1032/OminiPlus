@@ -1,4 +1,15 @@
-import React, { useState, useMemo } from 'react';
+/**
+ * PharmacyScreen — MVP Freeze
+ *
+ * GPS Pharmacy Radar and Direct Checkout are frozen for MVP launch.
+ * Managing pharmacy inventory APIs and drug-fulfillment logistics would delay
+ * launch without meaningful user value at this stage.
+ *
+ * Replacement: Doctors issue MDCN-stamped digital PDF e-prescriptions that
+ * patients can download and take to any physical pharmacy.
+ */
+
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,150 +17,40 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  TextInput,
   Alert,
   Linking,
-  ActivityIndicator,
-  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
-import { Card } from '../../components';
+import { Card, Button } from '../../components';
 import { useToast } from '../../hooks/useAuth';
 
-interface PharmacyItem {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  status: string;
-  isOpen24Hours: boolean;
-  distanceKm: number;
-  driveTimeMins: number;
-  walkTimeMins: number;
-  phone: string;
-  isCertifiedPartner: boolean;
-  latitude: number;
-  longitude: number;
-}
+// ─── Nearby pharmacies list (static, no GPS required) ─────────────────────────
 
-const MOCK_PHARMACIES: PharmacyItem[] = [
-  {
-    id: 'ph-1',
-    name: 'Medplus Pharmacy & Superstore',
-    address: '14 Allen Avenue, Ikeja',
-    city: 'Lagos',
-    status: 'Open 24/7',
-    isOpen24Hours: true,
-    distanceKm: 0.8,
-    driveTimeMins: 3,
-    walkTimeMins: 9,
-    phone: '+234 803 123 4567',
-    isCertifiedPartner: true,
-    latitude: 6.6018,
-    longitude: 3.3515,
-  },
-  {
-    id: 'ph-2',
-    name: 'HealthPlus Pharmacy',
-    address: 'Oba Akran Avenue, Ikeja',
-    city: 'Lagos',
-    status: 'Closes at 10:00 PM',
-    isOpen24Hours: false,
-    distanceKm: 1.5,
-    driveTimeMins: 5,
-    walkTimeMins: 16,
-    phone: '+234 802 987 6543',
-    isCertifiedPartner: true,
-    latitude: 6.6050,
-    longitude: 3.3420,
-  },
-  {
-    id: 'ph-3',
-    name: 'Alpha Pharmacy & Healthcare',
-    address: '42 Isaac John Street, GRA Ikeja',
-    city: 'Lagos',
-    status: 'Open 24/7',
-    isOpen24Hours: true,
-    distanceKm: 2.3,
-    driveTimeMins: 7,
-    walkTimeMins: 24,
-    phone: '+234 805 555 1212',
-    isCertifiedPartner: true,
-    latitude: 6.5880,
-    longitude: 3.3580,
-  },
-  {
-    id: 'ph-4',
-    name: 'Carefort Drugs & Mart',
-    address: '78 Toyin Street, Ikeja',
-    city: 'Lagos',
-    status: 'Closes at 9:00 PM',
-    isOpen24Hours: false,
-    distanceKm: 3.1,
-    driveTimeMins: 10,
-    walkTimeMins: 32,
-    phone: '+234 809 333 4455',
-    isCertifiedPartner: false,
-    latitude: 6.5920,
-    longitude: 3.3490,
-  },
-];
-
-const CATEGORY_FILTERS = [
-  { id: 'all', label: 'All Pharmacies', icon: 'grid-outline' },
-  { id: '247', label: 'Open 24/7', icon: 'moon-outline' },
-  { id: 'near', label: '< 2 km', icon: 'location-outline' },
-  { id: 'partner', label: 'Certified Partners', icon: 'ribbon-outline' },
+const NEARBY_PHARMACIES = [
+  { id: '1', name: 'Medplus Pharmacy & Superstore', address: '14 Allen Avenue, Ikeja', phone: '+234 803 123 4567' },
+  { id: '2', name: 'HealthPlus Pharmacy',           address: 'Oba Akran Avenue, Ikeja',  phone: '+234 802 987 6543' },
+  { id: '3', name: 'Alpha Pharmacy & Healthcare',   address: '42 Isaac John Street, GRA Ikeja', phone: '+234 805 555 1212' },
+  { id: '4', name: 'Carefort Drugs & Mart',         address: '78 Toyin Street, Ikeja',   phone: '+234 809 333 4455' },
 ];
 
 export default function PharmacyScreen({ navigation }: any) {
   const { success: toastSuccess } = useToast();
-  const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [isRefreshingGPS, setIsRefreshingGPS] = useState(false);
-  const [isNotifiedForDelivery, setIsNotifiedForDelivery] = useState(false);
-  const [selectedPharmacyId, setSelectedPharmacyId] = useState<string>('ph-1');
+  const [downloadedIds, setDownloadedIds] = useState<string[]>([]);
 
-  // GPS Refresh simulation
-  const handleRefreshGPS = () => {
-    setIsRefreshingGPS(true);
-    setTimeout(() => {
-      setIsRefreshingGPS(false);
-      toastSuccess('GPS Calibrated', 'Location refreshed: Ikeja, Lagos (Accuracy: High)');
-    }, 800);
+  // Simulates PDF e-prescription download
+  const handleDownloadPrescription = (rxId: string, drugName: string) => {
+    setDownloadedIds((prev) => [...prev, rxId]);
+    toastSuccess(
+      'E-Prescription Downloaded',
+      `${drugName} prescription (MDCN-stamped PDF) saved to your device. Show it at any pharmacy.`
+    );
   };
-
-  // Filter pharmacies
-  const filteredPharmacies = useMemo(() => {
-    return MOCK_PHARMACIES.filter((p) => {
-      const matchQuery =
-        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.address.toLowerCase().includes(searchQuery.toLowerCase());
-
-      let matchCat = true;
-      if (activeCategory === '247') matchCat = p.isOpen24Hours;
-      if (activeCategory === 'near') matchCat = p.distanceKm <= 2.0;
-      if (activeCategory === 'partner') matchCat = p.isCertifiedPartner;
-
-      return matchQuery && matchCat;
-    });
-  }, [searchQuery, activeCategory]);
-
-  // Closest Pharmacy Recommendation
-  const closestPharmacy = useMemo(() => {
-    return [...MOCK_PHARMACIES].sort((a, b) => a.distanceKm - b.distanceKm)[0];
-  }, []);
-
-  const activeSelectedPharmacy = useMemo(() => {
-    return MOCK_PHARMACIES.find(p => p.id === selectedPharmacyId) || closestPharmacy;
-  }, [selectedPharmacyId, closestPharmacy]);
 
   const handleCallPharmacy = (phone: string, name: string) => {
     Alert.alert(
       `Call ${name}`,
-      `Dial ${phone} to connect directly with the pharmacist on duty?`,
+      `Dial ${phone} to check stock before visiting?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -159,340 +60,141 @@ export default function PharmacyScreen({ navigation }: any) {
             Linking.canOpenURL(url)
               .then((supported) => {
                 if (supported) Linking.openURL(url);
-                else toastSuccess('Dialer', `Calling ${phone}...`);
+                else toastSuccess('Dialer', `Calling ${phone}…`);
               })
-              .catch(() => toastSuccess('Dialer', `Calling ${phone}...`));
+              .catch(() => toastSuccess('Dialer', `Calling ${phone}…`));
           },
         },
       ]
     );
   };
 
-  const handleGetDirections = (name: string, address: string) => {
-    const query = encodeURIComponent(`${name}, ${address}`);
-    const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
-    Linking.openURL(url).catch(() => {
-      toastSuccess('GPS Directions', `Opening route to ${name}...`);
-    });
-  };
-
-  const handleNotifyDelivery = () => {
-    setIsNotifiedForDelivery(true);
-    toastSuccess(
-      'Waitlist Joined',
-      'You are registered for early access! We will alert you immediately when Doorstep Prescription Delivery launches in Ikeja.'
-    );
-  };
-
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* ── Top Header ────────────────────────────────────────────────────── */}
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+        >
           <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>GPS Pharmacy Radar</Text>
-          <Text style={styles.headerSubtitle}>Ikeja, Lagos • GPS Active</Text>
-        </View>
-
-        {/* View Mode Toggle (Map vs List) */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('map')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="map-outline" size={14} color={viewMode === 'map' ? '#FFFFFF' : '#64748B'} />
-            <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>Map</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('list')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="list-outline" size={14} color={viewMode === 'list' ? '#FFFFFF' : '#64748B'} />
-            <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>List</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Pharmacy</Text>
+          <Text style={styles.headerSubtitle}>E-Prescriptions & Nearby Pharmacies</Text>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        
-        {/* ── Doorstep Delivery Coming Soon Glassmorphism Hero Card ─────────── */}
-        <View style={styles.heroDeliveryCard}>
-          <View style={styles.heroTopRow}>
-            <View style={styles.badgePill}>
-              <Ionicons name="cube-outline" size={13} color="#047857" />
-              <Text style={styles.badgePillText}>DOORSTEP DELIVERY • COMING SOON</Text>
-            </View>
-            <TouchableOpacity style={styles.gpsRefreshChip} onPress={handleRefreshGPS} disabled={isRefreshingGPS}>
-              {isRefreshingGPS ? (
-                <ActivityIndicator size="small" color="#059669" />
-              ) : (
-                <>
-                  <Ionicons name="navigate" size={12} color="#059669" />
-                  <Text style={styles.gpsRefreshChipText}>Refresh GPS</Text>
-                </>
-              )}
-            </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* How it works banner */}
+        <Card style={styles.howItWorksCard}>
+          <View style={styles.howItWorksHeader}>
+            <Ionicons name="information-circle-outline" size={20} color="#2563EB" />
+            <Text style={styles.howItWorksTitle}>How prescriptions work</Text>
           </View>
+          <View style={styles.stepsList}>
+            {[
+              { icon: 'calendar-outline',       text: 'Complete a consultation with your doctor on OmniPulse.' },
+              { icon: 'document-text-outline',  text: 'Your doctor issues a digitally signed, MDCN-stamped PDF e-prescription.' },
+              { icon: 'download-outline',       text: 'Download the PDF from your Prescription History.' },
+              { icon: 'storefront-outline',     text: 'Present the PDF at any physical pharmacy to collect your medication.' },
+            ].map((step, idx) => (
+              <View key={idx} style={styles.stepRow}>
+                <View style={styles.stepIconBg}>
+                  <Ionicons name={step.icon as any} size={16} color="#2563EB" />
+                </View>
+                <Text style={styles.stepText}>{step.text}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
 
-          <Text style={styles.heroTitle}>Need Prescriptions Delivered?</Text>
-          <Text style={styles.heroSub}>
-            We are onboarding local pharmacy dispatch riders in Ikeja. Soon you will order drugs directly to your doorstep. For now, locate open pharmacies near you below for direct pickup or phone orders.
-          </Text>
-
+        {/* Download E-Prescriptions section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Your Active E-Prescriptions</Text>
           <TouchableOpacity
-            style={[styles.heroNotifyBtn, isNotifiedForDelivery && styles.heroNotifyBtnActive]}
-            onPress={handleNotifyDelivery}
-            disabled={isNotifiedForDelivery}
-            activeOpacity={0.85}
+            onPress={() => navigation.navigate('PrescriptionHistory')}
+            activeOpacity={0.7}
           >
-            <Ionicons
-              name={isNotifiedForDelivery ? 'checkmark-circle' : 'notifications'}
-              size={16}
-              color={isNotifiedForDelivery ? '#047857' : '#FFFFFF'}
-            />
-            <Text style={[styles.heroNotifyText, isNotifiedForDelivery && styles.heroNotifyTextActive]}>
-              {isNotifiedForDelivery ? 'VIP Waitlist Joined ✓' : 'Notify Me When Delivery Launches'}
-            </Text>
+            <Text style={styles.seeAllLink}>See All →</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── VISUAL GPS RADAR MAP BOX (When Map Mode Selected) ─────────────── */}
-        {viewMode === 'map' && (
-          <View style={styles.mapVisualContainer}>
-            <View style={styles.mapHeaderRow}>
-              <View style={styles.mapTitleGroup}>
-                <Ionicons name="location" size={16} color="#059669" />
-                <Text style={styles.mapTitleText}>GPS Radar Visualizer</Text>
-              </View>
-              <Text style={styles.mapSubText}>4 Pharmacies Mapped Nearby</Text>
-            </View>
-
-            {/* Simulated Radar Map View Box */}
-            <View style={styles.mapRadarBox}>
-              {/* Map grid lines background simulation */}
-              <View style={styles.mapGridLineH1} />
-              <View style={styles.mapGridLineH2} />
-              <View style={styles.mapGridLineV1} />
-              <View style={styles.mapGridLineV2} />
-
-              {/* Connected Route Path Line Simulation */}
-              <View style={styles.routeLine} />
-
-              {/* User Current Location Dot */}
-              <View style={styles.userLocationPulseRing}>
-                <View style={styles.userLocationDot}>
-                  <Ionicons name="person" size={10} color="#FFFFFF" />
+        {/* Prescription cards (mock — will bind to real API in Phase 2) */}
+        {[
+          { id: 'RX-9081', drug: 'Amlodipine Besylate 5mg',   dosage: '1 Tablet once daily',    doctor: 'Dr. Folake Ademola', date: 'Today, 09:15 AM' },
+          { id: 'RX-8942', drug: 'Atorvastatin Calcium 20mg', dosage: '1 Tablet at bedtime',     doctor: 'Dr. Tunde Adewale',  date: 'Yesterday, 02:40 PM' },
+        ].map((rx) => {
+          const isDownloaded = downloadedIds.includes(rx.id);
+          return (
+            <Card key={rx.id} style={styles.rxCard}>
+              <View style={styles.rxCardTop}>
+                <View style={styles.rxIconBg}>
+                  <Ionicons name="document-text-outline" size={20} color="#0F6E6E" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rxDrug}>{rx.drug}</Text>
+                  <Text style={styles.rxMeta}>{rx.dosage} · {rx.doctor}</Text>
+                  <Text style={styles.rxDate}>{rx.date}</Text>
+                </View>
+                <View style={[styles.rxBadge, isDownloaded && styles.rxBadgeDownloaded]}>
+                  <Text style={[styles.rxBadgeText, isDownloaded && styles.rxBadgeTextDownloaded]}>
+                    {isDownloaded ? 'Downloaded' : rx.id}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.userLocationLabelBox}>
-                <Text style={styles.userLocationLabelText}>You (Ikeja)</Text>
+              <Button
+                label={isDownloaded ? 'Download Again' : 'Download PDF (MDCN Stamped)'}
+                onPress={() => handleDownloadPrescription(rx.id, rx.drug)}
+                variant={isDownloaded ? 'outline' : 'primary'}
+                leftIcon={<Ionicons name="download-outline" size={16} color={isDownloaded ? Colors.primary[600] : '#FFFFFF'} />}
+                style={styles.downloadBtn}
+              />
+            </Card>
+          );
+        })}
+
+        {/* Nearby Pharmacies section */}
+        <Text style={[styles.sectionTitle, { marginTop: Spacing[2] }]}>
+          Nearby Pharmacies
+        </Text>
+        <Text style={styles.nearbyNote}>
+          Call ahead to confirm stock before visiting.
+        </Text>
+
+        {NEARBY_PHARMACIES.map((pharmacy) => (
+          <Card key={pharmacy.id} style={styles.pharmacyCard}>
+            <View style={styles.pharmacyRow}>
+              <View style={styles.pharmacyIconBg}>
+                <Ionicons name="storefront-outline" size={20} color="#0F6E6E" />
               </View>
-
-              {/* Pharmacy GPS Map Pins */}
-              {MOCK_PHARMACIES.map((pharm, idx) => {
-                const isSelected = selectedPharmacyId === pharm.id;
-                // Position pins in visual layout
-                const positions = [
-                  { top: 25, right: 35 },
-                  { top: 90, right: 90 },
-                  { top: 130, left: 40 },
-                  { top: 50, left: 70 },
-                ];
-                const pos = positions[idx % positions.length];
-
-                return (
-                  <TouchableOpacity
-                    key={pharm.id}
-                    style={[
-                      styles.mapPinContainer,
-                      pos as any,
-                      isSelected && styles.mapPinContainerSelected,
-                    ]}
-                    onPress={() => setSelectedPharmacyId(pharm.id)}
-                    activeOpacity={0.85}
-                  >
-                    <View style={[styles.mapPinBubble, isSelected && styles.mapPinBubbleSelected]}>
-                      <Ionicons
-                        name="medical"
-                        size={12}
-                        color={isSelected ? '#FFFFFF' : '#059669'}
-                      />
-                      <Text style={[styles.mapPinText, isSelected && styles.mapPinTextSelected]}>
-                        {pharm.name.split(' ')[0]} ({pharm.distanceKm}km)
-                      </Text>
-                    </View>
-                    <View style={[styles.mapPinNeedle, isSelected && styles.mapPinNeedleSelected]} />
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Selected Pin Details Overlay Card */}
-            {activeSelectedPharmacy && (
-              <View style={styles.selectedOverlayCard}>
-                <View style={styles.selectedCardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Text style={styles.selectedCardName}>{activeSelectedPharmacy.name}</Text>
-                      {activeSelectedPharmacy.isCertifiedPartner && (
-                        <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                      )}
-                    </View>
-                    <Text style={styles.selectedCardAddress}>{activeSelectedPharmacy.address}</Text>
-                  </View>
-                  <View style={styles.closestEtaBadge}>
-                    <Text style={styles.closestEtaText}>{activeSelectedPharmacy.driveTimeMins} min drive</Text>
-                    <Text style={styles.closestDistText}>{activeSelectedPharmacy.distanceKm} km</Text>
-                  </View>
-                </View>
-
-                <View style={styles.selectedActionsRow}>
-                  <TouchableOpacity
-                    style={styles.selectedNavBtn}
-                    onPress={() => handleGetDirections(activeSelectedPharmacy.name, activeSelectedPharmacy.address)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="navigate" size={15} color="#FFFFFF" />
-                    <Text style={styles.selectedNavText}>Get Directions</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.selectedCallBtn}
-                    onPress={() => handleCallPharmacy(activeSelectedPharmacy.phone, activeSelectedPharmacy.name)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="call" size={14} color="#059669" />
-                    <Text style={styles.selectedCallText}>Call Pharmacist</Text>
-                  </TouchableOpacity>
-                </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pharmacyName}>{pharmacy.name}</Text>
+                <Text style={styles.pharmacyAddress}>{pharmacy.address}</Text>
               </View>
-            )}
-          </View>
-        )}
-
-        {/* ── Search Input & Category Filter Pills ─────────────────────────── */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#94A3B8" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search pharmacy by name or street..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#94A3B8"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color="#94A3B8" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Category Filter Pills */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-            {CATEGORY_FILTERS.map((cat) => (
               <TouchableOpacity
-                key={cat.id}
-                style={[styles.categoryPill, activeCategory === cat.id && styles.categoryPillActive]}
-                onPress={() => setActiveCategory(cat.id)}
-                activeOpacity={0.8}
+                onPress={() => handleCallPharmacy(pharmacy.phone, pharmacy.name)}
+                style={styles.callBtn}
+                activeOpacity={0.7}
               >
-                <Ionicons
-                  name={cat.icon as any}
-                  size={13}
-                  color={activeCategory === cat.id ? '#FFFFFF' : Colors.text.secondary}
-                />
-                <Text style={[styles.categoryPillText, activeCategory === cat.id && styles.categoryPillTextActive]}>
-                  {cat.label}
-                </Text>
+                <Ionicons name="call-outline" size={18} color="#0F6E6E" />
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* ── All Nearby Pharmacies List ─────────────────────────────────── */}
-        <View style={styles.listSection}>
-          <Text style={styles.sectionTitle}>
-            Nearby Pharmacies ({filteredPharmacies.length})
-          </Text>
-
-          {filteredPharmacies.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="location-outline" size={42} color="#CBD5E1" />
-              <Text style={styles.emptyTitle}>No Pharmacies Found</Text>
-              <Text style={styles.emptySub}>
-                No pharmacies match your current search or category filter. Try clearing filters.
-              </Text>
             </View>
-          ) : (
-            filteredPharmacies.map((pharmacy) => {
-              const isSelected = selectedPharmacyId === pharmacy.id;
-              return (
-                <Card
-                  key={pharmacy.id}
-                  style={[styles.pharmacyCard, isSelected && styles.pharmacyCardSelected]}
-                >
-                  <TouchableOpacity
-                    onPress={() => setSelectedPharmacyId(pharmacy.id)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={styles.cardMainRow}>
-                      <View style={styles.pharmacyIconBox}>
-                        <Ionicons name="medical" size={20} color={Colors.primary[600]} />
-                      </View>
+          </Card>
+        ))}
 
-                      <View style={{ flex: 1 }}>
-                        <View style={styles.nameRow}>
-                          <Text style={styles.pharmacyName}>{pharmacy.name}</Text>
-                          {pharmacy.isCertifiedPartner && (
-                            <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                          )}
-                        </View>
-                        <Text style={styles.pharmacyAddress}>{pharmacy.address}</Text>
-
-                        <View style={styles.metaBadgeRow}>
-                          <View style={[styles.statusTag, pharmacy.isOpen24Hours ? styles.statusOpen : styles.statusStandard]}>
-                            <Text style={[styles.statusTagText, pharmacy.isOpen24Hours ? styles.statusTextOpen : styles.statusTextStandard]}>
-                              {pharmacy.status}
-                            </Text>
-                          </View>
-                          <Text style={styles.metaDot}>•</Text>
-                          <Text style={styles.metaDistanceText}>{pharmacy.distanceKm} km away</Text>
-                          <Text style={styles.metaDot}>•</Text>
-                          <Text style={styles.metaTimeText}>{pharmacy.driveTimeMins} min drive</Text>
-                        </View>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  {/* Actions */}
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity
-                      style={styles.cardDirectionsBtn}
-                      onPress={() => handleGetDirections(pharmacy.name, pharmacy.address)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="navigate" size={14} color={Colors.primary[600]} />
-                      <Text style={styles.cardDirectionsText}>GPS Directions</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.cardCallBtn}
-                      onPress={() => handleCallPharmacy(pharmacy.phone, pharmacy.name)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="call-outline" size={14} color="#475569" />
-                      <Text style={styles.cardCallText}>Call Pharmacist</Text>
-                    </TouchableOpacity>
-                  </View>
-                </Card>
-              );
-            })
-          )}
+        {/* Phase 2 teaser */}
+        <View style={styles.phase2Card}>
+          <Ionicons name="rocket-outline" size={20} color="#7C3AED" />
+          <Text style={styles.phase2Text}>
+            <Text style={{ fontWeight: FontWeight.bold }}>Coming in Phase 2: </Text>
+            GPS Pharmacy Radar, real-time stock availability, and doorstep
+            prescription delivery.
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -524,11 +226,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  headerTitleContainer: {
-    flex: 1,
-  },
   headerTitle: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
   },
@@ -536,534 +235,177 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: Colors.text.secondary,
   },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.background,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  toggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  toggleBtnActive: {
-    backgroundColor: Colors.primary[600],
-  },
-  toggleText: {
-    fontSize: 11,
-    fontWeight: FontWeight.semiBold,
-    color: Colors.text.secondary,
-  },
-  toggleTextActive: {
-    color: '#FFFFFF',
-    fontWeight: FontWeight.bold,
-  },
-  scrollBody: {
+  scrollContent: {
     padding: Spacing[4],
-    gap: Spacing[4],
+    paddingBottom: Spacing[10],
+    gap: Spacing[3],
   },
-  heroDeliveryCard: {
-    backgroundColor: '#ECFDF5',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
+  howItWorksCard: {
     padding: Spacing[4],
-    gap: 8,
-    ...Shadows.xs,
+    gap: Spacing[3],
   },
-  heroTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  badgePill: {
+  howItWorksHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    gap: Spacing[2],
   },
-  badgePillText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#047857',
-    letterSpacing: 0.5,
-  },
-  gpsRefreshChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-  },
-  gpsRefreshChipText: {
-    fontSize: 10.5,
-    fontWeight: FontWeight.bold,
-    color: '#059669',
-  },
-  heroTitle: {
-    fontSize: 15.5,
-    fontWeight: FontWeight.bold,
-    color: '#065F46',
-  },
-  heroSub: {
-    fontSize: 12,
-    color: '#047857',
-    lineHeight: 17,
-  },
-  heroNotifyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#059669',
-    paddingVertical: 11,
-    borderRadius: 10,
-    marginTop: 4,
-  },
-  heroNotifyBtnActive: {
-    backgroundColor: '#D1FAE5',
-    borderWidth: 1,
-    borderColor: '#6EE7B7',
-  },
-  heroNotifyText: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-  heroNotifyTextActive: {
-    color: '#047857',
-  },
-
-  // Map Visual Radar Container
-  mapVisualContainer: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing[3],
-    gap: 10,
-    ...Shadows.sm,
-  },
-  mapHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  mapTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  mapTitleText: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
+  howItWorksTitle: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
     color: Colors.text.primary,
   },
-  mapSubText: {
-    fontSize: 11,
-    color: Colors.text.secondary,
+  stepsList: {
+    gap: Spacing[3],
+    marginTop: Spacing[1],
   },
-  mapRadarBox: {
-    height: 180,
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  mapGridLineH1: {
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  mapGridLineH2: {
-    position: 'absolute',
-    top: 120,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  mapGridLineV1: {
-    position: 'absolute',
-    left: '33%',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  mapGridLineV2: {
-    position: 'absolute',
-    left: '66%',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  routeLine: {
-    position: 'absolute',
-    top: 45,
-    left: 80,
-    width: 110,
-    height: 2,
-    backgroundColor: '#059669',
-    transform: [{ rotate: '25deg' }],
-  },
-  userLocationPulseRing: {
-    position: 'absolute',
-    bottom: 35,
-    left: 45,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(16, 185, 129, 0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userLocationDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#2563EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userLocationLabelBox: {
-    position: 'absolute',
-    bottom: 12,
-    left: 30,
-    backgroundColor: '#1E40AF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  userLocationLabelText: {
-    fontSize: 9,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-  mapPinContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  mapPinContainerSelected: {
-    zIndex: 10,
-  },
-  mapPinBubble: {
+  stepRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#6EE7B7',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6,
-    ...Shadows.xs,
-  },
-  mapPinBubbleSelected: {
-    backgroundColor: '#059669',
-    borderColor: '#047857',
-  },
-  mapPinText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#065F46',
-  },
-  mapPinTextSelected: {
-    color: '#FFFFFF',
-  },
-  mapPinNeedle: {
-    width: 2,
-    height: 8,
-    backgroundColor: '#059669',
-  },
-  mapPinNeedleSelected: {
-    backgroundColor: '#047857',
-    width: 3,
-  },
-
-  // Selected Overlay Card
-  selectedOverlayCard: {
-    backgroundColor: '#F0FDF4',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-    padding: Spacing[3],
-    gap: 10,
-  },
-  selectedCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
+    gap: Spacing[3],
   },
-  selectedCardName: {
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: '#065F46',
-  },
-  selectedCardAddress: {
-    fontSize: 11.5,
-    color: '#047857',
+  stepIconBg: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
     marginTop: 1,
   },
-  closestEtaBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignItems: 'flex-end',
-  },
-  closestEtaText: {
-    fontSize: 11,
-    fontWeight: FontWeight.bold,
-    color: '#047857',
-  },
-  closestDistText: {
-    fontSize: 10,
-    color: '#059669',
-  },
-  selectedActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  selectedNavBtn: {
+  stepText: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#059669',
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  selectedNavText: {
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-  selectedCallBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#6EE7B7',
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  selectedCallText: {
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    color: '#059669',
-  },
-
-  // Search Section
-  searchSection: {
-    gap: 8,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.text.primary,
-  },
-  categoryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  categoryPillActive: {
-    backgroundColor: Colors.primary[600],
-    borderColor: Colors.primary[600],
-  },
-  categoryPillText: {
-    fontSize: 11.5,
-    fontWeight: FontWeight.medium,
+    fontSize: FontSize.sm,
     color: Colors.text.secondary,
+    lineHeight: 20,
   },
-  categoryPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: FontWeight.bold,
-  },
-
-  // List Section
-  listSection: {
-    gap: 10,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: Spacing[2],
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: FontSize.base,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
   },
-  pharmacyCard: {
-    padding: Spacing[3],
-    gap: 10,
+  seeAllLink: {
+    fontSize: FontSize.sm,
+    color: Colors.primary[600],
+    fontWeight: FontWeight.medium,
   },
-  pharmacyCardSelected: {
-    borderColor: Colors.primary[600],
-    borderWidth: 1.5,
+  rxCard: {
+    padding: Spacing[4],
+    gap: Spacing[3],
   },
-  cardMainRow: {
+  rxCardTop: {
     flexDirection: 'row',
-    gap: 10,
     alignItems: 'flex-start',
+    gap: Spacing[3],
   },
-  pharmacyIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: Colors.primary[50],
+  rxIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#E6F4F4',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  pharmacyName: {
-    fontSize: 13.5,
-    fontWeight: FontWeight.bold,
+  rxDrug: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semibold,
     color: Colors.text.primary,
   },
-  pharmacyAddress: {
-    fontSize: 11.5,
+  rxMeta: {
+    fontSize: FontSize.xs,
     color: Colors.text.secondary,
     marginTop: 2,
   },
-  metaBadgeRow: {
+  rxDate: {
+    fontSize: FontSize.xs,
+    color: Colors.text.tertiary ?? Colors.text.secondary,
+    marginTop: 2,
+  },
+  rxBadge: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+    paddingHorizontal: Spacing[2],
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+  },
+  rxBadgeDownloaded: {
+    backgroundColor: '#DCFCE7',
+  },
+  rxBadgeText: {
+    fontSize: 10,
+    fontWeight: FontWeight.semibold,
+    color: '#64748B',
+    fontFamily: 'monospace',
+  },
+  rxBadgeTextDownloaded: {
+    color: '#15803D',
+  },
+  downloadBtn: {
+    marginTop: Spacing[1],
+  },
+  nearbyNote: {
+    fontSize: FontSize.xs,
+    color: Colors.text.secondary,
+    marginTop: -Spacing[2],
+  },
+  pharmacyCard: {
+    padding: Spacing[3],
+  },
+  pharmacyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-    flexWrap: 'wrap',
+    gap: Spacing[3],
   },
-  statusTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statusOpen: {
-    backgroundColor: '#ECFDF5',
-  },
-  statusStandard: {
-    backgroundColor: '#FFFBEB',
-  },
-  statusTagText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-  },
-  statusTextOpen: {
-    color: '#059669',
-  },
-  statusTextStandard: {
-    color: '#D97706',
-  },
-  metaDot: {
-    color: '#CBD5E1',
-    fontSize: 10,
-  },
-  metaDistanceText: {
-    fontSize: 10.5,
-    color: Colors.text.secondary,
-    fontWeight: FontWeight.medium,
-  },
-  metaTimeText: {
-    fontSize: 10.5,
-    color: Colors.primary[600],
-    fontWeight: FontWeight.semiBold,
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
-  cardDirectionsBtn: {
-    flex: 1,
-    flexDirection: 'row',
+  pharmacyIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#E6F4F4',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    backgroundColor: Colors.primary[50],
-    borderWidth: 1,
-    borderColor: Colors.primary[100] ?? '#BFDBFE',
-    paddingVertical: 7,
-    borderRadius: 6,
+    flexShrink: 0,
   },
-  cardDirectionsText: {
-    fontSize: 11.5,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary[600],
+  pharmacyName: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold,
+    color: Colors.text.primary,
   },
-  cardCallBtn: {
-    flex: 1,
-    flexDirection: 'row',
+  pharmacyAddress: {
+    fontSize: FontSize.xs,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  callBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E6F4F4',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    backgroundColor: Colors.background,
+    flexShrink: 0,
+  },
+  phase2Card: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing[3],
+    backgroundColor: '#F5F3FF',
+    borderRadius: 14,
+    padding: Spacing[4],
     borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: 7,
-    borderRadius: 6,
+    borderColor: '#DDD6FE',
+    marginTop: Spacing[2],
   },
-  cardCallText: {
-    fontSize: 11.5,
-    fontWeight: FontWeight.bold,
-    color: '#475569',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    gap: 6,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.secondary,
-  },
-  emptySub: {
-    fontSize: 11.5,
-    color: Colors.text.disabled,
-    textAlign: 'center',
-    paddingHorizontal: 24,
+  phase2Text: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    color: '#5B21B6',
+    lineHeight: 20,
   },
 });

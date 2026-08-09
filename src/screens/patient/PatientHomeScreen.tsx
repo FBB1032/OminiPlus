@@ -202,28 +202,27 @@ export default function PatientHomeScreen({ navigation }: any) {
     bmiColor = '#EF4444'; // red
   }
 
-  // Top 3 Main Features for un-crowded dashboard
+  // Top 3 Main Quick Actions
+  // NOTE: Blood Donors GPS locator is frozen for MVP (Phase 2). Replaced with Records.
   const mainQuickActions = [
-    { label: 'Pharmacy',     icon: 'medical',        bg: '#EFF6FF', color: '#2563EB', desc: 'Prescriptions & Drugs', action: () => navigation.navigate('Pharmacy') },
-    { label: 'Hospitals',    icon: 'business',       bg: '#F5F3FF', color: '#7C3AED', desc: 'Partner Centers', action: () => navigation.navigate('Hospitals') },
-    { label: 'Blood Donors', icon: 'water',          bg: '#FEF2F2', color: '#DC2626', desc: 'GPS Proximity Match', action: () => navigation.navigate('BloodDonors') },
+    { label: 'Pharmacy',  icon: 'medical',       bg: '#EFF6FF', color: '#2563EB', desc: 'E-Prescriptions & Drugs',  action: () => navigation.navigate('Pharmacy') },
+    { label: 'Hospitals', icon: 'business',      bg: '#F5F3FF', color: '#7C3AED', desc: 'Partner Centers',          action: () => navigation.navigate('Hospitals') },
+    { label: 'Records',   icon: 'document-text', bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History',        action: () => navigation.navigate('PatientRecords') },
   ];
 
   // Full Quick Access list for See All Modal
+  // NOTE: Blood Donors & Wearable Sync are frozen for MVP — hidden from quick-access entry points.
   const allQuickActions = [
-    { label: 'Pharmacy',     icon: 'medical',        bg: '#EFF6FF', color: '#2563EB', desc: 'Online Prescriptions & Drugs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Pharmacy'); } },
-    { label: 'Hospitals',    icon: 'business',       bg: '#F5F3FF', color: '#7C3AED', desc: 'Verified Hospitals & Centers', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Hospitals'); } },
-    { label: 'Blood Donors', icon: 'water',          bg: '#FEF2F2', color: '#DC2626', desc: 'GPS Emergency Donor Match', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('BloodDonors'); } },
-    { label: 'Records',      icon: 'document-text',  bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History & Files', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('PatientRecords'); } },
-    { label: 'Reminders',    icon: 'alarm',          bg: '#FFF1F2', color: '#E11D48', desc: 'Pill Alarms & Medication Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('MedicationReminders'); } },
-    { label: 'Check Vitals', icon: 'heart-half',     bg: '#FEF3C7', color: '#D97706', desc: 'Log BP, Heart Rate & Temp', action: () => { setIsSeeAllQuickAccessOpen(false); handleOpenVitalsEdit(); } },
-    { label: 'Chronic Care', icon: 'fitness',        bg: '#F0FDFA', color: '#0D9488', desc: 'BP, Sugar & Pregnancy Tracker', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ChronicDisease'); } },
-    { label: 'AI Insights',  icon: 'analytics',      bg: '#F0FDFA', color: '#0891B2', desc: 'AI Analysis of Your Health', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AIHealthInsights'); } },
-    { label: 'Who Viewed',   icon: 'eye',            bg: '#EFF6FF', color: '#1D4ED8', desc: 'Audit Trail & Access Logs', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AccessLogs'); } },
-    { label: 'My Consents',  icon: 'lock-closed',    bg: '#F0FDF4', color: '#15803D', desc: 'Data Sharing Permissions', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ConsentManagement'); } },
-    { label: 'Wearable Sync', icon: 'watch',           bg: '#EFF6FF', color: '#2563EB', desc: 'Apple Watch, Redmi & Health Connect', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('WearableSync'); } },
-    { label: 'Device Compat', icon: 'hardware-chip',  bg: '#F5F3FF', color: '#7C3AED', desc: 'Supported Watch & Monitor List', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('DeviceCompatibility'); } },
-    { label: 'Report Incident', icon: 'shield',      bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint', action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
+    { label: 'Pharmacy',       icon: 'medical',       bg: '#EFF6FF', color: '#2563EB', desc: 'E-Prescriptions & Drugs',         action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Pharmacy'); } },
+    { label: 'Hospitals',      icon: 'business',      bg: '#F5F3FF', color: '#7C3AED', desc: 'Verified Hospitals & Centers',     action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Hospitals'); } },
+    { label: 'Records',        icon: 'document-text', bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History & Files',        action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('PatientRecords'); } },
+    { label: 'Reminders',      icon: 'alarm',         bg: '#FFF1F2', color: '#E11D48', desc: 'Pill Alarms & Medication Logs',     action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('MedicationReminders'); } },
+    { label: 'Check Vitals',   icon: 'heart-half',    bg: '#FEF3C7', color: '#D97706', desc: 'Log BP, Heart Rate & Temp',        action: () => { setIsSeeAllQuickAccessOpen(false); handleOpenVitalsEdit(); } },
+    { label: 'Chronic Care',   icon: 'fitness',       bg: '#F0FDFA', color: '#0D9488', desc: 'BP, Sugar & Pregnancy Tracker',    action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ChronicDisease'); } },
+    { label: 'AI Insights',    icon: 'analytics',     bg: '#F0FDFA', color: '#0891B2', desc: 'AI Analysis of Your Health',       action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AIHealthInsights'); } },
+    { label: 'Who Viewed',     icon: 'eye',           bg: '#EFF6FF', color: '#1D4ED8', desc: 'Audit Trail & Access Logs',        action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AccessLogs'); } },
+    { label: 'My Consents',    icon: 'lock-closed',   bg: '#F0FDF4', color: '#15803D', desc: 'Data Sharing Permissions',         action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ConsentManagement'); } },
+    { label: 'Report Incident',icon: 'shield',        bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint',          action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
   ];
 
   // ─── Render ─────────────────────────────────────────────────────────────────
@@ -352,10 +351,32 @@ export default function PatientHomeScreen({ navigation }: any) {
         {healthSummary && (
           <View style={styles.section}>
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>My Vitals</Text>
-              <Text style={styles.vitalsUpdated}>
-                Updated {healthSummary.lastUpdated ? new Date(healthSummary.lastUpdated).toLocaleDateString() : '—'}
-              </Text>
+              <View>
+                <Text style={styles.sectionTitle}>My Vitals</Text>
+                <Text style={styles.vitalsUpdated}>
+                  Updated {healthSummary.lastUpdated ? new Date(healthSummary.lastUpdated).toLocaleDateString() : '—'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {/* Edit vitals */}
+                <TouchableOpacity
+                  style={styles.vitalActionBtn}
+                  onPress={handleOpenVitalsEdit}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="create-outline" size={14} color={Colors.secondary[600]} />
+                  <Text style={styles.vitalActionBtnText}>Edit</Text>
+                </TouchableOpacity>
+                {/* Sync — navigates to Wearable Sync coming-soon screen */}
+                <TouchableOpacity
+                  style={[styles.vitalActionBtn, styles.vitalSyncBtn]}
+                  onPress={() => navigation.navigate('WearableSync')}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="sync-outline" size={14} color="#7C3AED" />
+                  <Text style={[styles.vitalActionBtnText, { color: '#7C3AED' }]}>Sync</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={styles.vitalsGrid}>
               <View style={[styles.vitalCard, { borderLeftColor: '#EF4444' }]}>
@@ -1195,6 +1216,26 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748B',
     fontWeight: FontWeight.medium,
+  },
+  vitalActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: Colors.secondary[50] ?? '#EFF6FF',
+    borderWidth: 1,
+    borderColor: Colors.secondary[100] ?? '#BFDBFE',
+  },
+  vitalSyncBtn: {
+    backgroundColor: '#F5F3FF',
+    borderColor: '#DDD6FE',
+  },
+  vitalActionBtnText: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: Colors.secondary[600],
   },
 
   // ── Filter Modal

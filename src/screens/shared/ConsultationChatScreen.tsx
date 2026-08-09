@@ -331,7 +331,7 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
             </View>
           )}
 
-          {item.text ? <Text style={[styles.messageText, isMine ? styles.myText : styles.partnerText]}>{item.text}</Text> : null}
+          {item.text ? <Text style={[styles.messageText, isMine ? styles.myText : styles.partnerText, item.isUrgent && styles.urgentText]}>{item.text}</Text> : null}
 
           {/* Render Prescription Card */}
           {item.prescription && (
@@ -1038,6 +1038,11 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: 'bold',
     color: '#EF4444',
+  },
+  urgentText: {
+    // Overrides the white myText color so urgent messages are always readable
+    // on the light #FEF2F2 background, regardless of who sent the message.
+    color: '#991B1B',
   },
   messageText: {
     fontSize: FontSize.md,

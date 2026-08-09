@@ -15,17 +15,26 @@ import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { Avatar, Card, Divider } from '../../components';
 
-type SectionItem = {
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type RowItem = {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  subtitle?: string;
+  badge?: string;
+  badgeColor?: string;
   onPress: () => void;
+  danger?: boolean;
 };
 
 type Section = {
   header: string;
-  items?: SectionItem[];
+  headerIcon?: keyof typeof Ionicons.glyphMap;
+  items?: RowItem[];
   embedded?: 'medical_history' | 'contact_details';
 };
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function PatientProfileScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -39,80 +48,142 @@ export default function PatientProfileScreen({ navigation }: any) {
     ]);
   };
 
-  const openAlert = (title: string, message: string) => {
-    Alert.alert(title, message);
-  };
+  // ─── Sections ───────────────────────────────────────────────────────────
 
   const sections: Section[] = [
     {
       header: 'Account',
+      headerIcon: 'person-circle-outline',
       items: [
-        { icon: 'person-outline',        label: 'Manage Profile',        onPress: () => navigation.navigate('ProfileEdit') },
-        { icon: 'newspaper-outline',     label: 'Personal Information',  onPress: () => navigation.navigate('ProfileEdit') },
-        { icon: 'document-text-outline', label: 'Prescription History',  onPress: () => navigation.navigate('PrescriptionHistory') },
-        { icon: 'lock-closed-outline',   label: 'Consent Management',    onPress: () => navigation.navigate('ConsentManagement') },
+        {
+          icon: 'create-outline',
+          label: 'Edit Profile',
+          subtitle: 'Update your name, photo, and details',
+          onPress: () => navigation.navigate('ProfileEdit'),
+        },
+        {
+          icon: 'document-text-outline',
+          label: 'Prescription History',
+          subtitle: 'View all prescriptions issued to you',
+          onPress: () => navigation.navigate('PrescriptionHistory'),
+        },
+        {
+          icon: 'lock-closed-outline',
+          label: 'Consent Management',
+          subtitle: 'Control who can access your records',
+          onPress: () => navigation.navigate('ConsentManagement'),
+        },
       ],
     },
     {
       header: 'Contact Details',
+      headerIcon: 'call-outline',
       embedded: 'contact_details',
     },
     {
-      header: 'Medical History',
+      header: 'Medical Profile',
+      headerIcon: 'medkit-outline',
       embedded: 'medical_history',
     },
     {
       header: 'Health & Records',
+      headerIcon: 'heart-outline',
       items: [
-        { icon: 'fitness-outline',       label: 'Chronic Disease Tracker',       onPress: () => navigation.navigate('ChronicDisease') },
-        { icon: 'alarm-outline',         label: 'Medication Reminders',          onPress: () => navigation.navigate('MedicationReminders') },
-        { icon: 'eye-outline',           label: 'Who Viewed My Records',         onPress: () => navigation.navigate('AccessLogs') },
-        { icon: 'watch-outline',         label: 'Wearables & Health Devices',    onPress: () => navigation.navigate('WearableSync') },
-        { icon: 'hardware-chip-outline', label: 'Device Compatibility List',     onPress: () => navigation.navigate('DeviceCompatibility') },
+        {
+          icon: 'fitness-outline',
+          label: 'Chronic Disease Tracker',
+          subtitle: 'Hypertension, Diabetes, Asthma & more',
+          onPress: () => navigation.navigate('ChronicDisease'),
+        },
+        {
+          icon: 'alarm-outline',
+          label: 'Medication Reminders',
+          subtitle: 'Set alerts for your medications',
+          onPress: () => navigation.navigate('MedicationReminders'),
+        },
+        {
+          icon: 'eye-outline',
+          label: 'Who Viewed My Records',
+          subtitle: 'Audit log of record access',
+          onPress: () => navigation.navigate('AccessLogs'),
+        },
       ],
     },
     {
-      header: 'Preferences',
+      header: 'Privacy & Data',
+      headerIcon: 'shield-checkmark-outline',
       items: [
-        { icon: 'notifications-outline', label: 'Notifications',          onPress: () => navigation.navigate('Notifications') },
-        { icon: 'language-outline',      label: 'Language Settings',      onPress: () => openAlert('Coming Soon', 'Language settings will be available in a future update.') },
-        { icon: 'sunny-outline',         label: 'Theme (Light / Dark)',   onPress: () => openAlert('Coming Soon', 'Theme preferences will be available in a future update.') },
-        { icon: 'settings-outline',      label: 'App Settings',           onPress: () => navigation.navigate('Settings') },
+        {
+          icon: 'download-outline',
+          label: 'Download My Data (PDF)',
+          subtitle: 'Export your full health records — NDPA compliant',
+          onPress: () =>
+            Alert.alert(
+              'Download My Data',
+              'A PDF copy of your health records, appointments, and prescriptions will be sent to your registered email within 24 hours (NDPA compliant).',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Request Export',
+                  onPress: () =>
+                    Alert.alert('Export Requested', 'Your data export has been queued. Check your email within 24 hours.'),
+                },
+              ]
+            ),
+        },
       ],
     },
     {
       header: 'Security',
+      headerIcon: 'lock-closed-outline',
       items: [
-        { icon: 'lock-closed',           label: 'Change Password',        onPress: () => openAlert('Change Password', 'To change your password, please use the "Forgot Password" flow on the login screen.') },
+        {
+          icon: 'key-outline',
+          label: 'Change Password',
+          subtitle: 'Update your account password',
+          onPress: () => navigation.navigate('ChangePassword'),
+        },
+        {
+          icon: 'notifications-outline',
+          label: 'Notifications',
+          subtitle: 'Manage alerts and reminders',
+          onPress: () => navigation.navigate('Notifications'),
+        },
+        {
+          icon: 'settings-outline',
+          label: 'App Settings',
+          subtitle: 'Language, theme, biometrics',
+          onPress: () => navigation.navigate('Settings'),
+        },
       ],
     },
   ];
 
-  // ─── Medical History Info Card ───────────────────────────────────────────
-  const renderMedicalHistoryCard = () => {
+  // ─── Medical history embedded card ──────────────────────────────────────
+
+  const renderMedicalCard = () => {
     const bmiInfo = (() => {
       if (!user?.height || !user?.weight) return null;
-      const bmiVal = parseFloat((user.weight / Math.pow(user.height / 100, 2)).toFixed(1));
-      let category = 'Normal';
-      let color = '#10B981';
-      if (bmiVal < 18.5) { category = 'Underweight'; color = '#3B82F6'; }
-      else if (bmiVal >= 25 && bmiVal < 30) { category = 'Overweight'; color = '#F59E0B'; }
-      else if (bmiVal >= 30) { category = 'Obese'; color = '#EF4444'; }
-      return { bmiVal, category, color };
+      const val = parseFloat((user.weight / Math.pow(user.height / 100, 2)).toFixed(1));
+      let label = 'Normal'; let color = '#10B981';
+      if (val < 18.5)               { label = 'Underweight'; color = '#3B82F6'; }
+      else if (val >= 25 && val < 30){ label = 'Overweight';  color = '#F59E0B'; }
+      else if (val >= 30)            { label = 'Obese';        color = '#EF4444'; }
+      return { val, label, color };
     })();
 
-    const rows: { label: string; value: React.ReactNode }[] = [
-      { label: 'Age',           value: user?.age ? `${user.age} y/o` : 'Not Set' },
-      { label: 'Height',        value: user?.height ? `${user.height} cm` : 'Not Set' },
-      { label: 'Weight',        value: user?.weight ? `${user.weight} kg` : 'Not Set' },
+    const rows = [
+      { label: 'Age',         value: user?.age        ? `${user.age} yrs`    : '—' },
+      { label: 'Height',      value: user?.height     ? `${user.height} cm`  : '—' },
+      { label: 'Weight',      value: user?.weight     ? `${user.weight} kg`  : '—' },
       {
         label: 'BMI',
         value: bmiInfo
-          ? (<Text style={[styles.bmiValue, { color: bmiInfo.color }]}>{bmiInfo.bmiVal} ({bmiInfo.category})</Text>)
-          : 'Not Set',
+          ? <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: bmiInfo.color }}>{bmiInfo.val} <Text style={{ fontWeight: FontWeight.medium, fontSize: 11, color: bmiInfo.color }}>({bmiInfo.label})</Text></Text>
+          : '—',
       },
-      { label: 'Blood Group',   value: user?.bloodGroup || 'Not Set' },
-      { label: 'Genotype',      value: user?.genotype || 'Not Set' },
+      { label: 'Blood Group', value: user?.bloodGroup || '—' },
+      { label: 'Genotype',    value: user?.genotype   || '—' },
     ];
 
     return (
@@ -121,61 +192,91 @@ export default function PatientProfileScreen({ navigation }: any) {
           <View key={row.label}>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>{row.label}</Text>
-              <Text style={[styles.infoValue, idx === 3 ? undefined : undefined]} numberOfLines={1}>
-                {typeof row.value === 'string' ? row.value : row.value}
-              </Text>
+              {typeof row.value === 'string'
+                ? <Text style={styles.infoValue} numberOfLines={1}>{row.value}</Text>
+                : <View style={{ alignItems: 'flex-end' }}>{row.value}</View>
+              }
             </View>
             {idx < rows.length - 1 && <Divider spacing={3} />}
           </View>
         ))}
+        <TouchableOpacity
+          style={styles.infoEditBtn}
+          onPress={() => navigation.navigate('ProfileEdit')}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="create-outline" size={13} color={Colors.secondary[600]} />
+          <Text style={styles.infoEditBtnText}>Update Medical Info</Text>
+        </TouchableOpacity>
       </View>
     );
   };
 
-  // ─── Contact Details Embedded Block ──────────────────────────────────────
-  const renderContactDetailsCard = () => (
+  // ─── Contact details embedded card ──────────────────────────────────────
+
+  const renderContactCard = () => (
     <View style={styles.infoCard}>
       <View style={styles.infoRow}>
         <View style={styles.infoLabelRow}>
-          <Ionicons name="mail-outline" size={16} color={Colors.text.secondary} />
+          <Ionicons name="mail-outline" size={15} color={Colors.text.secondary} />
           <Text style={styles.infoLabelIcon}>Email</Text>
         </View>
         <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="middle">
-          {user?.email || 'Not Set'}
+          {user?.email || '—'}
         </Text>
       </View>
       <Divider spacing={3} />
       <View style={styles.infoRow}>
         <View style={styles.infoLabelRow}>
-          <Ionicons name="call-outline" size={16} color={Colors.text.secondary} />
+          <Ionicons name="call-outline" size={15} color={Colors.text.secondary} />
           <Text style={styles.infoLabelIcon}>Phone</Text>
         </View>
         <Text style={styles.infoValue} numberOfLines={1}>
-          {user?.phone || 'Not set in profile'}
+          {user?.phone || 'Not set'}
         </Text>
       </View>
     </View>
   );
 
-  // ─── Render Row (single list item) ───────────────────────────────────────
-  const renderSectionItem = (item: SectionItem) => (
-    <TouchableOpacity
-      style={styles.actionRow}
-      activeOpacity={0.7}
-      onPress={item.onPress}
-      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-      accessibilityRole="button"
-      accessibilityLabel={item.label}
-    >
-      <View style={styles.actionLeft}>
-        <View style={styles.actionIconWrap}>
-          <Ionicons name={item.icon} size={20} color={Colors.secondary[600]} />
+  // ─── Single action row ───────────────────────────────────────────────────
+
+  const renderRow = (item: RowItem, isLast: boolean) => (
+    <View key={item.label}>
+      <TouchableOpacity
+        style={styles.actionRow}
+        activeOpacity={0.7}
+        onPress={item.onPress}
+        hitSlop={{ top: 4, bottom: 4 }}
+        accessibilityRole="button"
+        accessibilityLabel={item.label}
+      >
+        <View style={[styles.actionIconWrap, item.danger && { backgroundColor: '#FEF2F2' }]}>
+          <Ionicons
+            name={item.icon}
+            size={20}
+            color={item.danger ? '#EF4444' : Colors.secondary[600]}
+          />
         </View>
-        <Text style={styles.actionLabel} numberOfLines={1}>{item.label}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={Colors.neutral[400]} />
-    </TouchableOpacity>
+        <View style={styles.actionTextCol}>
+          <Text style={[styles.actionLabel, item.danger && { color: '#EF4444' }]} numberOfLines={1}>
+            {item.label}
+          </Text>
+          {item.subtitle && (
+            <Text style={styles.actionSub} numberOfLines={1}>{item.subtitle}</Text>
+          )}
+        </View>
+        {item.badge && (
+          <View style={[styles.actionBadge, { backgroundColor: item.badgeColor ?? Colors.primary[600] }]}>
+            <Text style={styles.actionBadgeText}>{item.badge}</Text>
+          </View>
+        )}
+        <Ionicons name="chevron-forward" size={16} color={Colors.neutral[400]} style={{ flexShrink: 0 }} />
+      </TouchableOpacity>
+      {!isLast && <Divider spacing={0} />}
+    </View>
   );
+
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -188,74 +289,110 @@ export default function PatientProfileScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[isTablet && styles.tabletMaxWrap]}>
+        <View style={isTablet ? styles.tabletWrap : undefined}>
 
-          {/* ────── Hero: Avatar + Name/Email/Phone ────────────────────────── */}
-          <Card style={[styles.profileCard, styles.cardClip]}>
+          {/* ── Hero card ── */}
+          <View style={styles.heroCard}>
             <View style={styles.heroRow}>
-              <Avatar
-                name={`${user?.firstName} ${user?.lastName}`}
-                uri={user?.avatarUrl}
-                size="lg"
-                gender={user?.gender}
-              />
+              <View style={{ position: 'relative' }}>
+                <Avatar
+                  name={`${user?.firstName} ${user?.lastName}`}
+                  uri={user?.avatarUrl}
+                  size="lg"
+                  gender={user?.gender}
+                />
+                {/* edit badge */}
+                <TouchableOpacity
+                  style={styles.avatarEditBadge}
+                  onPress={() => navigation.navigate('ProfileEdit')}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="camera" size={11} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
               <View style={styles.heroText}>
-                <Text style={styles.patientName} numberOfLines={1}>
+                <Text style={styles.heroName} numberOfLines={1}>
                   {user?.firstName} {user?.lastName}
                 </Text>
-                <Text style={styles.patientEmail} numberOfLines={1} ellipsizeMode="middle">
+                <Text style={styles.heroEmail} numberOfLines={1} ellipsizeMode="middle">
                   {user?.email}
                 </Text>
                 {!!user?.phone && (
-                  <View style={styles.phoneRow}>
+                  <View style={styles.heroPhoneRow}>
                     <Ionicons name="call-outline" size={12} color={Colors.text.secondary} />
-                    <Text style={styles.patientPhone} numberOfLines={1}>
-                      {user.phone}
-                    </Text>
+                    <Text style={styles.heroPhone} numberOfLines={1}>{user.phone}</Text>
                   </View>
                 )}
+
+                {/* Health summary pills */}
+                <View style={styles.heroPills}>
+                  {user?.bloodGroup && (
+                    <View style={styles.heroPill}>
+                      <Ionicons name="water" size={10} color="#EF4444" />
+                      <Text style={styles.heroPillText}>{user.bloodGroup}</Text>
+                    </View>
+                  )}
+                  {user?.genotype && (
+                    <View style={styles.heroPill}>
+                      <Ionicons name="git-network-outline" size={10} color="#7C3AED" />
+                      <Text style={styles.heroPillText}>{user.genotype}</Text>
+                    </View>
+                  )}
+                  {user?.age && (
+                    <View style={styles.heroPill}>
+                      <Ionicons name="person-outline" size={10} color="#0F6E6E" />
+                      <Text style={styles.heroPillText}>{user.age} yrs</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             </View>
-          </Card>
+          </View>
 
-          {/* ────── Sections Loop ───────────────────────────────────────────── */}
-          {sections.map((section, sIdx) => (
-            <View key={`${section.header}-${sIdx}`} style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>{section.header.toUpperCase()}</Text>
-              {section.embedded === 'medical_history' && renderMedicalHistoryCard()}
-              {section.embedded === 'contact_details' && renderContactDetailsCard()}
+          {/* ── Sections ── */}
+          {sections.map((section) => (
+            <View key={section.header} style={styles.sectionContainer}>
+              <View style={styles.sectionTitleRow}>
+                {section.headerIcon && (
+                  <Ionicons name={section.headerIcon} size={13} color={Colors.text.secondary} />
+                )}
+                <Text style={styles.sectionTitle}>{section.header.toUpperCase()}</Text>
+              </View>
+
+              {section.embedded === 'medical_history' && renderMedicalCard()}
+              {section.embedded === 'contact_details' && renderContactCard()}
+
               {section.items && (
-                <View style={[styles.actionsCard, styles.cardClip]}>
-                  {section.items.map((item, idx) => (
-                    <View key={item.label}>
-                      {renderSectionItem(item)}
-                      {idx < section.items!.length - 1 && <Divider spacing={0} />}
-                    </View>
-                  ))}
+                <View style={styles.actionsCard}>
+                  {section.items.map((item, idx) =>
+                    renderRow(item, idx === section.items!.length - 1)
+                  )}
                 </View>
               )}
             </View>
           ))}
 
-          {/* ────── Emergency Help Card ─────────────────────────────────────── */}
-          <Card style={[styles.helpCard, styles.cardClip]}>
-            <View style={styles.helpHeader}>
-              <Ionicons name="call" size={20} color={Colors.secondary[600]} />
-              <Text style={styles.helpTitle}>Emergency Contact Support</Text>
+          {/* ── Emergency card ── */}
+          <View style={styles.emergencyCard}>
+            <View style={styles.emergencyHeader}>
+              <View style={styles.emergencyIconWrap}>
+                <Ionicons name="call" size={18} color="#EF4444" />
+              </View>
+              <Text style={styles.emergencyTitle}>Emergency Contact</Text>
             </View>
-            <Text style={styles.helpText}>
-              If you need immediate medical attention or have a medical emergency, please call 112 or your local emergency number immediately.
+            <Text style={styles.emergencyText}>
+              For immediate medical emergencies, call <Text style={{ fontWeight: FontWeight.bold }}>112</Text> or your local emergency number. OminiPulse is not a substitute for emergency services.
             </Text>
-          </Card>
+          </View>
 
-          {/* ────── Logout ──────────────────────────────────────────────────── */}
+          {/* ── Log out ── */}
           <TouchableOpacity
             style={styles.logoutBtn}
             onPress={handleSignOut}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Log Out"
-            hitSlop={{ top: 4, bottom: 4 }}
           >
             <Ionicons name="log-out-outline" size={20} color={Colors.error.main} />
             <Text style={styles.logoutText}>Log Out</Text>
@@ -267,11 +404,11 @@ export default function PatientProfileScreen({ navigation }: any) {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
+
   topHeader: {
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
@@ -280,158 +417,132 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     alignItems: 'center',
   },
-  topHeaderTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
+  topHeaderTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary },
+
   scrollContent: {
     padding: Spacing[4],
-    gap: Spacing[5],
-    paddingBottom: Spacing[10],
+    gap: Spacing[6],
+    paddingBottom: Spacing[12],
   },
-  tabletMaxWrap: {
-    width: '100%',
-    maxWidth: 720,
-    alignSelf: 'center',
+  tabletWrap: { width: '100%', maxWidth: 720, alignSelf: 'center' },
+
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  heroCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing[4],
+    ...Shadows.sm,
   },
-  cardClip: {
-    overflow: 'hidden',
-    borderRadius: BorderRadius.lg,
-  },
-  profileCard: {
-    paddingVertical: Spacing[5],
-    paddingHorizontal: Spacing[4],
-  },
-  heroRow: {
-    flexDirection: 'row',
+  heroRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[4] },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: -4,
+    backgroundColor: Colors.secondary[600],
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
-    gap: Spacing[4],
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.surface,
   },
-  heroText: {
-    flex: 1,
-    flexShrink: 1,
-    gap: 4,
-  },
-  patientName: {
+  heroText: { flex: 1, flexShrink: 1, gap: 3 },
+  heroName: {
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
     flexShrink: 1,
   },
-  patientEmail: {
-    fontSize: FontSize.sm,
-    color: Colors.text.secondary,
-    flexShrink: 1,
+  heroEmail: { fontSize: FontSize.sm, color: Colors.text.secondary, flexShrink: 1 },
+  heroPhoneRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  heroPhone: { fontSize: FontSize.xs, color: Colors.text.secondary },
+  heroPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: Spacing[1] },
+  heroPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.background,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  phoneRow: {
+  heroPillText: { fontSize: 10, fontWeight: FontWeight.bold, color: Colors.text.primary },
+
+  // ── Sections ──────────────────────────────────────────────────────────────
+  sectionContainer: { gap: Spacing[3] },
+  sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing[2],
-    marginTop: 2,
-  },
-  patientPhone: {
-    fontSize: FontSize.sm,
-    color: Colors.text.secondary,
-    flexShrink: 1,
-  },
-  sectionContainer: {
-    gap: Spacing[2],
+    paddingLeft: Spacing[1],
+    marginTop: Spacing[3],
   },
   sectionTitle: {
-    fontSize: FontSize.xs,
+    fontSize: 11,
     fontWeight: FontWeight.bold,
     color: Colors.text.secondary,
-    letterSpacing: 0.5,
-    paddingLeft: Spacing[1],
+    letterSpacing: 0.6,
   },
+
+  // ── Action rows ───────────────────────────────────────────────────────────
   actionsCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
+    overflow: 'hidden',
     ...Shadows.xs,
   },
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 56,
+    minHeight: 58,
     paddingVertical: Spacing[3],
     paddingHorizontal: Spacing[4],
-  },
-  actionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: Spacing[3],
-    flex: 1,
-    flexShrink: 1,
   },
   actionIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     backgroundColor: Colors.neutral[100],
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
+  actionTextCol: { flex: 1, flexShrink: 1, gap: 1 },
   actionLabel: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
     color: Colors.text.primary,
     flexShrink: 1,
   },
-  helpCard: {
-    padding: Spacing[4],
-    gap: Spacing[2],
-    borderColor: Colors.border,
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-  },
-  helpHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing[2],
-  },
-  helpTitle: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
-  helpText: {
-    fontSize: FontSize.sm,
+  actionSub: {
+    fontSize: FontSize.xs,
     color: Colors.text.secondary,
-    lineHeight: 18,
+    flexShrink: 1,
   },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing[2],
-    backgroundColor: Colors.surface,
-    borderWidth: 1.5,
-    borderColor: Colors.error.main,
-    borderRadius: 16,
-    minHeight: 52,
-    marginTop: Spacing[2],
-    marginBottom: Spacing[2],
-    ...Shadows.xs,
+  actionBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    flexShrink: 0,
   },
-  logoutText: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.bold,
-    color: Colors.error.main,
-  },
+  actionBadgeText: { fontSize: 10, fontWeight: FontWeight.bold, color: '#FFFFFF' },
+
+  // ── Info cards (embedded) ─────────────────────────────────────────────────
   infoCard: {
     backgroundColor: Colors.surface,
-    borderRadius: 16,
+    borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.border,
     padding: Spacing[4],
-    overflow: 'hidden',
     ...Shadows.xs,
-    gap: 0,
   },
   infoRow: {
     flexDirection: 'row',
@@ -444,18 +555,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing[2],
-    flex: 0.7,
-  },
-  infoLabelIcon: {
-    fontSize: FontSize.sm,
-    color: Colors.text.secondary,
-    flexShrink: 1,
-  },
-  infoLabel: {
-    fontSize: FontSize.sm,
-    color: Colors.text.secondary,
     flexShrink: 0,
   },
+  infoLabelIcon: { fontSize: FontSize.sm, color: Colors.text.secondary },
+  infoLabel:     { fontSize: FontSize.sm, color: Colors.text.secondary, flexShrink: 0 },
   infoValue: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semiBold,
@@ -463,8 +566,59 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     textAlign: 'right',
   },
-  bmiValue: {
-    fontSize: FontSize.sm,
-    fontWeight: 'bold',
+  infoEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    marginTop: Spacing[3],
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[1],
+    backgroundColor: Colors.secondary[50] ?? '#EFF6FF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.secondary[100] ?? '#BFDBFE',
   },
+  infoEditBtnText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.secondary[600],
+  },
+
+  // ── Emergency card ────────────────────────────────────────────────────────
+  emergencyCard: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: '#FED7AA',
+    padding: Spacing[4],
+    gap: Spacing[2],
+  },
+  emergencyHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  emergencyIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emergencyTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: '#92400E' },
+  emergencyText:  { fontSize: FontSize.xs, color: '#B45309', lineHeight: 18 },
+
+  // ── Log out ───────────────────────────────────────────────────────────────
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing[2],
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.error.main,
+    borderRadius: 16,
+    minHeight: 52,
+    marginTop: Spacing[2],
+    ...Shadows.xs,
+  },
+  logoutText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.error.main },
 });

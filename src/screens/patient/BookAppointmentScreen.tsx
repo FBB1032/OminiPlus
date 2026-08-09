@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +52,28 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [doctorSearch, setDoctorSearch] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
+
+  // ── Tiered format pricing ─────────────────────────────────────────────────
+  // Pre-seed format & fee from DoctorProfileScreen if the patient already
+  // picked a format there; otherwise default to 'chat' (lowest tier).
+  const [selectedFormat, setSelectedFormat] = useState<'chat' | 'audio' | 'video'>(
+    route.params?.preSelectedDoctor?.selectedFormat ?? 'chat'
+  );
+
+  const MIN_CONSULT_FEE = 2000; // ₦2,000 platform floor
+
+  const getActiveFee = (doc: any, fmt: 'chat' | 'audio' | 'video'): number => {
+    if (doc?.tiers?.[fmt]) return Math.max(doc.tiers[fmt], MIN_CONSULT_FEE);
+    if (doc?.consultFee)   return Math.max(doc.consultFee, MIN_CONSULT_FEE);
+    return MIN_CONSULT_FEE;
+  };
+
+  const FORMAT_LABELS: Record<'chat' | 'audio' | 'video', string> = {
+    chat: 'Chat', audio: 'Audio Call', video: 'Video Call',
+  };
+  const FORMAT_ICONS: Record<'chat' | 'audio' | 'video', string> = {
+    chat: 'chatbubble-outline', audio: 'mic-outline', video: 'videocam-outline',
+  };
 
   // Payment states
   const [cardNumber, setCardNumber] = useState('');
@@ -217,12 +241,52 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
     if (hasError) return;
 
     setIsPaymentLoading(true);
+
+    // ── Demo simulation ───────────────────────────────────────────────────
+    // Cards ending in an even last digit → success, odd → failure.
+    // This lets the team show both flows without a real backend.
+    // Replace this block with your actual Paystack charge call when the
+    // backend is ready — just navigate to PaymentResult with the real outcome.
+    const lastDigit = parseInt(cardNumber.replace(/\s/g, '').slice(-1), 10);
+    const simulatedOutcome: 'success' | 'failure' = isNaN(lastDigit) || lastDigit % 2 === 0
+      ? 'success'
+      : 'failure';
+
+    const fee = getActiveFee(selectedDoctor, selectedFormat);
+    const txnRef = `TXN-${Math.floor(100000 + Math.random() * 900000)}`;
+    const formattedDate = selectedDate
+      ? new Date(selectedDate).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+      : '—';
+    const formattedSlot = selectedSlot
+      ? (() => {
+          const [h, m] = selectedSlot.split(':');
+          const hour = parseInt(h, 10);
+          return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}`;
+        })()
+      : '—';
+    const doctorLabel = selectedDoctor?.name
+      ?? `Dr. ${selectedDoctor?.firstName ?? ''} ${selectedDoctor?.lastName ?? ''}`.trim();
+
     setTimeout(() => {
       setIsPaymentLoading(false);
-      setIsPaid(true);
-      showToastSuccess('Payment Authorized', 'Your payment was processed successfully!');
-      setCurrentStep(4);
-    }, 1500);
+
+      if (simulatedOutcome === 'success') {
+        setIsPaid(true);
+      }
+
+      navigation.navigate('PaymentResult', {
+        outcome:    simulatedOutcome,
+        amount:     `₦${fee.toLocaleString()}`,
+        doctorName: doctorLabel,
+        format:     FORMAT_LABELS[selectedFormat],
+        date:       formattedDate,
+        slot:       formattedSlot,
+        referenceId: txnRef,
+        failureReason: simulatedOutcome === 'failure'
+          ? 'Insufficient funds or card limit reached.'
+          : undefined,
+      });
+    }, 1800);
   };
 
   const handleBookAppointment = async () => {
@@ -296,6 +360,11 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+      >
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
@@ -468,34 +537,47 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
         {currentStep === 2 && (
           <ScrollView contentContainerStyle={styles.detailsForm} keyboardShouldPersistTaps="handled">
             <Text style={styles.sectionHeading}>Consultation Type</Text>
-            <View style={styles.typeRow}>
-              {(['in_person', 'video', 'phone'] as const).map((type) => {
-                const isSelected = appointmentType === type;
-                const getIcon = () => {
-                  if (type === 'in_person') return 'business-outline';
-                  if (type === 'video') return 'videocam-outline';
-                  return 'call-outline';
-                };
-                const getLabel = () => {
-                  if (type === 'in_person') return 'In Person';
-                  if (type === 'video') return 'Video Call';
-                  return 'Phone Call';
-                };
-
+            <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary, marginTop: -Spacing[2], marginBottom: Spacing[3] }}>
+              Choose how you'd like to connect with the doctor. Fee shown per session.
+            </Text>
+            <View style={styles.consultTypeGrid}>
+              {([
+                { fmt: 'chat'  as const, type: 'phone'     as const, icon: 'chatbubble-outline', label: 'Chat',       desc: 'Text messages' },
+                { fmt: 'audio' as const, type: 'phone'     as const, icon: 'mic-outline',        label: 'Audio Call', desc: 'Voice call'    },
+                { fmt: 'video' as const, type: 'video'     as const, icon: 'videocam-outline',   label: 'Video Call', desc: 'Face-to-face'  },
+                { fmt: 'chat'  as const, type: 'in_person' as const, icon: 'business-outline',   label: 'In Person',  desc: 'Clinic visit'  },
+              ]).map((opt) => {
+                const isInPerson = opt.type === 'in_person';
+                const fee = isInPerson ? null : getActiveFee(selectedDoctor, opt.fmt);
+                const active = selectedFormat === opt.fmt && appointmentType === opt.type;
                 return (
                   <TouchableOpacity
-                    key={type}
-                    onPress={() => setAppointmentType(type)}
-                    style={[styles.typeCard, isSelected && styles.typeCardSelected]}
+                    key={`${opt.fmt}-${opt.type}`}
+                    onPress={() => {
+                      setSelectedFormat(opt.fmt);
+                      setAppointmentType(opt.type);
+                    }}
+                    style={[styles.consultTypeCard, active && styles.consultTypeCardActive]}
+                    activeOpacity={0.8}
                   >
-                    <Ionicons
-                      name={getIcon()}
-                      size={24}
-                      color={isSelected ? Colors.secondary[600] : Colors.neutral[500]}
-                    />
-                    <Text style={[styles.typeLabel, isSelected && styles.typeLabelSelected]}>
-                      {getLabel()}
+                    <View style={[styles.consultTypeIcon, active && styles.consultTypeIconActive]}>
+                      <Ionicons
+                        name={opt.icon as any}
+                        size={22}
+                        color={active ? '#FFFFFF' : Colors.neutral[500]}
+                      />
+                    </View>
+                    <Text style={[styles.consultTypeLabel, active && styles.consultTypeLabelActive]}>
+                      {opt.label}
                     </Text>
+                    <Text style={styles.consultTypeDesc}>{opt.desc}</Text>
+                    {fee !== null ? (
+                      <Text style={[styles.consultTypeFee, active && styles.consultTypeFeeActive]}>
+                        ₦{fee.toLocaleString()}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.consultTypeFee, { color: '#94A3B8' }]}>At clinic</Text>
+                    )}
                   </TouchableOpacity>
                 );
               })}
@@ -503,7 +585,8 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
 
             <Text style={styles.sectionHeading}>Reason for Visit</Text>
             <Input
-              placeholder="Please describe symptoms, follow up needs, or question detail..."
+              label="Reason for Visit"
+              hint="Describe your symptoms, follow-up needs, or questions"
               value={reason}
               onChangeText={handleReasonChange}
               multiline
@@ -537,9 +620,11 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
                 <Text style={styles.docSpec}>{selectedDoctor.specialization}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary }}>Consultation Fee</Text>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary }}>
+                  {FORMAT_LABELS[selectedFormat]} Fee
+                </Text>
                 <Text style={{ fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.secondary[600] }}>
-                  ${selectedDoctor.consultationFee}.00
+                  ₦{getActiveFee(selectedDoctor, selectedFormat).toLocaleString()}
                 </Text>
               </View>
             </Card>
@@ -651,7 +736,7 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
 
             <View style={styles.footerBtns}>
               <Button
-                label={`Pay $${selectedDoctor.consultationFee}.00 & Continue`}
+                label={`Pay ₦${getActiveFee(selectedDoctor, selectedFormat).toLocaleString()} & Continue`}
                 onPress={handleProcessPayment}
                 isLoading={isPaymentLoading}
               />
@@ -701,13 +786,11 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
                 <Divider spacing={3} />
 
                 <View style={styles.confirmItem}>
-                  <Text style={styles.confirmLabel}>Consultation Mode</Text>
+                  <Text style={styles.confirmLabel}>Consultation Type</Text>
                   <Text style={styles.confirmValue}>
                     {appointmentType === 'in_person'
                       ? 'In Person Visit'
-                      : appointmentType === 'video'
-                      ? 'Video Consultation'
-                      : 'Phone Consultation'}
+                      : FORMAT_LABELS[selectedFormat]}
                   </Text>
                 </View>
 
@@ -724,7 +807,7 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
                   <Text style={styles.confirmLabel}>Consultation Fee</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Text style={[styles.confirmValue, styles.feeValue]}>
-                      ${selectedDoctor.consultationFee}.00
+                      ₦{getActiveFee(selectedDoctor, selectedFormat).toLocaleString()}
                     </Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 }}>
                       <Ionicons name="checkmark-circle" size={14} color="#10B981" />
@@ -764,6 +847,7 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
       </View>
 
       <LoadingOverlay visible={bookMutation.isPending} message="Booking appointment..." />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -982,6 +1066,7 @@ const styles = StyleSheet.create({
   detailsForm: {
     padding: Spacing[4],
     flexGrow: 1,
+    paddingBottom: 320, // generous space so keyboard never covers the input or the CTA button
   },
   typeRow: {
     flexDirection: 'row',
@@ -1012,10 +1097,67 @@ const styles = StyleSheet.create({
     color: Colors.secondary[600],
     fontWeight: FontWeight.bold,
   },
+  // ── Unified Consultation Type grid ────────────────────────────────────────
+  consultTypeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing[3],
+    marginBottom: Spacing[4],
+  },
+  consultTypeCard: {
+    width: '47%',
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    borderRadius: 16,
+    paddingVertical: Spacing[4],
+    paddingHorizontal: Spacing[3],
+    alignItems: 'center',
+    gap: 4,
+    ...Shadows.xs,
+  },
+  consultTypeCardActive: {
+    borderColor: Colors.secondary[600],
+    backgroundColor: Colors.secondary[50],
+  },
+  consultTypeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  consultTypeIconActive: {
+    backgroundColor: Colors.secondary[600],
+  },
+  consultTypeLabel: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  consultTypeLabelActive: {
+    color: Colors.secondary[600],
+  },
+  consultTypeDesc: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    fontWeight: FontWeight.medium,
+  },
+  consultTypeFee: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: Colors.secondary[600],
+    marginTop: 2,
+  },
+  consultTypeFeeActive: {
+    color: Colors.secondary[700] ?? Colors.secondary[600],
+  },
   visitInput: {
     height: 120,
     textAlignVertical: 'top',
-    marginBottom: Spacing[6],
+    marginBottom: Spacing[3],
   },
   confirmScroll: {
     paddingBottom: Spacing[4],

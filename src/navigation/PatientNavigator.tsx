@@ -19,6 +19,7 @@ import PrescriptionHistoryScreen from '../screens/patient/PrescriptionHistoryScr
 import NotificationsScreen from '../screens/shared/NotificationsScreen';
 import SettingsScreen from '../screens/shared/SettingsScreen';
 import ProfileEditScreen from '../screens/shared/ProfileEditScreen';
+import ChangePasswordScreen from '../screens/shared/ChangePasswordScreen';
 import PharmacyScreen from '../screens/patient/PharmacyScreen';
 import HospitalsScreen from '../screens/patient/HospitalsScreen';
 import DoctorProfileScreen from '../screens/patient/DoctorProfileScreen';
@@ -37,6 +38,7 @@ import WearableSyncScreen from '../screens/patient/WearableSyncScreen';
 import PremiumScreen from '../screens/patient/PremiumScreen';
 import AIHealthInsightsScreen from '../screens/patient/AIHealthInsightsScreen';
 import SpecialistsScreen from '../screens/patient/SpecialistsScreen';
+import PaymentResultScreen from '../screens/patient/PaymentResultScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -103,6 +105,7 @@ export const PatientNavigator = () => (
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Settings" component={SettingsScreen} />
     <Stack.Screen name="ProfileEdit" component={ProfileEditScreen} />
+    <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ animation: 'slide_from_right' }} />
     <Stack.Screen name="ConsultationChat" component={ConsultationChatScreen} />
     <Stack.Screen name="HelpCenter" component={HelpCenterScreen} />
     <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
@@ -114,6 +117,11 @@ export const PatientNavigator = () => (
     <Stack.Screen name="Premium" component={PremiumScreen} />
     <Stack.Screen name="AIHealthInsights" component={AIHealthInsightsScreen} />
     <Stack.Screen name="Specialists" component={SpecialistsScreen} />
+    <Stack.Screen
+      name="PaymentResult"
+      component={PaymentResultScreen}
+      options={{ animation: 'fade', gestureEnabled: false }}
+    />
   </Stack.Navigator>
 );
 

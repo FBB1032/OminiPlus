@@ -7,27 +7,56 @@ import {
   SafeAreaView,
   Switch,
   ScrollView,
+  Modal,
   Platform,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
+import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
 import { authService } from '../../services/authService';
 import { useAuth } from '../../hooks/useAuth';
 import { storageService } from '../../services/storageService';
 import { STORAGE_KEYS } from '../../constants/config';
-import { Divider, Button, LoadingOverlay } from '../../components';
+import { Divider, LoadingOverlay } from '../../components';
 import { RoleLegalModal } from '../../components/legal/RoleLegalModal';
+
+// ─── Language catalogue ───────────────────────────────────────────────────────
+
+const LANGUAGES = [
+  { code: 'en',    label: 'English',              native: 'English',          flag: '🇬🇧' },
+  { code: 'yo',    label: 'Yoruba',               native: 'Yorùbá',           flag: '🇳🇬' },
+  { code: 'ha',    label: 'Hausa',                native: 'Hausa',            flag: '🇳🇬' },
+  { code: 'ig',    label: 'Igbo',                 native: 'Igbo',             flag: '🇳🇬' },
+  { code: 'pcm',   label: 'Nigerian Pidgin',      native: 'Naija',            flag: '🇳🇬' },
+  { code: 'fr',    label: 'French',               native: 'Français',         flag: '🇫🇷' },
+  { code: 'ar',    label: 'Arabic',               native: 'العربية',          flag: '🇸🇦' },
+];
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen({ navigation }: any) {
   const { user } = useAuth();
-  const [pushNotifications, setPushNotifications] = useState(true);
+  const userRole: 'patient' | 'doctor' = user?.role === 'doctor' ? 'doctor' : 'patient';
+
+  // ── Notification toggles ─────────────────────────────────────────────────
+  const [pushNotifications,  setPushNotifications]  = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
-  const [biometrics, setBiometrics] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [biometrics,         setBiometrics]         = useState(false);
+
+  // ── Appearance ───────────────────────────────────────────────────────────
+  const [darkMode, setDarkMode] = useState(false);
+
+  // ── Language ─────────────────────────────────────────────────────────────
+  const [selectedLang,   setSelectedLang]   = useState('en');
+  const [langModalOpen,  setLangModalOpen]  = useState(false);
+
+  // ── Legal / misc ─────────────────────────────────────────────────────────
+  const [loading,         setLoading]         = useState(false);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
-  const userRole: 'patient' | 'doctor' = user?.role === 'doctor' ? 'doctor' : 'patient';
+  const currentLang = LANGUAGES.find(l => l.code === selectedLang)!;
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSignOut = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -37,13 +66,8 @@ export default function SettingsScreen({ navigation }: any) {
         style: 'destructive',
         onPress: async () => {
           setLoading(true);
-          try {
-            await authService.logout();
-          } catch {
-            // handle error
-          } finally {
-            setLoading(false);
-          }
+          try { await authService.logout(); } catch { /* handled by authService */ }
+          finally { setLoading(false); }
         },
       },
     ]);
@@ -52,7 +76,7 @@ export default function SettingsScreen({ navigation }: any) {
   const handlePreviewOnboarding = () => {
     Alert.alert(
       'Preview Onboarding',
-      'This will reset the onboarding flag and restart the app flow. You will be taken to the onboarding screen.',
+      'This resets the onboarding flag and restarts the app flow.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -66,66 +90,64 @@ export default function SettingsScreen({ navigation }: any) {
     );
   };
 
-  const settingsItems = [
-    {
-      title: 'Preferences',
-      items: [
-        {
-          icon: 'notifications-outline',
-          iconColor: '#3B82F6',
-          label: 'Push Notifications',
-          value: pushNotifications,
-          onValueChange: setPushNotifications,
-          type: 'switch',
-        },
-        {
-          icon: 'mail-outline',
-          iconColor: '#10B981',
-          label: 'Email Notifications',
-          value: emailNotifications,
-          onValueChange: setEmailNotifications,
-          type: 'switch',
-        },
-        {
-          icon: 'finger-print-outline',
-          iconColor: '#F59E0B',
-          label: 'Face ID / Fingerprint',
-          value: biometrics,
-          onValueChange: setBiometrics,
-          type: 'switch',
-        },
-      ],
-    },
-    {
-      title: 'Support & Legal',
-      items: [
-        {
-          icon: 'help-circle-outline',
-          iconColor: '#8B5CF6',
-          label: 'Help Center & Support Desk',
-          type: 'link',
-          onPress: () => navigation.navigate('HelpCenter'),
-        },
-        {
-          icon: 'document-text-outline',
-          iconColor: '#EF4444',
-          label: userRole === 'doctor' ? 'Provider Terms & 10% Fee Policy' : 'Patient Telehealth Terms',
-          type: 'link',
-          onPress: () => setIsLegalModalOpen(true),
-        },
-        {
-          icon: 'shield-checkmark-outline',
-          iconColor: '#EC4899',
-          label: 'Privacy Policy (EHR Protection)',
-          type: 'link',
-          onPress: () => navigation.navigate('PrivacyPolicy'),
-        },
-      ],
-    },
-  ];
+  // ── Section renderer helpers ──────────────────────────────────────────────
+
+  const SectionHeader = ({ title }: { title: string }) => (
+    <Text style={styles.groupTitle}>{title}</Text>
+  );
+
+  const RowSwitch = ({
+    icon, iconColor, label, subtitle, value, onValueChange,
+  }: {
+    icon: string; iconColor: string; label: string; subtitle?: string;
+    value: boolean; onValueChange: (v: boolean) => void;
+  }) => (
+    <View style={styles.itemRow}>
+      <View style={styles.itemLeft}>
+        <View style={[styles.iconBg, { backgroundColor: iconColor + '20' }]}>
+          <Ionicons name={icon as any} size={20} color={iconColor} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.itemLabel}>{label}</Text>
+          {subtitle ? <Text style={styles.itemSub}>{subtitle}</Text> : null}
+        </View>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: Colors.border, true: Colors.primary[300] }}
+        thumbColor={value ? Colors.primary[600] : Colors.neutral[300]}
+        ios_backgroundColor={Colors.border}
+      />
+    </View>
+  );
+
+  const RowLink = ({
+    icon, iconColor, label, subtitle, value, onPress, danger,
+  }: {
+    icon: string; iconColor: string; label: string; subtitle?: string;
+    value?: string; onPress: () => void; danger?: boolean;
+  }) => (
+    <TouchableOpacity style={styles.itemRow} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.itemLeft}>
+        <View style={[styles.iconBg, { backgroundColor: (danger ? '#EF4444' : iconColor) + '20' }]}>
+          <Ionicons name={icon as any} size={20} color={danger ? '#EF4444' : iconColor} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.itemLabel, danger && { color: '#EF4444' }]}>{label}</Text>
+          {subtitle ? <Text style={styles.itemSub}>{subtitle}</Text> : null}
+        </View>
+      </View>
+      <View style={styles.rowRight}>
+        {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+        <Ionicons name="chevron-forward" size={18} color={Colors.neutral[400]} />
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -134,78 +156,206 @@ export default function SettingsScreen({ navigation }: any) {
         >
           <Ionicons name="arrow-back" size={24} color={Colors.text.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>App Settings</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Support & Legal Section */}
-        {settingsItems.map((group, groupIdx) => (
-          <View key={groupIdx} style={styles.groupContainer}>
-            <Text style={styles.groupTitle}>{group.title}</Text>
-            <View style={styles.groupCard}>
-              {group.items.map((item, itemIdx) => {
-                const itemAny = item as any;
-                return (
-                  <View key={itemIdx}>
-                    <View style={styles.itemRow}>
-                      <View style={styles.itemLeft}>
-                        <View style={[styles.iconBg, { backgroundColor: item.iconColor + '15' }]}>
-                          <Ionicons name={item.icon as any} size={20} color={item.iconColor} />
-                        </View>
-                        <Text style={styles.itemLabel}>{item.label}</Text>
-                      </View>
 
-                      {item.type === 'switch' ? (
-                        <Switch
-                          value={itemAny.value}
-                          onValueChange={itemAny.onValueChange}
-                          trackColor={{ false: Colors.border, true: Colors.primary[300] }}
-                          thumbColor={itemAny.value ? Colors.primary[600] : Colors.neutral[300]}
-                          ios_backgroundColor={Colors.border}
-                        />
-                      ) : (
-                        <TouchableOpacity onPress={itemAny.onPress} style={styles.itemRightBtn}>
-                          <Ionicons name="chevron-forward" size={20} color={Colors.neutral[400]} />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {itemIdx < group.items.length - 1 && <Divider spacing={0} />}
-                  </View>
-                );
-              })}
-            </View>
+        {/* ════════ NOTIFICATIONS ════════ */}
+        <View style={styles.groupContainer}>
+          <SectionHeader title="Notifications" />
+          <View style={styles.groupCard}>
+            <RowSwitch
+              icon="notifications-outline" iconColor="#3B82F6"
+              label="Push Notifications"
+              subtitle="In-app alerts for appointments and messages"
+              value={pushNotifications} onValueChange={setPushNotifications}
+            />
+            <Divider spacing={0} />
+            <RowSwitch
+              icon="mail-outline" iconColor="#10B981"
+              label="Email Notifications"
+              subtitle="Booking confirmations and reminders"
+              value={emailNotifications} onValueChange={setEmailNotifications}
+            />
+            <Divider spacing={0} />
+            <RowSwitch
+              icon="finger-print-outline" iconColor="#F59E0B"
+              label="Face ID / Fingerprint"
+              subtitle="Use biometrics to unlock the app"
+              value={biometrics} onValueChange={setBiometrics}
+            />
           </View>
-        ))}
-
-        <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>Omini Pulse v1.0.0</Text>
-          <Text style={styles.userEmail}>Logged in as: {user?.email} ({userRole})</Text>
         </View>
 
+        {/* ════════ APPEARANCE ════════ */}
+        <View style={styles.groupContainer}>
+          <SectionHeader title="Appearance" />
+          <View style={styles.groupCard}>
+            <RowSwitch
+              icon={darkMode ? 'moon' : 'sunny-outline'}
+              iconColor={darkMode ? '#6366F1' : '#F59E0B'}
+              label="Dark Mode"
+              subtitle={darkMode ? 'Dark theme active' : 'Light theme active'}
+              value={darkMode}
+              onValueChange={(v) => {
+                setDarkMode(v);
+                // Wire into your ThemeContext here when ready
+              }}
+            />
+          </View>
+        </View>
+
+        {/* ════════ LANGUAGE ════════ */}
+        <View style={styles.groupContainer}>
+          <SectionHeader title="Language" />
+          <View style={styles.groupCard}>
+            <RowLink
+              icon="language-outline" iconColor="#0F6E6E"
+              label="App Language"
+              subtitle="Choose the language for the interface"
+              value={`${currentLang.flag}  ${currentLang.label}`}
+              onPress={() => setLangModalOpen(true)}
+            />
+          </View>
+        </View>
+
+        {/* ════════ SECURITY ════════ */}
+        <View style={styles.groupContainer}>
+          <SectionHeader title="Security" />
+          <View style={styles.groupCard}>
+            <RowLink
+              icon="lock-closed-outline" iconColor="#7C3AED"
+              label="Change Password"
+              subtitle="Update your account password"
+              onPress={() => navigation.navigate('ChangePassword')}
+            />
+          </View>
+        </View>
+
+        {/* ════════ SUPPORT & LEGAL ════════ */}
+        <View style={styles.groupContainer}>
+          <SectionHeader title="Support & Legal" />
+          <View style={styles.groupCard}>
+            <RowLink
+              icon="help-circle-outline" iconColor="#8B5CF6"
+              label="Help Center & Support"
+              onPress={() => navigation.navigate('HelpCenter')}
+            />
+            <Divider spacing={0} />
+            <RowLink
+              icon="document-text-outline" iconColor="#EF4444"
+              label={userRole === 'doctor' ? 'Provider Terms & 10% Fee Policy' : 'Patient Telehealth Terms'}
+              onPress={() => setIsLegalModalOpen(true)}
+            />
+            <Divider spacing={0} />
+            <RowLink
+              icon="shield-checkmark-outline" iconColor="#EC4899"
+              label="Privacy Policy (EHR Protection)"
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+            />
+          </View>
+        </View>
+
+        {/* ── Version info ── */}
+        <View style={styles.versionContainer}>
+          <Text style={styles.versionText}>OminiPulse v1.0.0</Text>
+          <Text style={styles.userEmail}>Signed in as {user?.email}</Text>
+        </View>
+
+        {/* ── Sign out ── */}
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color={Colors.error.main} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
+
       </ScrollView>
 
-      {/* Role-Based Legal Terms & Policy Modal */}
+      {/* ════════ LANGUAGE PICKER MODAL ════════ */}
+      <Modal
+        visible={langModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLangModalOpen(false)}
+        statusBarTranslucent
+      >
+        <View style={styles.langOverlay}>
+          <TouchableOpacity
+            style={StyleSheet.absoluteFillObject}
+            activeOpacity={1}
+            onPress={() => setLangModalOpen(false)}
+          />
+          <View style={styles.langSheet}>
+            {/* Handle */}
+            <View style={styles.sheetHandle} />
+
+            <Text style={styles.langSheetTitle}>Select Language</Text>
+            <Text style={styles.langSheetSub}>
+              Choose the language used throughout the app interface.
+            </Text>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.langList}
+            >
+              {LANGUAGES.map((lang, idx) => {
+                const active = selectedLang === lang.code;
+                return (
+                  <TouchableOpacity
+                    key={lang.code}
+                    style={[styles.langRow, active && styles.langRowActive]}
+                    onPress={() => {
+                      setSelectedLang(lang.code);
+                      setLangModalOpen(false);
+                      // Wire into i18n / locale context here when ready
+                    }}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.langLabel, active && styles.langLabelActive]}>
+                        {lang.label}
+                      </Text>
+                      {lang.native !== lang.label && (
+                        <Text style={styles.langNative}>{lang.native}</Text>
+                      )}
+                    </View>
+                    {active && (
+                      <Ionicons name="checkmark-circle" size={22} color={Colors.primary[600]} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            <TouchableOpacity
+              style={styles.langCloseBtn}
+              onPress={() => setLangModalOpen(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.langCloseBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <RoleLegalModal
         visible={isLegalModalOpen}
         onClose={() => setIsLegalModalOpen(false)}
         role={userRole}
       />
 
-      <LoadingOverlay visible={loading} message="Signing out..." />
+      <LoadingOverlay visible={loading} message="Signing out…" />
     </SafeAreaView>
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  safeArea: { flex: 1, backgroundColor: Colors.background },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -216,29 +366,24 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.border,
     backgroundColor: Colors.surface,
   },
-  backBtn: {
-    padding: Spacing[1],
-  },
-  headerTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
-  placeholder: {
-    width: 24,
-  },
+  backBtn:     { padding: Spacing[1] },
+  headerTitle: { fontSize: FontSize.md, fontWeight: FontWeight.bold, color: Colors.text.primary },
+  placeholder: { width: 24 },
+
   scrollContent: {
     padding: Spacing[4],
     gap: Spacing[5],
+    paddingBottom: Spacing[12],
   },
-  groupContainer: {
-    gap: Spacing[2],
-  },
+
+  // ── Groups ────────────────────────────────────────────────────────────────
+  groupContainer: { gap: Spacing[2] },
   groupTitle: {
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
     color: Colors.text.secondary,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
     paddingLeft: Spacing[1],
   },
   groupCard: {
@@ -249,47 +394,58 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
     ...Shadows.xs,
   },
+
+  // ── Row base ──────────────────────────────────────────────────────────────
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing[4],
+    paddingVertical: Spacing[3],
     paddingHorizontal: Spacing[4],
+    minHeight: 60,
+    gap: Spacing[2],
   },
   itemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing[3],
+    flex: 1,
   },
   iconBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
   itemLabel: {
     fontSize: FontSize.base,
-    color: Colors.text.primary,
     fontWeight: FontWeight.medium,
+    color: Colors.text.primary,
   },
-  itemRightBtn: {
-    padding: Spacing[1],
-  },
-  versionContainer: {
-    alignItems: 'center',
-    marginTop: Spacing[6],
-    gap: 4,
-  },
-  versionText: {
+  itemSub: {
     fontSize: FontSize.xs,
+    color: Colors.text.secondary,
+    marginTop: 1,
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[2],
+    flexShrink: 0,
+  },
+  rowValue: {
+    fontSize: FontSize.sm,
     color: Colors.text.secondary,
     fontWeight: FontWeight.medium,
   },
-  userEmail: {
-    fontSize: FontSize.xs,
-    color: Colors.text.disabled,
-  },
+
+  // ── Version / sign-out ────────────────────────────────────────────────────
+  versionContainer: { alignItems: 'center', gap: 4, marginTop: Spacing[4] },
+  versionText: { fontSize: FontSize.xs, color: Colors.text.secondary, fontWeight: FontWeight.medium },
+  userEmail:   { fontSize: FontSize.xs, color: Colors.text.disabled },
+
   signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -300,18 +456,94 @@ const styles = StyleSheet.create({
     borderColor: Colors.error.main,
     borderRadius: 16,
     height: 52,
-    marginTop: Spacing[4],
-    marginBottom: Spacing[8],
+    marginTop: Spacing[2],
+    marginBottom: Spacing[6],
     ...Shadows.xs,
   },
-  signOutText: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.bold,
-    color: Colors.error.main,
+  signOutText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.error.main },
+
+  // ── Language modal ────────────────────────────────────────────────────────
+  langOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15,23,42,0.5)',
+    justifyContent: 'flex-end',
   },
-  devSubtitle: {
+  langSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    maxHeight: '75%',
+    ...Shadows.xl,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: Colors.border,
+    alignSelf: 'center',
+    marginTop: Spacing[3],
+    marginBottom: Spacing[2],
+  },
+  langSheetTitle: {
+    fontSize: FontSize.lg,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing[5],
+    marginTop: Spacing[1],
+  },
+  langSheetSub: {
+    fontSize: FontSize.xs,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    paddingHorizontal: Spacing[5],
+    marginTop: 4,
+    marginBottom: Spacing[3],
+  },
+  langList: {
+    paddingHorizontal: Spacing[4],
+    gap: Spacing[2],
+    paddingBottom: Spacing[3],
+  },
+  langRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    paddingVertical: Spacing[3],
+    paddingHorizontal: Spacing[4],
+    borderRadius: 14,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  langRowActive: {
+    backgroundColor: Colors.primary[50],
+    borderColor: Colors.primary[600],
+  },
+  langFlag: { fontSize: 24 },
+  langLabel: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
+  },
+  langLabelActive: { color: Colors.primary[700] ?? Colors.primary[600] },
+  langNative: {
     fontSize: FontSize.xs,
     color: Colors.text.secondary,
     marginTop: 1,
+  },
+  langCloseBtn: {
+    marginHorizontal: Spacing[5],
+    marginTop: Spacing[3],
+    backgroundColor: Colors.primary[600],
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  langCloseBtnText: {
+    fontSize: FontSize.base,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
   },
 });

@@ -6,6 +6,35 @@
 
 ---
 
+## ❄️ MVP Feature Freezes (Effective August 2026)
+
+The following features were frozen before MVP launch to reduce scope, maintenance overhead, and launch risk. Each has a documented MVP replacement strategy. All frozen screens and stores are preserved in the codebase and marked for Phase 2 re-activation.
+
+| # | Feature | Reason Frozen | MVP Replacement | Phase |
+|---|---------|---------------|-----------------|-------|
+| 1 | **Smartwatch Sync** (BLE / HealthKit / Health Connect) | Low wearable penetration in target market; high SDK maintenance overhead | `WearableSyncScreen` replaced with manual vitals entry CTA pointing to Chronic Care Tracker | Phase 2 |
+| 2 | **GPS Blood Donor & ICU Locator** | Requires active network ops and constant hospital DB updates to be useful | `BloodDonors` entry point removed from home quick-actions and `See All` modal. Screen still navigable via deep link. | Phase 2 |
+| 3 | **Deepgram Voice-to-SOAP Generator** | High API latency/cost per call; poor recognition of Nigerian accents and medical slang | Admin SOAP tab retains structured S/O/A/P text inputs. A freeze notice banner is shown above the notes form. | Phase 2 |
+| 4 | **Cryptographic XOR-Fold NDPA Exporter** | Over-engineered for launch; standard PDF export is legally sufficient for NDPA data portability | `PatientProfileScreen` "My Data & Privacy" section gains a **Download My Data (PDF)** action that requests an email export | Phase 2 |
+| 5 | **6-Tier Admin RBAC** | Managing 6 permission tiers adds backend logic bloat before having active users | Collapsed to 2 roles: `admin` (full access) and `doctor` (workspace only). `isAdmin: boolean` flag on the `Admin` type effectively represents the split. | Phase 2 |
+| 6 | **Pharmacy Radar & Direct Checkout** | Managing pharmacy inventory APIs and drug-fulfillment logistics delays launch | `PharmacyScreen` replaced with MDCN-stamped PDF e-prescription download + static list of nearby pharmacies | Phase 2 |
+
+### Files Changed by Freeze
+
+```
+src/screens/patient/WearableSyncScreen.tsx          — Freeze #1: replaced
+src/screens/patient/PharmacyScreen.tsx              — Freeze #6: replaced
+src/screens/patient/PatientHomeScreen.tsx           — Freeze #2: BloodDonors removed from quick-actions
+src/screens/patient/PatientProfileScreen.tsx        — Freeze #4: "Download My Data (PDF)" added; Wearable entry removed
+admin/src/types/index.ts                            — Freeze #5: AdminRole collapsed to 'admin' | 'doctor'
+admin/src/store/permissionStore.ts                  — Freeze #5: ROLE_PERMISSIONS map updated
+admin/src/store/authStore.ts                        — Freeze #5: MOCK_ADMINS reduced to 2 entries
+admin/src/app/dashboard/security/page.tsx           — Freeze #5: mock admin roles + invite form options updated
+admin/src/app/dashboard/doctor-portal/page.tsx      — Freeze #3: Voice-to-SOAP freeze notice added to SOAP tab
+```
+
+---
+
 ## 🧭 Executive Summary & Handover Context
 
 OminiPulse is an all-in-one e-Health platform built for the African market (starting with Nigeria), providing digital telehealth consultations, e-prescriptions, GPS pharmacy/hospital directories, blood donor matching, and electronic health record (EHR) management.

@@ -167,8 +167,22 @@ const routes: Array<{
     test: (p) => p === '/auth/login',
     handle: (config) => {
       const payload = parsePayload(config.data);
-      const email = (payload.email as string) || 'patient@ominipulse.ai';
-      const role = email.toLowerCase().includes('doctor') ? 'doctor' : 'patient';
+      const email = ((payload.email as string) || '').toLowerCase().trim();
+
+      // ── Seed: verified doctor account ──────────────────────────────────────
+      if (email === 'doctor@ominipulse.ai') {
+        return {
+          user: VERIFIED_DOCTOR_USER,
+          tokens: {
+            accessToken: 'mock-access-token-doctor-verified',
+            refreshToken: 'mock-refresh-token-doctor-verified',
+            expiresAt: Date.now() + 3600 * 1000,
+          },
+        };
+      }
+
+      // ── Generic role detection (legacy) ────────────────────────────────────
+      const role = email.includes('doctor') ? 'doctor' : 'patient';
       return {
         user: {
           id: `mock-user-${Date.now()}`,
@@ -178,7 +192,10 @@ const routes: Array<{
           role,
           phone: '+234 803 555 1234',
           createdAt: new Date().toISOString(),
-          isApproved: role === 'doctor' ? !email.toLowerCase().includes('unapproved') : true,
+          isApproved: role === 'doctor' ? !email.includes('unapproved') : true,
+          verificationStatus: role === 'doctor'
+            ? (email.includes('unapproved') ? 'pending' : 'approved')
+            : undefined,
           avatarUrl:
             role === 'doctor'
               ? MOCK_DOCTOR_1.avatarUrl
@@ -301,20 +318,7 @@ const routes: Array<{
   {
     method: 'get',
     test: (p) => p === '/auth/me',
-    handle: () => ({
-      id: 'mock-user-123',
-      email: 'patient@ominipulse.ai',
-      firstName: 'Alex',
-      lastName: 'Opara',
-      role: 'patient',
-      createdAt: new Date().toISOString(),
-      height: 172,
-      weight: 68.5,
-      bloodGroup: 'O+',
-      genotype: 'AA',
-      dateOfBirth: '1994-06-05',
-      age: 32,
-    }),
+    handle: () => VERIFIED_DOCTOR_USER,
   },
 
   // ── Doctor Dashboard ────────────────────────────────────────────────────────
@@ -374,10 +378,11 @@ const routes: Array<{
           id: 'appt-1',
           patient: MOCK_PATIENT_1,
           doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date().toISOString(),
+          scheduledAt: new Date(Date.now() + 1 * 3600 * 1000).toISOString(),
           duration: 30,
           type: 'video',
           status: 'pending',
+          fee: 15000,
           reason: 'Regular diabetes follow-up consultation',
           soapSummary: MOCK_SOAP_1,
           createdAt: new Date().toISOString(),
@@ -389,14 +394,39 @@ const routes: Array<{
           scheduledAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
           duration: 45,
           type: 'in_person',
-          status: 'approved',
+          status: 'scheduled',
+          fee: 10000,
           reason: 'Post-surgery cardiovascular checkup',
           soapSummary: MOCK_SOAP_2,
           createdAt: new Date().toISOString(),
         },
+        {
+          id: 'appt-3',
+          patient: MOCK_PATIENT_1,
+          doctor: MOCK_DOCTOR_1,
+          scheduledAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+          duration: 30,
+          type: 'phone',
+          status: 'completed',
+          fee: 8000,
+          reason: 'Hypertension medication review and dosage adjustment',
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'appt-4',
+          patient: MOCK_PATIENT_2,
+          doctor: MOCK_DOCTOR_1,
+          scheduledAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+          duration: 30,
+          type: 'chat',
+          status: 'pending',
+          fee: 8000,
+          reason: 'Follow-up on cholesterol management plan and lab results review',
+          createdAt: new Date().toISOString(),
+        },
       ],
       ...PAGINATED_META,
-      total: 2,
+      total: 4,
     }),
   },
   {
@@ -923,7 +953,30 @@ routes.push(
   }
 );
 
-// ─── Public Entry Point ───────────────────────────────────────────────────────
+// ─── Verified Doctor Seed Account ────────────────────────────────────────────
+// Login: doctor@ominipulse.ai / any password
+// Full MDCN-verified profile, approved, cardiology specialist.
+
+const VERIFIED_DOCTOR_USER = {
+  id: 'doctor-seed-001',
+  email: 'doctor@ominipulse.ai',
+  firstName: 'Folake',
+  lastName: 'Ademola',
+  role: 'doctor',
+  phone: '+234 803 111 9988',
+  createdAt: '2024-01-15T08:00:00.000Z',
+  isApproved: true,
+  verificationStatus: 'approved',
+  specialization: 'Cardiology',
+  licenseNumber: 'MDCN-LIC-98754-C3',
+  clinicName: 'OmniPulse Heart & Wellness Clinic',
+  experienceYears: 12,
+  rating: 4.9,
+  avatarUrl: 'https://images.unsplash.com/photo-1594824813573-246434e33963?w=300',
+  gender: 'female',
+};
+
+
 
 export function getMockResponse(
   config: InternalAxiosRequestConfig | undefined

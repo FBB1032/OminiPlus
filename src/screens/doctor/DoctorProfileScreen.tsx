@@ -7,8 +7,6 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
@@ -21,9 +19,14 @@ export default function DoctorProfileScreen({ navigation }: any) {
   const { user } = useAuth();
   const { success: showSuccess, error: showError } = useToast();
 
-  const [consultationFee, setConsultationFee] = useState('15,000');
+  // ── Tiered consultation fees (Chat < Audio < Video) ──────────────────────
+  // Platform minimum ₦2,000 per session — enforced on save.
+  const MIN_FEE = 2000;
+  const [tierFees, setTierFees] = useState({ chat: 8000, audio: 10000, video: 15000 });
   const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
-  const [feeInput, setFeeInput] = useState('');
+  const [feeInputChat,  setFeeInputChat]  = useState('');
+  const [feeInputAudio, setFeeInputAudio] = useState('');
+  const [feeInputVideo, setFeeInputVideo] = useState('');
 
   // Bank Account State (Task 2)
   const [bankName, setBankName] = useState('Wema Bank');
@@ -39,12 +42,9 @@ export default function DoctorProfileScreen({ navigation }: any) {
   const [isBioModalOpen, setIsBioModalOpen] = useState(false);
   const [bioInput, setBioInput] = useState('');
 
-  // Platform Service Fee Calculator Math
-  const PLATFORM_FEE_PERCENT = 10; // 10% Platform Service Fee
-  const cleanFeeInput = feeInput.replace(/,/g, '');
-  const parsedFeeInput = parseFloat(cleanFeeInput) || 0;
-  const platformFeeAmount = (parsedFeeInput * (PLATFORM_FEE_PERCENT / 100));
-  const netTakeHomeEarnings = Math.max(0, parsedFeeInput - platformFeeAmount);
+  // Platform Service Fee Calculator — uses chat tier as representative basis
+  const PLATFORM_FEE_PERCENT = 10;
+  const calcNet = (gross: number) => Math.max(0, gross - gross * (PLATFORM_FEE_PERCENT / 100));
 
   const handleOpenBioEdit = () => {
     setBioInput(bio);
@@ -81,19 +81,35 @@ export default function DoctorProfileScreen({ navigation }: any) {
   };
 
   const handleOpenFeeEdit = () => {
-    setFeeInput(consultationFee);
+    setFeeInputChat(tierFees.chat.toString());
+    setFeeInputAudio(tierFees.audio.toString());
+    setFeeInputVideo(tierFees.video.toString());
     setIsFeeModalOpen(true);
   };
 
-  const handleSaveFee = () => {
-    const val = parseFloat(feeInput.replace(/,/g, ''));
-    if (isNaN(val) || val < 0) {
-      showError('Invalid Amount', 'Please enter a valid consultation fee.');
+  const handleSaveTieredFee = () => {
+    const parsedChat = Math.max(0, parseFloat(feeInputChat.replace(/,/g, '')) || 0);
+    const parsedAudio = Math.max(0, parseFloat(feeInputAudio.replace(/,/g, '')) || 0);
+    const parsedVideo = Math.max(0, parseFloat(feeInputVideo.replace(/,/g, '')) || 0);
+
+    // Enforce minimum fee floor
+    if (parsedChat < MIN_FEE || parsedAudio < MIN_FEE || parsedVideo < MIN_FEE) {
+      showError('Minimum Fee Required', `All tiers must be at least ₦${MIN_FEE.toLocaleString()}.`);
       return;
     }
-    setConsultationFee(val.toLocaleString());
+
+    // Ensure tiered pricing: Chat < Audio < Video
+    if (parsedChat >= parsedAudio || parsedAudio >= parsedVideo) {
+      showError('Invalid Tier Pricing', 'Chat fee must be less than Audio, which must be less than Video.');
+      return;
+    }
+
+    setTierFees({ chat: parsedChat, audio: parsedAudio, video: parsedVideo });
     setIsFeeModalOpen(false);
-    showSuccess('Fee Updated', `Consultation fee set to ₦${val.toLocaleString()}`);
+    showSuccess(
+      'Tiered Fees Updated', 
+      `Chat: ₦${parsedChat.toLocaleString()}, Audio: ₦${parsedAudio.toLocaleString()}, Video: ₦${parsedVideo.toLocaleString()}`
+    );
   };
 
   const handleSignOut = () => {
@@ -113,6 +129,11 @@ export default function DoctorProfileScreen({ navigation }: any) {
       icon: 'person-outline',
       label: 'Edit Profile',
       onPress: () => navigation.navigate('ProfileEdit'),
+    },
+    {
+      icon: 'key-outline',
+      label: 'Change Password',
+      onPress: () => navigation.navigate('ChangePassword'),
     },
     {
       icon: 'settings-outline',
@@ -205,15 +226,25 @@ export default function DoctorProfileScreen({ navigation }: any) {
             </View>
             <Divider spacing={3} />
 
-            {/* Editable Consultation Fee Row */}
+            {/* Editable Tiered Consultation Fees Row */}
             <TouchableOpacity
               style={styles.infoRow}
               onPress={handleOpenFeeEdit}
               activeOpacity={0.7}
             >
-              <Text style={styles.infoLabel}>Consultation Fee</Text>
+              <Text style={styles.infoLabel}>Consultation Fees</Text>
               <View style={styles.feeValueRow}>
-                <Text style={styles.feeValue}>₦{consultationFee} / visit</Text>
+                <View style={styles.tierFeeSummary}>
+                  <Text style={styles.feeValue}>
+                    Chat: ₦{tierFees.chat.toLocaleString()}
+                  </Text>
+                  <Text style={styles.feeValue}>
+                    Audio: ₦{tierFees.audio.toLocaleString()}
+                  </Text>
+                  <Text style={styles.feeValue}>
+                    Video: ₦{tierFees.video.toLocaleString()}
+                  </Text>
+                </View>
                 <View style={styles.editBadge}>
                   <Ionicons name="create-outline" size={13} color={Colors.primary[600]} />
                   <Text style={styles.editBadgeText}>Edit</Text>
@@ -313,11 +344,11 @@ export default function DoctorProfileScreen({ navigation }: any) {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Edit Consultation Fee Modal (Platform Fee Calculator) */}
+      {/* Edit Tiered Consultation Fees Modal */}
       <AppModal
         visible={isFeeModalOpen}
         onClose={() => setIsFeeModalOpen(false)}
-        title="Set Consultation Fee"
+        title="Set Tiered Consultation Fees"
         contentStyle={{ alignSelf: 'center' }}
         footer={
           <View style={{ flexDirection: 'row', gap: Spacing[3] }}>
@@ -329,67 +360,138 @@ export default function DoctorProfileScreen({ navigation }: any) {
             />
             <Button
               variant="primary"
-              label="Save Fee"
-              onPress={handleSaveFee}
+              label="Save Tiered Fees"
+              onPress={handleSaveTieredFee}
               style={{ flex: 1 }}
             />
           </View>
         }
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalBody}>
-            <View style={styles.feePreviewBanner}>
-              <Ionicons name="cash-outline" size={24} color={Colors.primary[600]} />
-              <View>
-                <Text style={styles.feePreviewLabel}>Current Consultation Fee</Text>
-                <Text style={styles.feePreviewValue}>₦{consultationFee} / visit</Text>
-              </View>
-            </View>
-
-            <Input
-              label="New Consultation Fee (NGN ₦)"
-              placeholder="e.g. 15,000"
-              value={feeInput}
-              onChangeText={setFeeInput}
-              keyboardType="numeric"
-              leftIcon="cash-outline"
-              autoFocus
-              onSubmitEditing={Keyboard.dismiss}
-              blurOnSubmit={true}
-            />
-
-            {/* Platform Service Fee & Math Breakdown Box */}
-            <View style={styles.feeBreakdownCard}>
-              <View style={styles.feeHeader}>
-                <Ionicons name="sparkles" size={16} color="#059669" />
-                <Text style={styles.feeHeaderTitle}>Platform Service Fee Breakdown</Text>
-                <View style={styles.feeBadge}>
-                  <Text style={styles.feeBadgeText}>10% Service Fee</Text>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.modalBody}
+        >
+          {/* Current fees banner */}
+          <View style={styles.feePreviewBanner}>
+            <Ionicons name="layers-outline" size={24} color={Colors.primary[600]} />
+            <View>
+              <Text style={styles.feePreviewLabel}>Current Tiered Fees</Text>
+              <View style={styles.currentTiersRow}>
+                <View style={styles.tierPill}>
+                  <Text style={styles.tierPillLabel}>Chat</Text>
+                  <Text style={styles.tierPillValue}>₦{tierFees.chat.toLocaleString()}</Text>
                 </View>
-              </View>
-
-              <View style={styles.feeMathRow}>
-                <Text style={styles.feeMathLabel}>Patient Pays (Gross Fee):</Text>
-                <Text style={styles.feeMathValue}>₦{parsedFeeInput.toLocaleString()}</Text>
-              </View>
-
-              <View style={styles.feeMathRow}>
-                <Text style={styles.feeMathLabel}>OminiPulse Platform Fee ({PLATFORM_FEE_PERCENT}%):</Text>
-                <Text style={[styles.feeMathValue, { color: '#DC2626' }]}>-₦{platformFeeAmount.toLocaleString()}</Text>
-              </View>
-
-              <View style={styles.feeDivider} />
-
-              <View style={styles.feeTakeHomeBox}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.feeTakeHomeLabel}>You'll Take Home (Net Payout):</Text>
-                  <Text style={styles.feeTakeHomeSub}>Disbursed to your payout bank account</Text>
+                <View style={styles.tierPill}>
+                  <Text style={styles.tierPillLabel}>Audio</Text>
+                  <Text style={styles.tierPillValue}>₦{tierFees.audio.toLocaleString()}</Text>
                 </View>
-                <Text style={styles.feeTakeHomeAmount}>₦{netTakeHomeEarnings.toLocaleString()}</Text>
+                <View style={styles.tierPill}>
+                  <Text style={styles.tierPillLabel}>Video</Text>
+                  <Text style={styles.tierPillValue}>₦{tierFees.video.toLocaleString()}</Text>
+                </View>
               </View>
             </View>
           </View>
-        </TouchableWithoutFeedback>
+
+          <Text style={styles.modalHint}>
+            Set different fees per format. Minimum ₦{MIN_FEE.toLocaleString()} each.
+            Chat must be less than Audio, which must be less than Video.
+          </Text>
+
+          {/* Chat Fee */}
+          <Input
+            label="Chat Consultation Fee (NGN ₦)"
+            hint={`Minimum ₦${MIN_FEE.toLocaleString()} — lowest tier`}
+            value={feeInputChat}
+            onChangeText={setFeeInputChat}
+            keyboardType="numeric"
+            leftIcon="chatbubble-outline"
+            autoFocus
+          />
+
+          {/* Audio Fee */}
+          <Input
+            label="Audio Call Fee (NGN ₦)"
+            hint={`Suggested ₦${(MIN_FEE + 1500).toLocaleString()} or more`}
+            value={feeInputAudio}
+            onChangeText={setFeeInputAudio}
+            keyboardType="numeric"
+            leftIcon="call-outline"
+          />
+
+          {/* Video Fee */}
+          <Input
+            label="Video Call Fee (NGN ₦)"
+            hint={`Suggested ₦${(MIN_FEE + 3000).toLocaleString()} or more`}
+            value={feeInputVideo}
+            onChangeText={setFeeInputVideo}
+            keyboardType="numeric"
+            leftIcon="videocam-outline"
+          />
+
+          {/* Platform Service Fee Breakdown — all 3 tiers, live calc */}
+          <View style={styles.feeBreakdownCard}>
+            <View style={styles.feeHeader}>
+              <Ionicons name="sparkles" size={16} color="#059669" />
+              <Text style={styles.feeHeaderTitle}>Platform Service Fee Breakdown (10%)</Text>
+              <View style={styles.feeBadge}>
+                <Text style={styles.feeBadgeText}>Live</Text>
+              </View>
+            </View>
+
+            {([
+              { label: 'Chat', icon: 'chatbubble', raw: feeInputChat, color: '#7C3AED' },
+              { label: 'Audio Call', icon: 'call', raw: feeInputAudio, color: '#2563EB' },
+              { label: 'Video Call', icon: 'videocam', raw: feeInputVideo, color: '#DC2626' },
+            ] as const).map((tier) => {
+              const gross = Math.max(0, parseFloat((tier.raw as string).replace(/,/g, '')) || 0);
+              const platformFee = +(gross * 0.10).toFixed(2);
+              const net = +(gross * 0.90).toFixed(2);
+              return (
+                <View key={tier.label} style={styles.tierBreakdownRow}>
+                  <View style={styles.tierBreakdownHeader}>
+                    <Ionicons name={tier.icon as any} size={13} color={tier.color} />
+                    <Text style={[styles.tierBreakdownLabel, { color: tier.color }]}>{tier.label}</Text>
+                  </View>
+                  <View style={styles.tierBreakdownMath}>
+                    <View style={styles.feeMathRow}>
+                      <Text style={styles.feeMathLabel}>Patient Pays:</Text>
+                      <Text style={styles.feeMathValue}>₦{gross.toLocaleString()}</Text>
+                    </View>
+                    <View style={styles.feeMathRow}>
+                      <Text style={styles.feeMathLabel}>Platform Fee (10%):</Text>
+                      <Text style={[styles.feeMathValue, { color: '#DC2626' }]}>
+                        −₦{platformFee.toLocaleString()}
+                      </Text>
+                    </View>
+                    <View style={[styles.feeMathRow, styles.netRow]}>
+                      <Text style={styles.feeTakeHomeLabel}>You Receive:</Text>
+                      <Text style={styles.feeTakeHomeAmount}>₦{net.toLocaleString()}</Text>
+                    </View>
+                  </View>
+                </View>
+              );
+            })}
+
+            <View style={styles.feeDivider} />
+
+            {/* Combined total */}
+            <View style={styles.feeTakeHomeBox}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.feeTakeHomeLabel}>Total Net (all 3 tiers):</Text>
+                <Text style={styles.feeTakeHomeSub}>If one of each format is booked</Text>
+              </View>
+              <Text style={styles.feeTakeHomeAmount}>
+                ₦{(
+                  (Math.max(0, parseFloat(feeInputChat.replace(/,/g, ''))  || 0) * 0.90) +
+                  (Math.max(0, parseFloat(feeInputAudio.replace(/,/g, '')) || 0) * 0.90) +
+                  (Math.max(0, parseFloat(feeInputVideo.replace(/,/g, '')) || 0) * 0.90)
+                ).toLocaleString()}
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
       </AppModal>
 
       {/* Set Payout Account Details Modal (Task 2) */}
@@ -415,45 +517,47 @@ export default function DoctorProfileScreen({ navigation }: any) {
           </View>
         }
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalBody}>
-            <View style={styles.feePreviewBanner}>
-              <Ionicons name="card-outline" size={24} color={Colors.primary[600]} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.feePreviewLabel}>Payout Bank Account</Text>
-                <Text style={styles.modalHintText}>
-                  Your consultation fee earnings will be automatically disbursed to this account.
-                </Text>
-              </View>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.modalBody}
+        >
+          <View style={styles.feePreviewBanner}>
+            <Ionicons name="card-outline" size={24} color={Colors.primary[600]} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.feePreviewLabel}>Payout Bank Account</Text>
+              <Text style={styles.modalHintText}>
+                Your consultation fee earnings will be automatically disbursed to this account.
+              </Text>
             </View>
-
-            <Input
-              label="Bank Name"
-              placeholder="e.g. Wema Bank, GTBank, Access Bank"
-              value={bankNameInput}
-              onChangeText={setBankNameInput}
-              leftIcon="business-outline"
-            />
-
-            <Input
-              label="Account Number"
-              placeholder="e.g. 0123456789"
-              value={accountNumberInput}
-              onChangeText={setAccountNumberInput}
-              keyboardType="numeric"
-              maxLength={10}
-              leftIcon="card-outline"
-            />
-
-            <Input
-              label="Account Name / Beneficiary"
-              placeholder="e.g. Dr. Samuel Okon"
-              value={accountNameInput}
-              onChangeText={setAccountNameInput}
-              leftIcon="person-outline"
-            />
           </View>
-        </TouchableWithoutFeedback>
+
+          <Input
+            label="Bank Name"
+            hint="e.g. Wema Bank, GTBank, Access Bank"
+            value={bankNameInput}
+            onChangeText={setBankNameInput}
+            leftIcon="business-outline"
+          />
+
+          <Input
+            label="Account Number"
+            hint="10-digit NUBAN account number"
+            value={accountNumberInput}
+            onChangeText={setAccountNumberInput}
+            keyboardType="numeric"
+            maxLength={10}
+            leftIcon="card-outline"
+          />
+
+          <Input
+            label="Account Name / Beneficiary"
+            hint="e.g. Dr. Samuel Okon"
+            value={accountNameInput}
+            onChangeText={setAccountNameInput}
+            leftIcon="person-outline"
+          />
+        </ScrollView>
       </AppModal>
 
       {/* Bio Edit Modal */}
@@ -479,26 +583,29 @@ export default function DoctorProfileScreen({ navigation }: any) {
           </View>
         }
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalBody}>
-            <Text style={styles.modalHint}>
-              Write a short professional bio that will be visible to patients on your profile. Describe your expertise, approach, and experience.
-            </Text>
-            <View style={styles.bioTextAreaWrapper}>
-              <Input
-                placeholder="e.g. I am a board-certified cardiologist with 12+ years of experience specialising in..."
-                value={bioInput}
-                onChangeText={setBioInput}
-                multiline
-                numberOfLines={6}
-                textAlignVertical="top"
-                style={styles.bioTextArea}
-                autoFocus
-              />
-            </View>
-            <Text style={styles.bioCharCount}>{bioInput.length} / 500 characters</Text>
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.modalBody}
+        >
+          <Text style={styles.modalHint}>
+            Write a short professional bio that will be visible to patients on your profile. Describe your expertise, approach, and experience.
+          </Text>
+          <View style={styles.bioTextAreaWrapper}>
+            <Input
+              label="Professional Bio"
+              hint="Describe your expertise, approach, and clinical experience"
+              value={bioInput}
+              onChangeText={setBioInput}
+              multiline
+              numberOfLines={6}
+              textAlignVertical="top"
+              style={styles.bioTextArea}
+              autoFocus
+            />
           </View>
-        </TouchableWithoutFeedback>
+          <Text style={styles.bioCharCount}>{bioInput.length} / 500 characters</Text>
+        </ScrollView>
       </AppModal>
     </SafeAreaView>
   );
@@ -675,9 +782,41 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: Colors.error.main,
   },
+  tierFeeSummary: {
+    flexDirection: 'column',
+    gap: 2,
+    alignItems: 'flex-end',
+  },
   modalBody: {
     padding: Spacing[4],
     gap: Spacing[4],
+  },
+  currentTiersRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6,
+  },
+  tierPill: {
+    backgroundColor: Colors.primary[50],
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary[100] ?? '#BFDBFE',
+    alignItems: 'center',
+  },
+  tierPillLabel: {
+    fontSize: 9,
+    fontWeight: FontWeight.bold,
+    color: Colors.primary[600],
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  tierPillValue: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+    marginTop: 1,
   },
   feePreviewBanner: {
     flexDirection: 'row',
@@ -804,6 +943,32 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: FontWeight.bold,
     color: '#047857',
+  },
+  tierBreakdownRow: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: Spacing[3],
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  tierBreakdownHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 2,
+  },
+  tierBreakdownLabel: {
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  tierBreakdownMath: {
+    gap: 2,
+  },
+  netRow: {
+    marginTop: 2,
   },
   feeMathRow: {
     flexDirection: 'row',
