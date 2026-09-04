@@ -7,7 +7,7 @@ import {
   Stethoscope, Building2, Smartphone, Monitor, Shield,
   ArrowRight, Download, CheckCircle2, X, Phone,
   Mail, Users, Heart, Activity, Droplet, Star, Clock,
-  FileText, AlertCircle
+  FileText, AlertCircle, Laptop
 } from 'lucide-react';
 
 type RoleModalType = 'select' | 'patient' | 'doctor' | 'hospital' | 'nurse' | null;
@@ -46,20 +46,26 @@ export default function LandingPage() {
           </Link>
 
           {/* Center Links */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 24 }} className="hidden md:flex">
-            <a href="#about" style={{ fontSize: 13.5, fontWeight: 550, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
-              What is OminiPulse?
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 20 }} className="hidden md:flex">
+            <a href="#about" style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
+              About
             </a>
-            <a href="#roles-pricing" style={{ fontSize: 13.5, fontWeight: 550, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
-              Roles & Pricing
+            <a href="#how-it-works" style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
+              How It Works
             </a>
-            <a href="#apps" style={{ fontSize: 13.5, fontWeight: 550, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
-              Mobile Apps
+            <a href="#for-doctors" style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
+              For Doctors
             </a>
-            <a href="#hospitals" style={{ fontSize: 13.5, fontWeight: 550, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
+            <a href="#hospitals" style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
               For Hospitals
             </a>
-            <a href="#contact" style={{ fontSize: 13.5, fontWeight: 550, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
+            <a href="#downloads" style={{ fontSize: 13, fontWeight: 700, color: '#0f6e6e', textDecoration: 'none', transition: 'color 150ms' }}>
+              Downloads
+            </a>
+            <a href="#faqs" style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
+              FAQs
+            </a>
+            <a href="#contact" style={{ fontSize: 13, fontWeight: 600, color: '#475569', textDecoration: 'none', transition: 'color 150ms' }}>
               Contact
             </a>
           </nav>
@@ -69,28 +75,28 @@ export default function LandingPage() {
             <Link
               href="/login"
               style={{
-                fontSize: 13.5, fontWeight: 600, color: '#2563eb',
+                fontSize: 13, fontWeight: 600, color: '#0f6e6e',
                 padding: '8px 16px', borderRadius: 8, textDecoration: 'none',
-                border: '1px solid #bfdbfe', background: '#eff6ff',
+                border: '1px solid #ccfbf1', background: '#f0fdfa',
                 transition: 'all 150ms'
               }}
             >
               Sign In
             </Link>
 
-            <button
-              onClick={openOnboarding}
+            <a
+              href="#downloads"
               style={{
-                fontSize: 13.5, fontWeight: 600, color: '#ffffff',
-                padding: '8px 18px', borderRadius: 8,
-                border: 'none', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                fontSize: 13, fontWeight: 700, color: '#ffffff',
+                padding: '8px 18px', borderRadius: 8, textDecoration: 'none',
+                border: 'none', background: 'linear-gradient(135deg, #0f6e6e 0%, #0d9488 100%)',
                 cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
-                boxShadow: '0 2px 10px rgba(37,99,235,0.3)',
+                boxShadow: '0 2px 10px rgba(15,110,110,0.3)',
                 transition: 'transform 150ms'
               }}
             >
-              Create Account <ArrowRight size={14} />
-            </button>
+              Download Desktop App <Download size={14} />
+            </a>
           </div>
         </div>
       </header>
@@ -124,30 +130,30 @@ export default function LandingPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             gap: 14, flexWrap: 'wrap', marginBottom: 40
           }}>
-            <button
-              onClick={openOnboarding}
+            <a
+              href="#downloads"
               style={{
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                background: 'linear-gradient(135deg, #0f6e6e 0%, #0d9488 100%)',
                 color: '#ffffff', border: 'none', padding: '14px 28px',
-                borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                borderRadius: 10, fontSize: 15, fontWeight: 700, textDecoration: 'none',
                 display: 'flex', alignItems: 'center', gap: 8,
-                boxShadow: '0 4px 16px rgba(37,99,235,0.35)'
+                boxShadow: '0 4px 16px rgba(15,110,110,0.35)'
               }}
             >
-              Get Started • Create Account <ArrowRight size={16} />
-            </button>
+              <Monitor size={18} /> Download Desktop App (Doctors & Hospitals)
+            </a>
 
             <Link
               href="/login"
               style={{
                 background: '#ffffff', color: '#0f172a',
-                border: '1px solid #cbd5e1', padding: '14px 26px',
+                border: '1.5px solid #cbd5e1', padding: '14px 26px',
                 borderRadius: 10, fontSize: 15, fontWeight: 600, textDecoration: 'none',
                 display: 'flex', alignItems: 'center', gap: 8,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
               }}
             >
-              Staff & Clinician Portal Login
+              Doctor & Hospital Login <ArrowRight size={15} />
             </Link>
           </div>
 
@@ -269,7 +275,7 @@ export default function LandingPage() {
                   color: '#ffffff', padding: '4px 10px', borderRadius: 20,
                   fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6
                 }}>
-                  <Smartphone size={13} /> PHONE & WEB PORTAL
+                  <Monitor size={13} /> AVAILABLE ON DESKTOP & MOBILE
                 </div>
               </div>
               <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -278,7 +284,7 @@ export default function LandingPage() {
                     Doctor Clinical Practice
                   </h3>
                   <p style={{ margin: 0, fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                    Doctors operate on <strong>both Mobile and Web</strong>. Mobile for consultations on the go; Web for deep SOAP notes and e-prescriptions.
+                    Doctors operate on <strong>Mobile and Desktop</strong>. Mobile for consultations on the go; native Desktop App for deep SOAP notes, e-prescriptions, and MDCN compliance.
                   </p>
                 </div>
                 <button
@@ -314,7 +320,7 @@ export default function LandingPage() {
                   color: '#ffffff', padding: '4px 10px', borderRadius: 20,
                   fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6
                 }}>
-                  <Monitor size={13} style={{ color: '#34d399' }} /> WEB PORTAL ONLY
+                  <Monitor size={13} style={{ color: '#34d399' }} /> AVAILABLE ON DESKTOP ONLY
                 </div>
               </div>
               <div style={{ padding: 20, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -323,7 +329,7 @@ export default function LandingPage() {
                     Hospitals, Nurses & Staff
                   </h3>
                   <p style={{ margin: 0, fontSize: 13, color: '#64748b', lineHeight: 1.5 }}>
-                    Facility management, nurse triage, reception intake, and blood banks operate <strong>exclusively on the Web Portal</strong>.
+                    Facility management, nurse triage, reception intake, and blood banks operate <strong>exclusively on the OminiPulse Desktop App</strong>.
                   </p>
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
@@ -409,7 +415,7 @@ export default function LandingPage() {
                 <div>
                   <h4 style={{ margin: '0 0 6px', fontSize: 15, fontWeight: 700, color: '#f8fafc' }}>Doctor Clinical Practice</h4>
                   <p style={{ margin: 0, fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>
-                    Full flexibility: conduct telemedicine on mobile, and manage deep SOAP notes, prescriptions, and duty shifts on the web.
+                    Full flexibility: conduct telemedicine on mobile, and manage deep SOAP notes, prescriptions, and duty shifts on the desktop app.
                   </p>
                 </div>
               </div>
@@ -528,7 +534,7 @@ export default function LandingPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 750, background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
-                      PHONE & WEB
+                      AVAILABLE ON DESKTOP & MOBILE
                     </span>
                     <span style={{ fontSize: 10, fontWeight: 750, background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: 6 }}>
                       FREE REGISTRATION
@@ -558,7 +564,7 @@ export default function LandingPage() {
                   <li>Free MDCN verification & profile setup</li>
                   <li>Total autonomy to set consultation pricing</li>
                   <li>OminiPulse platform percentage deducted automatically</li>
-                  <li>Synchronized Mobile App & Web Clinical Portal</li>
+                  <li>Available on Desktop & Synchronized with Mobile App</li>
                   <li>Direct automated earnings payouts to your bank</li>
                 </ul>
               </div>
@@ -592,7 +598,7 @@ export default function LandingPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 750, background: '#f1f5f9', color: '#334155', padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
-                      WEB PORTAL
+                      AVAILABLE ON DESKTOP
                     </span>
                     <span style={{ fontSize: 10, fontWeight: 750, background: '#fef3c7', color: '#92400e', padding: '2px 8px', borderRadius: 6 }}>
                       CUSTOM QUOTE
@@ -656,7 +662,7 @@ export default function LandingPage() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
                     <span style={{ fontSize: 10, fontWeight: 750, background: '#fef2f2', color: '#b91c1c', padding: '3px 8px', borderRadius: 6, textTransform: 'uppercase' }}>
-                      WEB PORTAL
+                      AVAILABLE ON DESKTOP
                     </span>
                     <span style={{ fontSize: 10, fontWeight: 750, background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: 6 }}>
                       FREE FOR STAFF
@@ -883,7 +889,7 @@ export default function LandingPage() {
                   <span style={{ fontSize: 10.5, color: '#60a5fa', fontWeight: 600 }}>App Store</span>
                 </div>
                 <p style={{ margin: '0 0 10px', fontSize: 12.5, color: '#e2e8f0', lineHeight: 1.5, fontStyle: 'italic' }}>
-                  &ldquo;The mobile and web sync is seamless. Fast video follow-ups on my iPhone between hospital rounds, then SOAP documentation and lab orders on the web portal.&rdquo;
+                  &ldquo;The mobile and desktop sync is seamless. Fast video follow-ups on my iPhone between hospital rounds, then SOAP documentation and lab orders on the desktop app.&rdquo;
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#ffffff' }}>
@@ -987,6 +993,392 @@ export default function LandingPage() {
                 <li>Controlled emergency operations & inter-facility patient transfer</li>
               </ul>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section: How OminiPulse Works ────────────────────────────── */}
+      <section id="how-it-works" style={{ padding: '80px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', maxWidth: 720, margin: '0 auto 48px' }}>
+            <span style={{
+              fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: '#0f6e6e', background: '#e6f4f4', padding: '4px 12px', borderRadius: 999,
+              display: 'inline-block', marginBottom: 12
+            }}>
+              Integrated 3-Tier Healthcare Architecture
+            </span>
+            <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 36px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+              How OminiPulse Works
+            </h2>
+            <p style={{ fontSize: 15, color: '#475569', marginTop: 12, lineHeight: 1.6 }}>
+              A closed-loop digital ecosystem connecting patients on mobile with certified doctors and multi-department hospitals on native desktop workstations.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+            {/* Pillar 1: Patient Mobile App */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 26px', border: '1.5px solid #e2e8f0',
+              display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ width: 50, height: 50, borderRadius: 12, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Smartphone size={26} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase' }}>1. Patient Mobile App</span>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>100% Free Triage & Consultations</h3>
+              <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+                Patients explore the 3D Anatomical Body Map to pinpoint pain locations, match with top verified specialists, attend encrypted video consults, and receive digital prescriptions.
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#2563eb' }}>Android & iOS Mobile App</span>
+              </div>
+            </div>
+
+            {/* Pillar 2: Doctor Desktop App */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 26px', border: '1.5px solid #ccfbf1',
+              display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 4px 20px rgba(15,110,110,0.08)'
+            }}>
+              <div style={{ width: 50, height: 50, borderRadius: 12, background: '#e6f4f4', color: '#0f6e6e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Stethoscope size={26} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#0f6e6e', textTransform: 'uppercase' }}>2. Doctor Desktop Application</span>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Autonomous Clinical Practice</h3>
+              <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+                Licensed doctors operate their teleconsultation clinic on the OminiPulse Desktop App: manage patient queues, inspect EHRs, write e-prescriptions, and earn with custom fee settings.
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#0f6e6e' }}>Windows · macOS · Linux Desktop</span>
+              </div>
+            </div>
+
+            {/* Pillar 3: Hospital Operating System */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 26px', border: '1.5px solid #e2e8f0',
+              display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ width: 50, height: 50, borderRadius: 12, background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Building2 size={26} />
+              </div>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase' }}>3. Hospital Desktop Operating System</span>
+              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>Multi-Department Telemetry</h3>
+              <p style={{ fontSize: 13.5, color: '#64748b', lineHeight: 1.6, margin: 0 }}>
+                Hospital administrators, nurses, and lab techs coordinate real-time inpatient ward beds, dispensary stock, diagnostic specimen processing, and blood bank transfusions.
+              </p>
+              <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed' }}>Enterprise Institutional Tier</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section: For Doctors ───────────────────────────────────────── */}
+      <section id="for-doctors" style={{ padding: '80px 24px', background: '#ffffff' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto', display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 40, alignItems: 'center' }}>
+          <div>
+            <span style={{
+              fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: '#0f6e6e', background: '#e6f4f4', padding: '4px 12px', borderRadius: 999,
+              display: 'inline-block', marginBottom: 12
+            }}>
+              Independent Clinical Practice
+            </span>
+            <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 36px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+              Empowering Certified Physicians Across Africa
+            </h2>
+            <p style={{ fontSize: 15, color: '#475569', marginTop: 14, lineHeight: 1.6 }}>
+              Onboard your medical practice in minutes. Set your own consultation rates, manage your digital patient schedule, and conduct encrypted video consultations directly within the dedicated desktop suite.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 20 }}>
+              {[
+                { title: 'Autonomous Fee Setting', desc: 'Charge your own consultation rate (₦8,000 - ₦25,000+). 90% net earnings payout hold.' },
+                { title: 'MDCN Certified Standing', desc: 'Folio license verification locks unverified accounts to protect professional standards.' },
+                { title: 'Cryptographic E-Prescriptions', desc: 'Issue digital prescriptions with automated drug allergy and interaction safety checks.' },
+                { title: '3D Anatomical Body Map', desc: 'Inspect patient-reported pain zones and intensity levels prior to consultations.' },
+              ].map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                  <CheckCircle2 size={18} color="#0f6e6e" style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', margin: 0 }}>{item.title}</h4>
+                    <p style={{ fontSize: 12.5, color: '#64748b', margin: '2px 0 0' }}>{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
+              <a
+                href="#downloads"
+                style={{
+                  background: 'linear-gradient(135deg, #0f6e6e 0%, #0d9488 100%)',
+                  color: '#ffffff', padding: '12px 24px', borderRadius: 10,
+                  fontSize: 14, fontWeight: 700, textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  boxShadow: '0 4px 14px rgba(15,110,110,0.3)'
+                }}
+              >
+                <Download size={16} /> Download Desktop App for Doctors
+              </a>
+            </div>
+          </div>
+
+          {/* Doctor Desktop Feature Card */}
+          <div style={{
+            background: '#f8fafc', border: '1.5px solid #e2e8f0', borderRadius: 20,
+            padding: 28, boxShadow: '0 10px 30px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', gap: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#0f6e6e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                FA
+              </div>
+              <div>
+                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>Dr. Folake Ademola</h4>
+                <p style={{ fontSize: 12, color: '#0f6e6e', fontWeight: 600, margin: '2px 0 0' }}>MDCN Verified Specialist</p>
+              </div>
+            </div>
+
+            <div style={{ background: '#ffffff', padding: '14px 16px', borderRadius: 12, border: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#0f6e6e', textTransform: 'uppercase' }}>UP NEXT IN DESKTOP SCHEDULE</span>
+              <p style={{ fontSize: 13.5, fontWeight: 700, color: '#1e293b', margin: '4px 0 2px' }}>Tunde Afolabi (48y · Male)</p>
+              <span style={{ fontSize: 12, color: '#64748b' }}>Reason: Cardiac risk evaluation & lipid profile review</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, textAlign: 'center' }}>
+              <div style={{ background: '#ffffff', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Chat</span>
+                <strong style={{ fontSize: 13, color: '#0f172a' }}>₦8,000</strong>
+              </div>
+              <div style={{ background: '#ffffff', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>Voice</span>
+                <strong style={{ fontSize: 13, color: '#0f172a' }}>₦10,000</strong>
+              </div>
+              <div style={{ background: '#ffffff', padding: 10, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>HD Video</span>
+                <strong style={{ fontSize: 13, color: '#0f6e6e' }}>₦15,000</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section: Downloads & Get Started ───────────────────────────── */}
+      <section id="downloads" style={{ padding: '80px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 1240, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', maxWidth: 740, margin: '0 auto 48px' }}>
+            <span style={{
+              fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: '#0f6e6e', background: '#e6f4f4', padding: '4px 12px', borderRadius: 999,
+              display: 'inline-block', marginBottom: 12
+            }}>
+              Download Center
+            </span>
+            <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 36px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+              Download OminiPulse for Desktop & Mobile
+            </h2>
+            <p style={{ fontSize: 15, color: '#475569', marginTop: 12, lineHeight: 1.6 }}>
+              Doctor, Hospital, and Admin clinical operations are managed through the <strong>OminiPulse Desktop Application</strong>. Patient services are accessed via mobile.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+            {/* Card 1: Windows */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 24px', border: '1.5px solid #e2e8f0',
+              display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ width: 46, height: 46, borderRadius: 12, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Monitor size={24} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, background: '#dcfce7', color: '#15803d', padding: '3px 8px', borderRadius: 6 }}>
+                  Recommended
+                </span>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Windows Desktop App</h3>
+                <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 0' }}>
+                  Windows 10 & 11 (64-bit) · Installer & Portable
+                </p>
+              </div>
+
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+                <li>Full Doctor & Hospital clinical suite</li>
+                <li>MDCN digital prescription signing</li>
+                <li>WebRTC HD teleconsultation station</li>
+              </ul>
+
+              <a
+                href="/login?os=windows"
+                style={{
+                  marginTop: 'auto', background: '#0f6e6e', color: '#ffffff', padding: '12px',
+                  borderRadius: 10, fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                }}
+              >
+                <Download size={16} /> Download for Windows (.exe)
+              </a>
+            </div>
+
+            {/* Card 2: macOS */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 24px', border: '1.5px solid #e2e8f0',
+              display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ width: 46, height: 46, borderRadius: 12, background: '#f8fafc', color: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                <Laptop size={24} />
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>macOS Desktop App</h3>
+                <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 0' }}>
+                  Apple Silicon (M1/M2/M3/M4) & Intel Mac
+                </p>
+              </div>
+
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+                <li>Native macOS menu bar integration</li>
+                <li>Touch ID secure clinical login</li>
+                <li>Retina display optimized body maps</li>
+              </ul>
+
+              <a
+                href="/login?os=mac"
+                style={{
+                  marginTop: 'auto', background: '#0f172a', color: '#ffffff', padding: '12px',
+                  borderRadius: 10, fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                }}
+              >
+                <Download size={16} /> Download for macOS (.dmg)
+              </a>
+            </div>
+
+            {/* Card 3: Linux */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 24px', border: '1.5px solid #e2e8f0',
+              display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ width: 46, height: 46, borderRadius: 12, background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Monitor size={24} />
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Linux Desktop App</h3>
+                <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 0' }}>
+                  Ubuntu, Debian, Fedora (.AppImage / .deb)
+                </p>
+              </div>
+
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+                <li>Universal portable AppImage bundle</li>
+                <li>Debian packaging for hospital workstations</li>
+                <li>Low resource footprint execution</li>
+              </ul>
+
+              <a
+                href="/login?os=linux"
+                style={{
+                  marginTop: 'auto', background: '#334155', color: '#ffffff', padding: '12px',
+                  borderRadius: 10, fontSize: 13.5, fontWeight: 700, textDecoration: 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                }}
+              >
+                <Download size={16} /> Download for Linux (.AppImage)
+              </a>
+            </div>
+
+            {/* Card 4: Mobile App */}
+            <div style={{
+              background: '#ffffff', borderRadius: 16, padding: '30px 24px', border: '1.5px solid #e2e8f0',
+              display: 'flex', flexDirection: 'column', gap: 16, boxShadow: '0 4px 16px rgba(0,0,0,0.03)'
+            }}>
+              <div style={{ width: 46, height: 46, borderRadius: 12, background: '#e6f4f4', color: '#0f6e6e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Smartphone size={24} />
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>Patient Mobile App</h3>
+                <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 0' }}>
+                  Android (Google Play) & iOS (App Store)
+                </p>
+              </div>
+
+              <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: '#64748b', lineHeight: 1.7 }}>
+                <li>3D Body Map symptom triage</li>
+                <li>Doctor appointments & telemedicine</li>
+                <li>Emergency blood donor network</li>
+              </ul>
+
+              <button
+                type="button"
+                onClick={() => setActiveModal('patient')}
+                style={{
+                  marginTop: 'auto', background: '#059669', color: '#ffffff', padding: '12px',
+                  borderRadius: 10, fontSize: 13.5, fontWeight: 700, border: 'none', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                }}
+              >
+                <Download size={16} /> Get Mobile App
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section: Frequently Asked Questions (FAQs) ──────────────────── */}
+      <section id="faqs" style={{ padding: '80px 24px', background: '#ffffff', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 44 }}>
+            <span style={{
+              fontSize: 11.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+              color: '#0f6e6e', background: '#e6f4f4', padding: '4px 12px', borderRadius: 999,
+              display: 'inline-block', marginBottom: 12
+            }}>
+              Platform FAQs
+            </span>
+            <h2 style={{ fontSize: 'clamp(26px, 3.5vw, 36px)', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', margin: 0 }}>
+              Frequently Asked Questions
+            </h2>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {[
+              {
+                q: 'Why are Doctor, Hospital, and Admin accounts accessed via the Desktop App rather than the web browser?',
+                a: 'Clinical workflows require certified NDPA 2023 compliance, encrypted local biometric vaults, hardware WebRTC high-definition medical camera streams, and cryptographic MDCN prescription signing. A native desktop environment eliminates browser extension security vulnerabilities and provides high-speed multi-department operational stability.'
+              },
+              {
+                q: 'How do verified doctors earn and receive consultation payments?',
+                a: 'Each doctor sets their own tiered consultation fees (Chat, Voice, and HD Video) inside the desktop application. Patient payments are securely held in clinical escrow until consultation completion. Upon sign-off, 90% net earnings are immediately disbursed to the doctor account.'
+              },
+              {
+                q: 'How do hospitals onboard departments, beds, and staff?',
+                a: 'Hospitals contact the OminiPulse Institutional Desk (partnerships@ominipulse.ai) to configure their licensed bed count and departmental modules. The hospital administrator then issues role-specific staff credentials for Wards, Pharmacy, Laboratory, and Receptionist desks.'
+              },
+              {
+                q: 'How do patients book appointments with specialists?',
+                a: 'Patients download the 100% free OminiPulse Mobile App on Google Play or the Apple App Store. Account creation is free, and patients only pay the set consultation fee when booking a session with their chosen verified physician.'
+              },
+              {
+                q: 'What are the system requirements for the OminiPulse Desktop App?',
+                a: 'The desktop suite runs smoothly on Windows 10/11 (64-bit), macOS 11+ (Intel & Apple Silicon), and major Linux distributions (Ubuntu, Debian, Fedora) with at least 4GB of RAM and an active internet connection.'
+              }
+            ].map((faq, idx) => (
+              <div key={idx} style={{
+                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '20px 24px'
+              }}>
+                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: '0 0 8px' }}>
+                  {faq.q}
+                </h4>
+                <p style={{ fontSize: 13.5, color: '#475569', lineHeight: 1.6, margin: 0 }}>
+                  {faq.a}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -1413,13 +1805,13 @@ export default function LandingPage() {
                   fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
                   textTransform: 'uppercase', marginBottom: 8
                 }}>
-                  Mobile & Web Synchronized
+                  Available on Desktop & Mobile Synchronized
                 </span>
                 <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 800, color: '#0f172a' }}>
                   Doctor Clinical Practice Onboarding
                 </h3>
                 <p style={{ margin: '0 auto 20px', maxWidth: 460, fontSize: 13.5, color: '#64748b', lineHeight: 1.6 }}>
-                  Doctors can register directly on the <strong>OminiPulse Mobile App</strong> for MDCN license verification, or log into the <strong>Doctor Web Portal</strong> once verified.
+                  Doctors can register directly on the <strong>OminiPulse Mobile App</strong> for MDCN license verification, or launch the <strong>OminiPulse Desktop App</strong> once verified.
                 </p>
 
                 <div style={{
@@ -1477,7 +1869,7 @@ export default function LandingPage() {
                       onClick={closeModal}
                       style={{ fontSize: 12.5, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}
                     >
-                      Sign In to Doctor Web Portal &rarr;
+                      Available on Desktop App &rarr;
                     </Link>
                   </div>
                 </div>
@@ -1551,7 +1943,7 @@ export default function LandingPage() {
                     onClick={closeModal}
                     style={{ fontSize: 13, fontWeight: 700, color: '#2563eb', textDecoration: 'none' }}
                   >
-                    Existing Hospital Login &rarr;
+                    Available on Desktop App &rarr;
                   </Link>
                 </div>
               </div>
@@ -1609,7 +2001,7 @@ export default function LandingPage() {
                       borderRadius: 8, fontSize: 13, fontWeight: 600, textDecoration: 'none'
                     }}
                   >
-                    Sign In with Issued Credentials
+                    Available on Desktop App &rarr;
                   </Link>
                 </div>
               </div>

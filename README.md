@@ -17,24 +17,26 @@
                   │                 OMINIPULSE HEALTH ECOSYSTEM                 │
                   └──────────────────────────────┬──────────────────────────────┘
                                                  │
-         ┌───────────────────────────────┬───────┴───────────────────────┬───────────────────────────────┐
-         ▼                               ▼                               ▼                               ▼
-┌──────────────────┐            ┌──────────────────┐            ┌──────────────────┐            ┌──────────────────┐
-│   PATIENT APP    │            │   DOCTOR APP     │            │  HOSPITAL PORTAL │            │  PLATFORM ADMIN  │
-│ (React Native)   │            │ (React Native)   │            │ (Next.js 14 Web) │            │ (Next.js 14 Web) │
-│ • 100% Free Reg  │            │ • 100% Free Reg  │            │ • Multi-Dept Ops │            │ • MDCN Audits    │
-│ • Pay per Doctor │            │ • Sets Own Fee   │            │ • Undisclosed    │            │ • Hospital ARR   │
-│ • 3D Symptom Map │            │ • 90/10 Split    │            │   Enterprise Fee │            │ • Disciplinary   │
-└────────┬─────────┘            └────────┬─────────┘            └────────┬─────────┘            └────────┬─────────┘
-         │                               │                               │                               │
-         └───────────────────────────────┼───────────────────────────────┴───────────────────────────────┘
-                                         │
-                       ┌─────────────────┴─────────────────┐
-                       ▼                                   ▼
-            ┌──────────────────────┐            ┌──────────────────────┐
-            │  NESTJS BACKEND API  │            │  TOP 3 MEDICAL AI    │
-            │ (PostgreSQL + Redis) │            │ (Gemini + Deepgram)  │
-            └──────────────────────┘            └──────────────────────┘
+         ┌───────────────────────────────────────┼───────────────────────────────────────┐
+         ▼                                       ▼                                       ▼
+┌──────────────────────────────┐        ┌──────────────────────────────┐        ┌──────────────────────────────┐
+│     PUBLIC MARKETING WEB     │        │     PATIENT MOBILE APP       │        │    OMINIPULSE DESKTOP APP    │
+│   (Next.js Static Website)   │        │     (React Native / Expo)    │        │    (Electron + Next.js App)  │
+│ • Home, Features, About      │        │ • 100% Free Account Reg      │        │ • Doctor Portal Workspace    │
+│ • How OminiPulse Works       │        │ • 3D Anatomical Symptom Map  │        │ • Hospital Multi-Dept Ops    │
+│ • Doctor & Hospital Info     │        │ • Telehealth Video / Chat    │        │ • Platform Super Admin       │
+│ • Desktop & Mobile Downloads │        │ • Health Metrics & Records   │        │ • NDPA Security & Audits     │
+│ • Desktop App Gate on /login │        │ • Pharmacy & Prescription    │        │ • Native Windows/macOS/Linux │
+└──────────────┬───────────────┘        └──────────────┬───────────────┘        └──────────────┬───────────────┘
+               │                                       │                                       │
+               └───────────────────────────────────────┼───────────────────────────────────────┘
+                                                       │
+                                     ┌─────────────────┴─────────────────┐
+                                     ▼                                   ▼
+                          ┌──────────────────────┐            ┌──────────────────────┐
+                          │  NESTJS BACKEND API  │            │  TOP 3 MEDICAL AI    │
+                          │ (PostgreSQL + Redis) │            │ (Gemini + Deepgram)  │
+                          └──────────────────────┘            └──────────────────────┘
 ```
 
 ---
@@ -151,47 +153,78 @@ OminiPulse implements an 8-role granular permission matrix (`AdminRole`) support
 
 ## 🚀 Quick Start Guide
 
-### 1. Mobile App Setup
+### 1. Unified Root Commands
+From the project root directory, run any part of the ecosystem:
 ```bash
-# Clone the repository
-git clone https://github.com/omini-pulse/omini-pulse.git
-cd omini-pulse
+# Start the Patient Mobile App (Expo)
+npm run mobile
 
-# Install dependencies
+# Start the Public Marketing Website (Next.js)
+npm run web
+
+# Start the OminiPulse Desktop Application (Electron + Next.js)
+npm run desktop
+```
+
+### 2. OminiPulse Desktop Application (`desktop/`)
+The desktop application contains the clinical workspaces for **Doctors**, **Hospitals**, and **Platform Admins**:
+```bash
+# Navigate to desktop directory
+cd desktop
+
+# Install dependencies (includes Electron & Next.js)
 npm install
 
+# Run in Electron Desktop environment (Hot Reloading)
+npm run electron:dev
+
+# Build Next.js production bundle for desktop
+npm run build
+
+# Package standalone native desktop installer (.exe, .dmg, .AppImage)
+npm run electron:pack
+```
+
+### 3. Public Static Marketing Website (`admin/`)
+The public website is strictly an informational and marketing landing page with **no dashboards**. Attempting to access `/login` directs clinical users to download the Desktop App.
+```bash
+# Navigate to web directory
+cd admin
+
+# Install web dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build static production bundle (Validates zero-dashboard static generation)
+npm run build
+```
+
+### 4. Patient Mobile Application (React Native / Expo)
+```bash
 # Start Expo development server (with cache reset)
 npx expo start -c
 ```
 
-### 2. Admin & Hospital Web Console Setup
-```bash
-# Navigate to admin directory
-cd admin
-
-# Install admin dependencies
-npm install
-
-# Start Next.js development server
-npm run dev
-# Console will be available at http://localhost:3000
-```
-
-### 3. Demo Persona Logins (Instant Login Presets)
-On the web console sign-in page (`http://localhost:3000/login`), click any preset button to test role-specific workspaces:
-- **Platform Super Admin**: `admin@ominipulse.ai`
-- **Hospital Administrator**: `admin@xyzspecialist.ng`
-- **Lead Consultant Doctor**: `dr.adeyemi@xyzspecialist.ng`
+### 5. Desktop Application Clinical Presets (Instant Demo Sign-in)
+Within the Desktop Application login (`/login`), click any preset button to access role-specific clinical workspaces:
+- **Platform Super Admin**: `admin@ominipulse.ai` → Routes to `/dashboard/hospitals`
+- **Hospital Administrator**: `admin@xyzspecialist.ng` → Routes to `/dashboard/hospital-portal`
+- **Lead Consultant Doctor**: `dr.adeyemi@xyzspecialist.ng` → Routes to `/dashboard/doctor-portal`
 - **Senior Ward Nurse**: `a.yusuf@xyzspecialist.ng`
 - **Front-Desk Receptionist**: `f.mohammed@xyzspecialist.ng`
 - **Blood Bank Officer**: `m.garba@xyzspecialist.ng`
 - **Chief Hospital Pharmacist**: `c.okonkwo@xyzspecialist.ng`
 - **Medical Laboratory Scientist**: `e.nnamdi@xyzspecialist.ng`
 
-### 4. Running Verification Checks
+### 6. Build & Verification Commands
 ```bash
-# Check TypeScript compilation across admin console
-cd admin && npx tsc --noEmit
+# Verify Desktop build & all 22 clinical dashboard routes
+npm run desktop:build
+
+# Verify Public Website build (Static pages only)
+npm run web:build
 ```
 
 ---

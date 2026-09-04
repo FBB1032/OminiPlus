@@ -43,9 +43,15 @@
   },
   "scripts": {
     "start": "expo start",
+    "mobile": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "npm run dev --prefix admin",
+    "web:build": "npm run build --prefix admin",
+    "desktop": "npm run electron:dev --prefix desktop",
+    "desktop:web": "npm run dev --prefix desktop",
+    "desktop:build": "npm run build --prefix desktop",
+    "desktop:pack": "npm run electron:pack --prefix desktop"
   },
   "private": true
 }
