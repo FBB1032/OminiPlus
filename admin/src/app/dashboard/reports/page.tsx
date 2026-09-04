@@ -164,6 +164,8 @@ export default function ReportsPage() {
     reportId: string;
   } | null>(null);
 
+  const [inspectFileModal, setInspectFileModal] = useState<{ fileName: string; fileType: string; sizeBytes: string } | null>(null);
+
   // Filter logic
   const filteredReports = reports.filter((r) => {
     const matchesSearch =
@@ -347,7 +349,7 @@ export default function ReportsPage() {
           <div class="section">
             <div class="section-title">4. ATTACHED EVIDENCE TRAIL INVENTORY (${selectedReport.evidenceFiles?.length || 0})</div>
             <ul class="evidence-list">
-              ${(selectedReport.evidenceFiles || []).map(e => `<li class="evidence-item">📁 [${e.fileType.toUpperCase()}] ${e.fileName} (${e.sizeBytes}) — Uploaded ${new Date(e.uploadedAt).toLocaleTimeString()}</li>`).join('')}
+              ${(selectedReport.evidenceFiles || []).map(e => `<li class="evidence-item">[${e.fileType.toUpperCase()}] ${e.fileName} (${e.sizeBytes}) — Uploaded ${new Date(e.uploadedAt).toLocaleTimeString()}</li>`).join('')}
             </ul>
           </div>
 
@@ -519,7 +521,7 @@ export default function ReportsPage() {
                         fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
                         background: '#eff6ff', color: '#2563eb', border: '1px solid #dbeafe'
                       }}>
-                        📁 {r.evidenceFiles?.length || 0} Files
+                        {r.evidenceFiles?.length || 0} Files
                       </span>
                     </td>
                     <td>
@@ -642,7 +644,7 @@ export default function ReportsPage() {
                           </span>
                         </div>
                       </div>
-                      <Button variant="secondary" size="sm" onClick={() => alert(`Opening preview for ${ev.fileName}`)}>
+                      <Button variant="secondary" size="sm" onClick={() => setInspectFileModal(ev)}>
                         <ExternalLink size={12} style={{ marginRight: 4 }} /> Inspect File
                       </Button>
                     </div>
@@ -774,6 +776,42 @@ export default function ReportsPage() {
           variant={confirmAction.type === 'perm_suspend' ? 'danger' : 'primary'}
         />
       )}
+
+      {/* Evidence File Inspection Modal */}
+      {inspectFileModal && (
+        <Modal
+          isOpen={Boolean(inspectFileModal)}
+          onClose={() => setInspectFileModal(null)}
+          title={`Forensic Document Evidence: ${inspectFileModal.fileName}`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Evidence Metadata</span>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0f172a', marginTop: 2 }}>{inspectFileModal.fileName}</div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>Format: {inspectFileModal.fileType.toUpperCase()} • Size: {inspectFileModal.sizeBytes}</div>
+              </div>
+              <Badge variant="info">HASH VERIFIED</Badge>
+            </div>
+
+            <div style={{ padding: 16, background: '#ffffff', borderRadius: 10, border: '1px solid #cbd5e1', fontSize: 13, minHeight: 120, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                <Paperclip size={22} />
+              </div>
+              <div style={{ fontWeight: 700, color: '#0f172a' }}>Document Preview Ready</div>
+              <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
+                Securely encrypted evidence log stored in OminiPulse HIPAA/NDPR-compliant cloud vault.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
+              <Button variant="outline" onClick={() => setInspectFileModal(null)}>Close</Button>
+              <Button variant="primary" onClick={() => window.print()}>Print Forensic Evidence</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
     </div>
   );
 }

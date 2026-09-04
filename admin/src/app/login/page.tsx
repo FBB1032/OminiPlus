@@ -19,33 +19,95 @@ const loginSchema = z.object({
 });
 type LoginForm = z.infer<typeof loginSchema>;
 
-const ROLES: AdminRole[] = ['super_admin', 'verification_admin', 'support_admin', 'security_admin', 'moderator', 'doctor'];
+const ROLES: AdminRole[] = [
+  'admin',
+  'hospital_admin',
+  'doctor',
+  'nurse',
+  'receptionist',
+  'blood_officer',
+  'pharmacist',
+  'lab_technician',
+];
+
+const ROLE_CREDENTIALS: Record<AdminRole, { email: string; pass: string }> = {
+  admin:          { email: 'admin@ominipulse.ai',        pass: 'admin123' },
+  hospital_admin: { email: 'admin@xyzspecialist.ng',     pass: 'AdminPass2026!' },
+  doctor:         { email: 'doctor@ominipulse.ai',       pass: 'admin123' },
+  nurse:          { email: 'a.yusuf@xyzspecialist.ng',   pass: 'HospitalPass2026!' },
+  receptionist:   { email: 'f.mohammed@xyzspecialist.ng', pass: 'HospitalPass2026!' },
+  blood_officer:  { email: 'm.garba@xyzspecialist.ng',   pass: 'HospitalPass2026!' },
+  pharmacist:     { email: 'c.okonkwo@xyzspecialist.ng', pass: 'PharmPass2026!' },
+  lab_technician: { email: 'e.nnamdi@xyzspecialist.ng',  pass: 'LabPass2026!' },
+};
 
 export default function LoginPage() {
   const router = useRouter();
   const setAdmin = useAuthStore(s => s.setAdmin);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [selectedRole, setSelectedRole] = useState<AdminRole>('super_admin');
+  const [selectedRole, setSelectedRole] = useState<AdminRole>('admin');
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
+  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: 'admin@ominipulse.ai', password: 'admin123' },
   });
 
+  const handleSelectRole = (role: AdminRole) => {
+    setSelectedRole(role);
+    setValue('email', ROLE_CREDENTIALS[role].email);
+    setValue('password', ROLE_CREDENTIALS[role].pass);
+  };
+
   const onSubmit = async (data: LoginForm) => {
     setServerError('');
-    await new Promise(r => setTimeout(r, 800));
-    if ((data.email === 'admin@ominipulse.ai' || data.email === 'doctor@ominipulse.ai') && data.password === 'admin123') {
-      const admin = MOCK_ADMINS[selectedRole];
-      setAdmin(admin, `mock-jwt-token-${selectedRole}`);
-      if (selectedRole === 'doctor') {
-        router.push('/dashboard/doctor-portal');
-      } else {
-        router.push('/dashboard');
-      }
+    await new Promise(r => setTimeout(r, 600));
+
+    // Determine target persona
+    let roleToAssign: AdminRole = selectedRole;
+
+    if (selectedRole === 'pharmacist' || data.email.startsWith('c.okonkwo')) {
+      roleToAssign = 'pharmacist';
+    } else if (selectedRole === 'lab_technician' || data.email.startsWith('e.nnamdi')) {
+      roleToAssign = 'lab_technician';
+    } else if (selectedRole === 'nurse' || data.email.startsWith('a.yusuf')) {
+      roleToAssign = 'nurse';
+    } else if (selectedRole === 'receptionist' || data.email.startsWith('f.mohammed')) {
+      roleToAssign = 'receptionist';
+    } else if (selectedRole === 'blood_officer' || data.email.startsWith('m.garba')) {
+      roleToAssign = 'blood_officer';
+    } else if (selectedRole === 'doctor' || data.email.includes('doctor')) {
+      roleToAssign = 'doctor';
+    } else if (selectedRole === 'hospital_admin' || data.email.includes('xyzspecialist') || data.email.includes('hospital')) {
+      roleToAssign = 'hospital_admin';
     } else {
-      setServerError('Invalid email or password.');
+      roleToAssign = 'admin';
+    }
+
+    const presetAdmin = MOCK_ADMINS[roleToAssign] || MOCK_ADMINS.admin;
+    const userToLogin = {
+      ...presetAdmin,
+      email: data.email,
+    };
+
+    setAdmin(userToLogin, `mock-jwt-token-${roleToAssign}`);
+
+    if (roleToAssign === 'doctor') {
+      router.push('/dashboard/doctor-portal');
+    } else if (roleToAssign === 'admin') {
+      router.push('/dashboard/hospitals');
+    } else if (roleToAssign === 'pharmacist') {
+      router.push('/dashboard/hospital-portal?tab=pharmacy');
+    } else if (roleToAssign === 'lab_technician') {
+      router.push('/dashboard/hospital-portal?tab=laboratory');
+    } else if (roleToAssign === 'nurse') {
+      router.push('/dashboard/hospital-portal?tab=wards');
+    } else if (roleToAssign === 'receptionist') {
+      router.push('/dashboard/hospital-portal?tab=appointments');
+    } else if (roleToAssign === 'blood_officer') {
+      router.push('/dashboard/hospital-portal?tab=blood');
+    } else {
+      router.push('/dashboard/hospital-portal');
     }
   };
 
@@ -173,21 +235,25 @@ export default function LoginPage() {
                       <button
                         key={role}
                         type="button"
-                        onClick={() => setSelectedRole(role)}
+                        onClick={() => handleSelectRole(role)}
                         style={{
                           padding: '8px 6px',
                           borderRadius: 8,
                           fontSize: 11,
-                          fontWeight: active ? 600 : 500,
+                          fontWeight: active ? 700 : 500,
                           border: active ? `1.5px solid ${rc.color}` : '1.5px solid #e2e8f0',
                           background: active ? rc.bg : '#ffffff',
                           color: active ? rc.color : '#64748b',
                           cursor: 'pointer',
                           transition: 'all 120ms',
                           textAlign: 'center',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
                         }}
+                        title={`Click to fill demo credentials for ${ROLE_LABELS[role]}`}
                       >
-                        {ROLE_LABELS[role].split(' ')[0]}
+                        {ROLE_LABELS[role]}
                       </button>
                     );
                   })}

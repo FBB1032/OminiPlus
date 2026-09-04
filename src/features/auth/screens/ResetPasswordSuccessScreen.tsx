@@ -74,7 +74,7 @@ export default function ResetPasswordSuccessScreen({ route, navigation }: AuthSc
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primary[800],
   },
   scrollContent: {
     flexGrow: 1,
@@ -92,18 +92,18 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize['2xl'],
     fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
+    color: '#FFFFFF',
     marginBottom: Spacing[2],
   },
   subtitle: {
     fontSize: FontSize.base,
-    color: Colors.text.secondary,
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: Spacing[3],
   },
   cardContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: '#FFFFFF',
     padding: Spacing[5],
     borderRadius: 24,
     gap: Spacing[5],
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   },
   backLinkText: {
     fontSize: FontSize.sm,
-    color: Colors.text.secondary,
+    color: 'rgba(255,255,255,0.7)',
     fontWeight: FontWeight.medium,
   },
 });

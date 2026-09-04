@@ -61,7 +61,7 @@ export const SplashScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" animated />
+      <StatusBar barStyle="light-content" backgroundColor="#0B5757" animated />
 
       {/* Decorative ambient heartbeat pulse backdrop */}
       <Animated.View
@@ -103,7 +103,7 @@ export const SplashScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0B5757',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
     width: width * 0.9,
     height: width * 0.9,
     borderRadius: width * 0.45,
-    backgroundColor: Colors.primary[50],
-    opacity: 0.7,
+    backgroundColor: Colors.primary[600],
+    opacity: 0.4,
   },
   logoWrapper: {
     width: width * 0.88,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: FontSize.md,
-    color: Colors.text.secondary,
+    color: 'rgba(255,255,255,0.8)',
     fontWeight: FontWeight.semiBold,
     letterSpacing: 0.4,
   },

@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   howItWorksTitle: {
     fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.semiBold,
     color: Colors.text.primary,
   },
   stepsList: {
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
   },
   rxDrug: {
     fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.semiBold,
     color: Colors.text.primary,
   },
   rxMeta: {
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   },
   rxDate: {
     fontSize: FontSize.xs,
-    color: Colors.text.tertiary ?? Colors.text.secondary,
+    color: Colors.text.secondary,
     marginTop: 2,
   },
   rxBadge: {
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   },
   rxBadgeText: {
     fontSize: 10,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.semiBold,
     color: '#64748B',
     fontFamily: 'monospace',
   },
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   },
   pharmacyName: {
     fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.semiBold,
     color: Colors.text.primary,
   },
   pharmacyAddress: {

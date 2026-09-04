@@ -153,7 +153,7 @@ export default function OTPVerificationScreen({ route, navigation }: AuthScreenP
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.primary[800],
   },
   keyboardView: {
     flex: 1,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   backBtnText: {
     fontSize: FontSize.base,
     fontWeight: FontWeight.medium,
-    color: Colors.text.primary,
+    color: '#FFFFFF',
   },
   headerContainer: {
     alignItems: 'center',
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: Spacing[4],
@@ -195,21 +195,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: FontSize['2xl'],
     fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
+    color: '#FFFFFF',
     marginBottom: Spacing[2],
   },
   subtitle: {
     fontSize: FontSize.sm,
-    color: Colors.text.secondary,
+    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     lineHeight: 20,
   },
   emailHighlight: {
     fontWeight: FontWeight.semiBold,
-    color: Colors.text.primary,
+    color: '#FFFFFF',
   },
   formContainer: {
-    backgroundColor: Colors.surface,
+    backgroundColor: '#FFFFFF',
     padding: Spacing[5],
     borderRadius: 24,
     gap: Spacing[5],

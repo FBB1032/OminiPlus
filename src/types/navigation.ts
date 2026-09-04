@@ -4,8 +4,9 @@ import { BottomTabNavigationProp, BottomTabScreenProps } from '@react-navigation
 
 // ─── Auth Stack ─────────────────────────────────────────────────────────────
 export type AuthStackParamList = {
+  RoleSelection: undefined;
   Login: undefined;
-  Register: undefined;
+  Register: { role?: 'doctor' | 'patient' } | undefined;
   ForgotPassword: undefined;
   OTPVerification: { email: string; mode: 'reset' | 'verify' };
   ResetPasswordSuccess: { email: string };
@@ -75,6 +76,7 @@ export type PatientStackParamList = {
   WearableSync: undefined;
   AIHealthInsights: undefined;
   Specialists: { specialty?: string } | undefined;
+  SymptomChecker: undefined;
   ChangePassword: undefined;
   PaymentResult: {
     outcome: 'success' | 'failure';

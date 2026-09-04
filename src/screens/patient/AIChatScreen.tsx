@@ -28,7 +28,7 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
-  customComponent?: 'symptomCheckerBodyArea' | 'symptomCheckerSeverity' | 'symptomCheckerAssociated' | 'symptomCheckerResults' | 'aiDoctorRouting';
+  customComponent?: 'symptomCheckerBodyArea' | 'symptomCheckerSeverity' | 'symptomCheckerAssociated' | 'symptomCheckerResults' | 'aiDoctorRouting' | 'vitalsChartCard';
   customData?: any;
 }
 
@@ -184,7 +184,7 @@ export default function AIChatScreen({ route, navigation }: any) {
   // Listen to route params from Home screen
   useEffect(() => {
     if (route.params?.startSymptomChecker) {
-      startSymptomCheckerFlow();
+      navigation.navigate('SymptomChecker');
     }
   }, [route.params?.startSymptomChecker]);
 
@@ -520,7 +520,7 @@ export default function AIChatScreen({ route, navigation }: any) {
     setIsTyping(true);
 
     setTimeout(() => {
-      const ocrSummary = "📄 **AI OCR Scan & Analysis Complete**\n\n• **Document Type**: Clinical E-Prescription & Lab Report\n• **Extracted Medications**: Amoxicillin 500mg (3x daily), Paracetamol 500mg (as needed)\n• **Extracted Findings**: Hemoglobin 13.5 g/dL (Normal), Fasting Glucose 95 mg/dL (Normal)\n\n*All extracted values have been cross-referenced with your EHR. Would you like me to schedule medication alarms for Amoxicillin?*";
+      const ocrSummary = "I have analyzed your uploaded clinical document:\n\n• **Document**: Clinical E-Prescription & Lab Report\n• **Extracted Medications**: Amoxicillin 500mg (3x daily), Paracetamol 500mg (as needed)\n• **Extracted Findings**: Hemoglobin 13.5 g/dL and Fasting Glucose 95 mg/dL (both normal)\n\nAll extracted values have been cross-referenced with your EHR. Would you like me to schedule medication alarms for Amoxicillin?";
       const aiMsg: Message = {
         id: `msg-${Date.now() + 1}`,
         text: ocrSummary,
@@ -536,7 +536,7 @@ export default function AIChatScreen({ route, navigation }: any) {
     if (!text.trim()) return;
 
     if (text.trim() === 'Start Symptom Checker' || text.toLowerCase().includes('symptom checker')) {
-      startSymptomCheckerFlow();
+      navigation.navigate('SymptomChecker');
       setInputText('');
       return;
     }
@@ -570,12 +570,17 @@ export default function AIChatScreen({ route, navigation }: any) {
       setIsTyping(true);
 
       setTimeout(() => {
-        const summaryText = `📊 **AI Health Record & Vitals Summary**\n\n• **Blood Pressure**: ${vitals?.bloodPressure || '120/80'} mmHg (Healthy)\n• **Heart Rate**: ${vitals?.heartRate || '72'} bpm (Normal Sinus Rhythm)\n• **Active Prescriptions**: 2 active medications logged\n• **Recent Lab Tests**: All blood work within normal limits\n\nYour overall health index is strong. Keep logging vitals weekly.`;
+        const summaryText = `Here is a summary of your recent health profile and vitals:\n\n• **Blood Pressure**: ${vitals?.bloodPressure || '120/80'} mmHg (Optimal)\n• **Heart Rate**: ${vitals?.heartRate || '72'} bpm (Normal Sinus Rhythm)\n• **Active Prescriptions**: 2 medications logged\n• **Lab Tests**: All recent blood work within normal limits\n\nYour overall health index is strong. Here is your visual vitals snapshot:`;
         const aiMsg: Message = {
           id: `msg-${Date.now() + 1}`,
           text: summaryText,
           isUser: false,
           timestamp: new Date(),
+          customComponent: 'vitalsChartCard',
+          customData: {
+            bp: vitals?.bloodPressure || '120/80',
+            hr: vitals?.heartRate || '72',
+          },
         };
         setMessages((prev) => [...prev, aiMsg]);
         setIsTyping(false);
@@ -671,6 +676,71 @@ export default function AIChatScreen({ route, navigation }: any) {
     setVoiceStatus('idle');
   };
 
+  const renderFormattedMessage = (text: string, isUser: boolean) => {
+    if (isUser) {
+      return <Text style={[styles.messageText, styles.userText]}>{text}</Text>;
+    }
+
+    // Split text by double newlines into distinct paragraphs
+    const paragraphs = text.split('\n\n');
+
+    return (
+      <View style={styles.formattedContainer}>
+        {paragraphs.map((para, pIdx) => {
+          const lines = para.split('\n');
+          return (
+            <View key={pIdx} style={pIdx > 0 ? { marginTop: 8 } : undefined}>
+              {lines.map((line, lIdx) => {
+                const trimmed = line.trim();
+                if (!trimmed) return null;
+
+                const isBullet = trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ');
+                const cleanText = isBullet ? trimmed.replace(/^[•\-\*]\s*/, '') : trimmed;
+
+                // Split text by bold markers (**bold**)
+                const parts = cleanText.split(/(\*\*.*?\*\*)/g);
+
+                return (
+                  <View
+                    key={lIdx}
+                    style={[
+                      styles.formattedLine,
+                      isBullet && styles.formattedBulletLine,
+                      lIdx > 0 && !isBullet && { marginTop: 4 },
+                    ]}
+                  >
+                    {isBullet && <View style={styles.formattedBulletDot} />}
+                    <Text style={[styles.messageText, styles.aiText, { flex: 1, flexWrap: 'wrap' }]}>
+                      {parts.map((part, partIdx) => {
+                        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                          const boldContent = part.slice(2, -2);
+                          return (
+                            <Text key={partIdx} style={styles.boldText}>
+                              {boldContent}
+                            </Text>
+                          );
+                        }
+                        if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+                          const italicContent = part.slice(1, -1);
+                          return (
+                            <Text key={partIdx} style={styles.italicText}>
+                              {italicContent}
+                            </Text>
+                          );
+                        }
+                        return <Text key={partIdx}>{part}</Text>;
+                      })}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderMessageItem = ({ item }: { item: Message }) => {
     const formattedTime = item.timestamp.toLocaleTimeString(undefined, {
       hour: '2-digit',
@@ -686,10 +756,17 @@ export default function AIChatScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
-        <View style={[styles.bubble, item.isUser ? styles.userBubble : styles.aiBubble, item.customComponent === 'symptomCheckerResults' && { width: '85%', maxWidth: '85%' }]}>
-          <Text style={[styles.messageText, item.isUser ? styles.userText : styles.aiText]}>
-            {item.text}
-          </Text>
+        <View
+          style={[
+            styles.bubble,
+            item.isUser ? styles.userBubble : styles.aiBubble,
+            !item.isUser &&
+              (item.text.length > 50 || Boolean(item.customComponent) || item.text.includes('\n')) &&
+              styles.aiBubbleWide,
+            item.customComponent === 'symptomCheckerResults' && { width: '92%', maxWidth: '92%' },
+          ]}
+        >
+          {renderFormattedMessage(item.text, item.isUser)}
 
           {/* Inline Symptom Checker Area selection */}
           {item.customComponent === 'symptomCheckerBodyArea' && (
@@ -854,6 +931,57 @@ export default function AIChatScreen({ route, navigation }: any) {
             </View>
           )}
 
+          {/* Inline Visual Vitals Snapshot & Metric Card */}
+          {item.customComponent === 'vitalsChartCard' && (
+            <View style={styles.chatVitalsCard}>
+              <View style={styles.chatVitalsCardHeader}>
+                <Ionicons name="stats-chart" size={15} color={Colors.patient} />
+                <Text style={styles.chatVitalsCardTitle}>Vitals Snapshot & Metric Index</Text>
+              </View>
+
+              <View style={styles.chatVitalsGrid}>
+                <View style={styles.chatVitalBox}>
+                  <Text style={styles.chatVitalBoxLabel}>Blood Pressure</Text>
+                  <Text style={styles.chatVitalBoxValue}>{item.customData?.bp || '120/80'}</Text>
+                  <View style={[styles.chatVitalBadge, { backgroundColor: '#ECFDF5' }]}>
+                    <Text style={[styles.chatVitalBadgeText, { color: '#059669' }]}>Optimal</Text>
+                  </View>
+                </View>
+
+                <View style={styles.chatVitalBox}>
+                  <Text style={styles.chatVitalBoxLabel}>Heart Rate</Text>
+                  <Text style={styles.chatVitalBoxValue}>
+                    {item.customData?.hr || '72'}{' '}
+                    <Text style={{ fontSize: 9.5, fontWeight: 'normal', color: Colors.text.secondary }}>bpm</Text>
+                  </Text>
+                  <View style={[styles.chatVitalBadge, { backgroundColor: '#ECFDF5' }]}>
+                    <Text style={[styles.chatVitalBadgeText, { color: '#059669' }]}>Normal</Text>
+                  </View>
+                </View>
+
+                <View style={styles.chatVitalBox}>
+                  <Text style={styles.chatVitalBoxLabel}>Health Index</Text>
+                  <Text style={[styles.chatVitalBoxValue, { color: Colors.patient }]}>
+                    94{' '}
+                    <Text style={{ fontSize: 9.5, fontWeight: 'normal', color: Colors.text.secondary }}>/100</Text>
+                  </Text>
+                  <View style={[styles.chatVitalBadge, { backgroundColor: '#EFF6FF' }]}>
+                    <Text style={[styles.chatVitalBadgeText, { color: '#2563EB' }]}>Strong</Text>
+                  </View>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.chatVitalsViewMoreBtn}
+                onPress={() => navigation.navigate('MedicalRecords')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.chatVitalsViewMoreText}>View Full Medical Records & Chart</Text>
+                <Ionicons name="arrow-forward" size={12} color={Colors.patient} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <Text style={[styles.timestampText, item.isUser ? styles.userTime : styles.aiTime]}>
             {formattedTime}
           </Text>
@@ -918,7 +1046,7 @@ export default function AIChatScreen({ route, navigation }: any) {
             {/* Feeling Unwell / Symptom Checker Banner inside AI Assistant */}
             <TouchableOpacity
               style={styles.aiSymptomBanner}
-              onPress={startSymptomCheckerFlow}
+              onPress={() => navigation.navigate('SymptomChecker')}
               activeOpacity={0.8}
             >
               <View style={styles.aiSymptomIconBg}>
@@ -1332,7 +1460,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bubble: {
-    maxWidth: '80%',
+    maxWidth: '85%',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
     borderRadius: 20,
@@ -1341,12 +1469,18 @@ const styles = StyleSheet.create({
   userBubble: {
     backgroundColor: Colors.patient,
     borderBottomRightRadius: 4,
+    maxWidth: '82%',
   },
   aiBubble: {
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    maxWidth: '88%',
+  },
+  aiBubbleWide: {
+    flex: 1,
+    maxWidth: '92%',
   },
   messageText: {
     fontSize: FontSize.md,
@@ -1841,5 +1975,103 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: '#991B1B',
     lineHeight: 18,
+  },
+  formattedContainer: {
+    width: '100%',
+  },
+  formattedLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  formattedBulletLine: {
+    paddingLeft: 2,
+    marginTop: 3,
+    marginBottom: 2,
+  },
+  formattedBulletDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.patient,
+    marginTop: 7,
+    marginRight: 7,
+  },
+  boldText: {
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  italicText: {
+    fontStyle: 'italic',
+    color: Colors.text.secondary,
+  },
+  chatVitalsCard: {
+    marginTop: 10,
+    backgroundColor: '#FAFDFD',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E6F4F1',
+    width: '100%',
+  },
+  chatVitalsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  chatVitalsCardTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  chatVitalsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 10,
+  },
+  chatVitalBox: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+  },
+  chatVitalBoxLabel: {
+    fontSize: 9,
+    color: Colors.text.secondary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  chatVitalBoxValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  chatVitalBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  chatVitalBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+  },
+  chatVitalsViewMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2F6',
+  },
+  chatVitalsViewMoreText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: Colors.patient,
   },
 });

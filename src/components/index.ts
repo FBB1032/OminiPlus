@@ -20,6 +20,8 @@ export { SkeletonBox, SkeletonCard, SkeletonList, SkeletonDashboard, SkeletonDet
 export { ToastProvider } from './feedback/Toast';
 export { AccessDenied } from './feedback/AccessDenied';
 export { LoadingOverlay } from './feedback/LoadingOverlay';
+export { HeartbeatLoader } from './feedback/HeartbeatLoader';
+export { HeartbeatRefreshControl, HeartbeatRefreshHeader, HeartbeatScrollView } from './feedback/HeartbeatRefreshControl';
 export { FormInput } from './forms/FormInput';
 export { OTPInput } from './forms/OTPInput';
 export { FormSelect } from './forms/FormSelect';

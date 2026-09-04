@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Stethoscope, Building2, Pill, Calendar, Bot, Users, Activity,
@@ -14,6 +15,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { ROLE_PERMISSIONS, ROLE_LABELS, ROLE_COLORS, NAV_SECTIONS } from '@/store/permissionStore';
 import { timeAgo } from '@/lib/utils';
+import type { AdminRole } from '@/types';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -58,8 +60,30 @@ const ACTIVITY_STYLES: Record<string, { bg: string; color: string }> = {
 // See usage inside DashboardPage below.
 
 export default function DashboardPage() {
+  const router = useRouter();
   const admin = useAuthStore(s => s.admin);
-  const adminRole = admin?.role || 'super_admin';
+  const adminRole: AdminRole = (admin?.role as AdminRole) || 'admin';
+
+  useEffect(() => {
+    if (adminRole === 'doctor') {
+      router.replace('/dashboard/doctor-portal');
+    } else if (adminRole === 'admin') {
+      router.replace('/dashboard/hospitals');
+    } else if (adminRole === 'pharmacist') {
+      router.replace('/dashboard/hospital-portal?tab=pharmacy');
+    } else if (adminRole === 'lab_technician') {
+      router.replace('/dashboard/hospital-portal?tab=laboratory');
+    } else if (adminRole === 'nurse') {
+      router.replace('/dashboard/hospital-portal?tab=wards');
+    } else if (adminRole === 'receptionist') {
+      router.replace('/dashboard/hospital-portal?tab=appointments');
+    } else if (adminRole === 'blood_officer') {
+      router.replace('/dashboard/hospital-portal?tab=blood');
+    } else {
+      router.replace('/dashboard/hospital-portal');
+    }
+  }, [router, adminRole]);
+
   const permissions = ROLE_PERMISSIONS[adminRole] || [];
   const hasPermission = (p: string) => permissions.includes(p as any);
 

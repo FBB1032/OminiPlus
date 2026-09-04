@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Platform,
   TouchableOpacity,
   SafeAreaView,
+  Image,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm, Controller } from 'react-hook-form';
@@ -21,6 +24,9 @@ import { useToast } from '../../../hooks/useAuth';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
 import { AuthScreenProps } from '../../../types';
 
+const medicalTeamIllustration = require('../../../../assets/images/medical_team.jpg');
+const { width } = Dimensions.get('window');
+
 const SPECIALTIES = [
   { label: 'General Medicine', value: 'General Medicine' },
   { label: 'Cardiology', value: 'Cardiology' },
@@ -32,9 +38,11 @@ const SPECIALTIES = [
   { label: 'Neurology', value: 'Neurology' },
 ];
 
-export default function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
+export default function RegisterScreen({ navigation, route }: AuthScreenProps<'Register'>) {
   const [loading, setLoading] = useState(false);
   const { error: showToastError, success: showToastSuccess } = useToast();
+
+  const selectedRole = route.params?.role ?? 'patient';
 
   const {
     control,
@@ -49,7 +57,7 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
       lastName: '',
       email: '',
       phone: '',
-      role: 'patient',
+      role: selectedRole,
       password: '',
       confirmPassword: '',
       licenseNo: '',
@@ -68,7 +76,6 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
     },
   });
 
-  const [selectedRole, setSelectedRole] = useState<'patient' | 'doctor'>('patient');
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
   const pwWatch = watch('password');
@@ -103,24 +110,64 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <View style={styles.headerContainer}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join Omini Pulse to manage your wellness journey</Text>
-          </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0F6E6E" translucent={Platform.OS === 'android'} />
 
-          <View style={styles.formContainer}>
-            <View style={styles.nameRow}>
-              <View style={styles.flex1}>
+      <SafeAreaView style={styles.safeArea}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Unified card — illustration joined with form */}
+            <View style={styles.formCard}>
+              {/* Illustration Header */}
+              <View style={styles.illustrationHeader}>
+                {/* Back button overlaid on the header */}
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => navigation.goBack()}
+                  activeOpacity={0.75}
+                  hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                >
+                  <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+
+                <View style={styles.roleBadge}>
+                  <Ionicons
+                    name={selectedRole === 'doctor' ? 'medkit' : 'person'}
+                    size={14}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.roleBadgeText}>
+                    {selectedRole === 'doctor' ? 'Doctor Account' : 'Patient Account'}
+                  </Text>
+                </View>
+
+                <Image
+                  source={medicalTeamIllustration}
+                  style={styles.illustrationImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <View style={styles.headerContainer}>
+                <Text style={styles.title}>
+                  {selectedRole === 'doctor' ? 'Doctor Registration' : 'Create Account'}
+                </Text>
+                <Text style={styles.subtitle}>
+                  {selectedRole === 'doctor'
+                    ? 'Complete clinical credentials for verification'
+                    : 'Join Omini Pulse to manage your wellness journey'}
+                </Text>
+              </View>
+
+              <View style={styles.formContainer}>
+                <View style={styles.nameRow}>
+                  <View style={styles.flex1}>
                 <FormInput
                   control={control}
                   name="firstName"
@@ -160,36 +207,6 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
               leftIcon="call-outline"
               error={errors.phone}
             />
-
-            {/* Role Selector Toggle */}
-            <View style={styles.roleToggleContainer}>
-              <Text style={styles.roleLabel}>I am a...</Text>
-              <View style={styles.roleToggleRow}>
-                <TouchableOpacity
-                  style={[styles.roleToggleButton, selectedRole === 'patient' && styles.roleToggleActive]}
-                  onPress={() => {
-                    setSelectedRole('patient');
-                    setValue('role', 'patient');
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="person" size={18} color={selectedRole === 'patient' ? '#FFF' : Colors.text.secondary} />
-                  <Text style={[styles.roleToggleText, selectedRole === 'patient' && styles.roleToggleTextActive]}>Patient</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.roleToggleButton, selectedRole === 'doctor' && styles.roleToggleActive]}
-                  onPress={() => {
-                    setSelectedRole('doctor');
-                    setValue('role', 'doctor');
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="medkit" size={18} color={selectedRole === 'doctor' ? '#FFF' : Colors.text.secondary} />
-                  <Text style={[styles.roleToggleText, selectedRole === 'doctor' && styles.roleToggleTextActive]}>Doctor</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
             {/* Doctor Credentials Fields */}
             {selectedRole === 'doctor' && (
@@ -458,18 +475,19 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
             />
 
             <SocialLoginButtons variant="register" />
-          </View>
 
-          <View style={styles.footerContainer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Login')}
-              activeOpacity={0.7}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-            >
-              <Text style={styles.loginLink}>Sign In</Text>
-            </TouchableOpacity>
+            <View style={styles.footerContainer}>
+              <Text style={styles.footerText}>Already have an account? </Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Login')}
+                activeOpacity={0.7}
+                hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              >
+                <Text style={styles.loginLink}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+        </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -483,44 +501,106 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
 
       <LoadingOverlay visible={loading} message="Creating account..." />
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0B5757', // Deep teal — app brand color
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing[6],
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 28,
+  },
+  // Concentric circle background graphics — removed (no longer used)
+  bgCircle1: { display: 'none' as any },
+  bgCircle2: { display: 'none' as any },
+  bgCircle3: { display: 'none' as any },
+  topBar: { display: 'none' as any },
+  illustrationSection: { display: 'none' as any },
+  illustrationWrapper: { display: 'none' as any },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  illustrationHeader: {
+    backgroundColor: '#44C997',
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing[6],
+    paddingTop: 12,
+    paddingBottom: 0,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 12,
+    left: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
+  },
+  roleBadgeText: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+  },
+  illustrationImage: {
+    width: width * 0.82,
+    height: 170,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: Spacing[6],
+    marginBottom: Spacing[4],
+    paddingHorizontal: 22,
+    paddingTop: 20,
   },
   title: {
-    fontSize: FontSize['2xl'],
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-    marginBottom: Spacing[1],
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#165A48',
+    marginBottom: 4,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     color: Colors.text.secondary,
     textAlign: 'center',
   },
   formContainer: {
-    backgroundColor: Colors.surface,
-    padding: Spacing[5],
-    borderRadius: 24,
     gap: Spacing[4],
-    ...Shadows.sm,
+    paddingHorizontal: 22,
+    paddingBottom: 22,
   },
   nameRow: {
     flexDirection: 'row',
@@ -531,59 +611,26 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: Spacing[2],
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#44C997',
   },
   footerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: Spacing[6],
-    marginBottom: Spacing[4],
+    marginTop: Spacing[4],
+    marginBottom: Spacing[2],
   },
   footerText: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     color: Colors.text.secondary,
   },
   loginLink: {
-    fontSize: FontSize.sm,
-    color: Colors.primary[600],
+    fontSize: FontSize.xs,
+    color: '#165A48',
     fontWeight: FontWeight.bold,
-  },
-  roleToggleContainer: {
-    marginBottom: Spacing[2],
-  },
-  roleLabel: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.secondary,
-    marginBottom: Spacing[2],
-  },
-  roleToggleRow: {
-    flexDirection: 'row',
-    gap: Spacing[3],
-  },
-  roleToggleButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    height: 48,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#F8FAFC',
-  },
-  roleToggleActive: {
-    backgroundColor: Colors.primary[600],
-    borderColor: Colors.primary[600],
-  },
-  roleToggleText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semiBold,
-    color: Colors.text.secondary,
-  },
-  roleToggleTextActive: {
-    color: '#FFFFFF',
+    textDecorationLine: 'underline',
   },
   doctorFieldsContainer: {
     gap: Spacing[4],

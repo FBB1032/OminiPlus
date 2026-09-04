@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 interface StepIndicatorProps {
   steps: string[];
@@ -25,7 +26,10 @@ export const StepIndicator = memo<StepIndicatorProps>(({ steps, currentStep, sty
                 styles.circleText,
                 (isDone || isActive) && styles.circleTextActive,
               ]}>
-                {isDone ? '✓' : index + 1}
+                {isDone
+                  ? <Ionicons name="checkmark" size={14} color="#FFFFFF" />
+                  : <Text style={[styles.circleText, isActive && styles.circleTextActive]}>{index + 1}</Text>
+                }
               </Text>
             </View>
             <Text style={[

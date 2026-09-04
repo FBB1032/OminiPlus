@@ -203,6 +203,13 @@ function DoctorPortalContent() {
   const { admin } = useAuthStore();
   const searchParams = useSearchParams();
   const tabParam = searchParams?.get('tab') || 'queue';
+  const [activeTab, setActiveTab] = useState(tabParam === 'app-locked' ? 'queue' : tabParam);
+
+  useEffect(() => {
+    if (tabParam && tabParam !== 'app-locked') {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   // Mobile Lock App Modal state
   const [lockedFeatureModal, setLockedFeatureModal] = useState<{
@@ -235,8 +242,6 @@ function DoctorPortalContent() {
       );
     }
   }, [tabParam]);
-
-  const activeTab = tabParam === 'app-locked' ? 'queue' : tabParam;
 
   // Active Consultation Modal
   const [selectedConsult, setSelectedConsult] = useState<Consultation | null>(null);
@@ -281,11 +286,6 @@ function DoctorPortalContent() {
   const [labTestName, setLabTestName] = useState('');
   const [labPriority, setLabPriority] = useState<'routine' | 'urgent'>('routine');
 
-  // AI Assistant Query state
-  const [aiQuery, setAiQuery] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
   // Doctor Bio, Fee & Feedback Toast state
   const [doctorBio, setDoctorBio] = useState('Dr. Folake Ademola is a board-certified cardiologist with over 12 years of clinical experience specializing in interventional cardiology, heart failure management, and preventive cardiac care.');
   const [consultFee, setConsultFee] = useState(15000);
@@ -324,16 +324,6 @@ function DoctorPortalContent() {
     if (!selectedConsult) return;
     triggerFeedback(`Consultation for ${selectedConsult.patientName} completed and clinical record saved.`);
     setSelectedConsult(null);
-  };
-
-  const handleRunAiAnalysis = () => {
-    if (!aiQuery.trim()) return;
-    setAiLoading(true);
-    setAiResponse(null);
-    setTimeout(() => {
-      setAiLoading(false);
-      setAiResponse(`Differential Clinical Insight for "${aiQuery}":\n1. Essential Hypertension Exacerbation (High Probability - 78%)\n2. Cardiac Arrhythmia / Atrial Fibrillation (Moderate Probability - 42%)\n3. Anxiety-induced Tachypnea & Sympathetic Surge (35%)\n\nRecommended Action: Order 12-lead ECG, Troponin I level, and Lipid Profile. Review current Amlodipine dosage.`);
-    }, 1200);
   };
 
   return (
@@ -379,11 +369,21 @@ function DoctorPortalContent() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Button variant="secondary" size="sm" leftIcon={<Clock size={14} />} onClick={() => window.location.href = '/dashboard/doctor-portal?tab=schedule'}>
-            Schedule
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button
+            variant={activeTab === 'schedule' ? 'teal' : 'secondary'}
+            size="sm"
+            leftIcon={<Clock size={14} />}
+            onClick={() => setActiveTab('schedule')}
+          >
+            Weekly Schedule
           </Button>
-          <Button variant="teal" size="sm" leftIcon={<Stethoscope size={14} />} onClick={() => window.location.href = '/dashboard/doctor-portal?tab=queue'}>
+          <Button
+            variant={activeTab === 'queue' ? 'teal' : 'secondary'}
+            size="sm"
+            leftIcon={<Stethoscope size={14} />}
+            onClick={() => setActiveTab('queue')}
+          >
             Patient Queue
           </Button>
         </div>
@@ -410,6 +410,82 @@ function DoctorPortalContent() {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* ── Doctor Portal Main Tab Navigation ──────────────────────── */}
+      <div style={{
+        display: 'flex',
+        gap: 6,
+        borderBottom: '1px solid #e2e8f0',
+        paddingBottom: 2,
+        overflowX: 'auto',
+      }}>
+        {[
+          { key: 'queue', label: 'Patient Queue', icon: Users },
+          { key: 'notes', label: 'SOAP Clinical Notes', icon: FileText },
+          { key: 'prescriptions', label: 'Digital Prescriptions & Labs', icon: Pill },
+          { key: 'schedule', label: 'Weekly Schedule', icon: Calendar },
+          { key: 'reviews', label: 'Patient Reviews', icon: Star },
+          { key: 'profile', label: 'Doctor Credentials', icon: Award },
+        ].map((tab) => {
+          const Icon = tab.icon;
+          const isSelected = activeTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '10px 18px',
+                borderRadius: '8px 8px 0 0',
+                border: 'none',
+                borderBottom: isSelected ? '3px solid #0f6e6e' : '3px solid transparent',
+                background: isSelected ? '#f0fdfa' : 'transparent',
+                color: isSelected ? '#0f6e6e' : '#64748b',
+                fontWeight: isSelected ? 700 : 500,
+                fontSize: 13,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 120ms',
+              }}
+            >
+              <Icon size={15} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Doctor Web vs Mobile Synchronization Notice */}
+      <div style={{
+        background: '#eff6ff',
+        borderRadius: 12,
+        padding: '12px 16px',
+        border: '1px solid #bfdbfe',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 8, background: '#2563eb', color: '#ffffff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>
+            <Smartphone size={16} />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: '#1e40af' }}>
+              Web Clinical Station Active
+            </p>
+            <p style={{ margin: '1px 0 0', fontSize: 12, color: '#3b82f6' }}>
+              Use this web dashboard for EHR review, SOAP medical records, duty scheduling, and digital prescriptions. Encrypted live WebRTC video calls and emergency on-call push alerts are handled on the OmniPulse Doctor Phone App.
+            </p>
+          </div>
+        </div>
       </div>
 
 
@@ -698,126 +774,7 @@ function DoctorPortalContent() {
         </div>
       )}
 
-      {/* ── TAB 5: BLOOD DONOR NETWORK (BLOCKED — APP ONLY) ─────────── */}
-      {activeTab === 'blood' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{
-            background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 60%, #450a0a 100%)',
-            borderRadius: 20, padding: '32px 28px',
-            boxShadow: '0 8px 30px rgba(127,29,29,0.25)',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 16,
-            color: '#ffffff'
-          }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: 20, background: 'rgba(255,255,255,0.12)',
-              border: '2px solid rgba(255,255,255,0.25)', backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Droplet size={32} style={{ color: '#fca5a5' }} />
-            </div>
 
-            <div>
-              <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', background: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: 999 }}>
-                Mobile Exclusive Feature
-              </span>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em', marginTop: 8 }}>
-                Blood Donor Network & SOS Emergency Broadcast
-              </h3>
-              <p style={{ fontSize: 13.5, color: '#fca5a5', marginTop: 6, maxWidth: 540, lineHeight: 1.6 }}>
-                GPS proximity blood donor discovery, AA genotype verification, and emergency blood push alerts are exclusive to the OmniPulse Mobile App to protect donor privacy and safety.
-              </p>
-            </div>
-
-            <div style={{
-              background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 16, padding: '16px 20px', textAlign: 'left', maxWidth: 520, width: '100%'
-            }}>
-              <p style={{ fontSize: 12.5, fontWeight: 700, color: '#ffffff', marginBottom: 6 }}>
-                🩸 Why is Blood Donor Network mobile-only?
-              </p>
-              <ul style={{ fontSize: 12, color: '#fecaca', paddingLeft: 18, margin: 0, lineHeight: 1.6 }}>
-                <li>Real-time background GPS proximity matching with active AA donors</li>
-                <li>Instant mobile SOS push notifications for urgent blood transfusion calls</li>
-                <li>Strict regulatory policy compliance against non-clinical blood monetization</li>
-              </ul>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', marginTop: 6 }}>
-              <p style={{ fontSize: 12.5, fontWeight: 700, color: '#ffffff' }}>
-                Download the OmniPulse Doctor App to access Blood Donor Network:
-              </p>
-              <AppStoreButtons onAppClick={(platform) => triggerFeedback(`Redirecting to ${platform}...`)} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 6: AI CLINICAL ASSISTANT & SYMPTOM SUMMARY ───────── */}
-      {activeTab === 'ai' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Header Banner */}
-          <div style={{
-            background: 'linear-gradient(135deg, #4c1d95 0%, #6d28d9 60%, #7c3aed 100%)',
-            borderRadius: 20, padding: '22px 28px',
-            boxShadow: '0 8px 24px rgba(109,40,217,0.22)',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 14
-          }}>
-            <div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#ffffff', letterSpacing: '-0.02em' }}>AI Clinical Assistant & Differential Diagnosis</h3>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>AI-powered symptom evaluation, clinical history summarization & drug interaction checks</p>
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 700, background: 'rgba(255,255,255,0.18)', color: '#ffffff', padding: '6px 14px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.2)' }}>
-              OmniAI Engine v2.4
-            </span>
-          </div>
-
-          {/* AI Case Input Card */}
-          <div style={{ background: '#ffffff', border: '1px solid #e8eef4', borderRadius: 20, padding: '24px 28px', boxShadow: '0 2px 12px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', display: 'block', marginBottom: 6 }}>
-                  Enter Patient Symptoms or Clinical Case Summary *
-                </label>
-                <textarea
-                  className="input"
-                  style={{ height: 100, padding: 14, fontFamily: 'inherit', fontSize: 13.5, borderRadius: 12, lineHeight: 1.5 }}
-                  placeholder="e.g. 48-year-old male with sudden onset retrosternal chest pain, radiating to jaw, diaphoresis, BP 145/90..."
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                />
-              </div>
-
-              <Button
-                variant="teal"
-                leftIcon={<Sparkles size={15} />}
-                onClick={handleRunAiAnalysis}
-                disabled={aiLoading}
-                style={{ alignSelf: 'flex-start', borderRadius: 12, padding: '10px 20px', fontSize: 13.5 }}
-              >
-                {aiLoading ? 'Analyzing Case with OmniAI...' : 'Generate AI Differential Diagnosis'}
-              </Button>
-
-              {aiResponse && (
-                <div style={{
-                  background: 'linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%)',
-                  border: '1px solid #99f6e4', borderRadius: 16, padding: 20,
-                  marginTop: 4, boxShadow: '0 4px 16px rgba(15,110,110,0.08)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: 10, background: '#0f6e6e', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Bot size={18} />
-                    </div>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: '#0f6e6e' }}>OmniAI Clinical Recommendation</span>
-                  </div>
-                  <p style={{ fontSize: 13.5, color: '#134e4a', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
-                    {aiResponse}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── TAB 7: WEEKLY CONSULTATION SCHEDULE ────────────────────── */}
       {activeTab === 'schedule' && (

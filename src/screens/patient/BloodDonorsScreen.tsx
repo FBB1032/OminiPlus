@@ -8,1097 +8,920 @@ import {
   TextInput,
   Modal,
   Alert,
-  Linking,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Shadows } from '../../theme';
-import { MOCK_BLOOD_DONORS } from '../../api/__mocks__/mockData';
 import { useToast } from '../../hooks/useAuth';
+import { HeartbeatLoader, HeartbeatRefreshControl, HeartbeatRefreshHeader } from '../../components';
 
-interface DonorItem {
+export interface HospitalBloodBank {
   id: string;
   name: string;
-  bloodGroup: string;
-  genotype: string;
+  category: string;
+  address: string;
   city: string;
-  latitude: number;
-  longitude: number;
+  state: string;
   distanceKm: number;
-  phone: string;
-  availabilityStatus: string;
-  isVerified: boolean;
-  lastDonationDate: string;
-  donationsCount: number;
-  gender: string;
-  age?: number;
-  labReportUrl?: string;
-  labReportStatus?: 'pending' | 'verified' | 'rejected';
+  accreditedBy: string;
+  stock: Record<string, number>;
+  acceptingDonations: boolean;
+  screeningHours: string;
+  facilityDeskPhone: string;
 }
 
-const BLOOD_GROUPS = ['ALL', 'O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
-const DISTANCE_RADII = [
-  { label: '< 5 km', value: 5 },
-  { label: '< 10 km', value: 10 },
-  { label: '< 25 km', value: 25 },
-  { label: '< 50 km', value: 50 },
-  { label: 'All Distances', value: 999 },
+export interface BloodRequestPipeline {
+  id: string;
+  patientName: string;
+  relativeName: string;
+  relationship: string;
+  bloodGroup: string;
+  unitsNeeded: number;
+  urgency: 'Standard' | 'Urgent' | 'Critical Surgery';
+  hospitalName: string;
+  hospitalWard: string;
+  attendingDoctor: string;
+  timestamp: string;
+  // Exact 8-stage flow as specified
+  stage: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  matchedDonorsCount: number;
+  respondedDonorsCount: number;
+  screenedAtFacility: boolean;
+  donationCompleted: boolean;
+}
+
+const FLOW_STAGES = [
+  { step: 1, title: 'Request Created', desc: 'Patient / Relative submitted details' },
+  { step: 2, title: 'Hospital Details Attached', desc: 'Facility, ward & doctor confirmed' },
+  { step: 3, title: 'OminiPulse Verified', desc: 'Clinical legitimacy verified by platform' },
+  { step: 4, title: 'Donors Matched', desc: 'Compatible AA-genotype donors found' },
+  { step: 5, title: 'Donors Notified', desc: 'System dispatched in-app alerts' },
+  { step: 6, title: 'Donor Responded', desc: 'Volunteer accepted to donate at facility' },
+  { step: 7, title: 'Facility Screening', desc: 'Hospital handles Hb, vitals & blood tests' },
+  { step: 8, title: 'Donation Completed', desc: 'Collection done at approved center • Closed' },
 ];
 
-const NIGERIA_STATES_AND_CITIES: Record<string, string[]> = {
-  'Lagos State': ['Ikeja', 'Victoria Island', 'Lekki Phase 1', 'Yaba', 'Surulere', 'Maryland', 'Ikoyi', 'Festac Town', 'Ajah'],
-  'FCT Abuja': ['Garki', 'Wuse Phase 2', 'Maitama', 'Jabi', 'Asokoro', 'Utako', 'Gwarinpa', 'Kubwa'],
-  'Rivers State': ['Port Harcourt (GRA)', 'Rumuokoro', 'Trans Amadi', 'Obio-Akpor', 'Eleme'],
-  'Oyo State': ['Ibadan (Bodija)', 'Dugbe', 'Ring Road', 'Jericho', 'Mokola', 'Ogbomoso'],
-  'Enugu State': ['Enugu Urban', 'Independence Layout', 'GRA Enugu', 'New Haven'],
-  'Kano State': ['Kano Central', 'Sabon Gari', 'Nassarawa', 'Tarauni'],
-  'Delta State': ['Warri', 'Asaba', 'Effurun', 'Sapele'],
-  'Edo State': ['Benin City (GRA)', 'Uselu', 'Ekpoma'],
-  'Kaduna State': ['Kaduna Central', 'Barnawa', 'Tudun Wada'],
-  'Ogun State': ['Abeokuta', 'Sagamu', 'Sango Ota', 'Ijebu Ode'],
-  'Anambra State': ['Awka', 'Onitsha', 'Nnewi'],
-  'Abia State': ['Umuahia', 'Aba'],
-  'Akwa Ibom State': ['Uyo', 'Eket'],
-  'Cross River State': ['Calabar Urban', 'Ikom'],
-  'Imo State': ['Owerri (World Bank)', 'Orlu'],
-  'Kwara State': ['Ilorin Central', 'Offa'],
-  'Plateau State': ['Jos South', 'Jos North'],
-};
+const BLOOD_GROUPS = ['ALL', 'O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
-export default function BloodDonorsScreen({ navigation }: any) {
+const ACCREDITED_HOSPITALS: HospitalBloodBank[] = [
+  {
+    id: 'h-1',
+    name: 'Lagos University Teaching Hospital (LUTH)',
+    category: 'Federal Teaching Hospital',
+    address: 'Idi-Araba, Surulere',
+    city: 'Lagos',
+    state: 'Lagos State',
+    distanceKm: 3.2,
+    accreditedBy: 'NBTS & NBSC Certified',
+    stock: { 'O-': 3, 'O+': 22, 'A+': 14, 'A-': 2, 'B+': 11, 'B-': 1, 'AB+': 6, 'AB-': 0 },
+    acceptingDonations: true,
+    screeningHours: 'Mon – Sat: 8:00 AM – 5:00 PM',
+    facilityDeskPhone: '+234 1 774 0230',
+  },
+  {
+    id: 'h-2',
+    name: 'Lagos General Hospital Marina Blood Bank',
+    category: 'State General Hospital',
+    address: '1–3 Broad Street, Lagos Island',
+    city: 'Lagos Island',
+    state: 'Lagos State',
+    distanceKm: 5.8,
+    accreditedBy: 'LSMOH Blood Safety Certified',
+    stock: { 'O-': 5, 'O+': 18, 'A+': 9, 'A-': 3, 'B+': 8, 'B-': 2, 'AB+': 4, 'AB-': 1 },
+    acceptingDonations: true,
+    screeningHours: 'Daily: 24/7 Transfusion Center',
+    facilityDeskPhone: '+234 1 263 1111',
+  },
+  {
+    id: 'h-3',
+    name: 'National Hospital Abuja Blood Transfusion Unit',
+    category: 'Federal Tertiary Hospital',
+    address: 'Plot 132 Central Area, Garki',
+    city: 'Abuja',
+    state: 'FCT Abuja',
+    distanceKm: 8.4,
+    accreditedBy: 'National Blood Service Commission',
+    stock: { 'O-': 2, 'O+': 15, 'A+': 8, 'A-': 1, 'B+': 6, 'B-': 0, 'AB+': 3, 'AB-': 0 },
+    acceptingDonations: true,
+    screeningHours: 'Mon – Sun: 8:00 AM – 7:00 PM',
+    facilityDeskPhone: '+234 9 234 0001',
+  },
+  {
+    id: 'h-4',
+    name: 'Eko Hospital Blood Bank & Lab',
+    category: 'Private Multi-Specialist Center',
+    address: '31 Mobolaji Bank Anthony Way, Ikeja',
+    city: 'Ikeja',
+    state: 'Lagos State',
+    distanceKm: 1.9,
+    accreditedBy: 'HEFAMAA Accredited',
+    stock: { 'O-': 1, 'O+': 12, 'A+': 6, 'A-': 1, 'B+': 7, 'B-': 1, 'AB+': 2, 'AB-': 0 },
+    acceptingDonations: true,
+    screeningHours: 'Mon – Sat: 8:30 AM – 6:00 PM',
+    facilityDeskPhone: '+234 1 270 0000',
+  },
+];
+
+export default function BloodDonorsScreen({ navigation, route }: any) {
+  const initialBg = route?.params?.initialBloodGroup || 'ALL';
   const { success: toastSuccess, error: toastError } = useToast();
-  
-  // States
-  const [donorsList, setDonorsList] = useState<DonorItem[]>(MOCK_BLOOD_DONORS as DonorItem[]);
-  const [selectedBloodGroup, setSelectedBloodGroup] = useState('ALL');
-  const [selectedRadius, setSelectedRadius] = useState(25);
+
+  // Active Screen Tab: 'find' (Patient/Relative) vs 'donate' (Volunteer Donor)
+  const [activeTab, setActiveTab] = useState<'find' | 'donate'>('find');
+  const [selectedBloodGroup, setSelectedBloodGroup] = useState<string>(initialBg);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isRefreshingGPS, setIsRefreshingGPS] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Active Request Pipeline (Stage 1 to 8)
+  const [activePipeline, setActivePipeline] = useState<BloodRequestPipeline | null>({
+    id: 'REQ-8821',
+    patientName: 'Amara Okafor',
+    relativeName: 'Chidi Okafor',
+    relationship: 'Brother',
+    bloodGroup: 'O-',
+    unitsNeeded: 2,
+    urgency: 'Critical Surgery',
+    hospitalName: 'Lagos University Teaching Hospital (LUTH)',
+    hospitalWard: 'Emergency Surgical Ward 3B',
+    attendingDoctor: 'Dr. T. Adeyemi',
+    timestamp: 'Today, 08:30 AM',
+    stage: 5,
+    matchedDonorsCount: 6,
+    respondedDonorsCount: 2,
+    screenedAtFacility: false,
+    donationCompleted: false,
+  });
 
   // Modals
-  const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
-  const [isAppealModalOpen, setIsAppealModalOpen] = useState(false);
-  const [isEmergencyModeOpen, setIsEmergencyModeOpen] = useState(false);
-  const [emergencyBloodGroup, setEmergencyBloodGroup] = useState('O-');
-  const [emergencyBroadcastActive, setEmergencyBroadcastActive] = useState(false);
+  const [isCreateRequestModalOpen, setIsCreateRequestModalOpen] = useState(false);
+  const [isRegisterDonorModalOpen, setIsRegisterDonorModalOpen] = useState(false);
+  const [selectedHospitalDetail, setSelectedHospitalDetail] = useState<HospitalBloodBank | null>(null);
 
-  // Registration Form State
-  const [regName, setRegName] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regAge, setRegAge] = useState('26');
-  const [regState, setRegState] = useState('Lagos State');
-  const [regCity, setRegCity] = useState('Ikeja');
-  const [regBloodGroup, setRegBloodGroup] = useState('O+');
-  const [regGenotype, setRegGenotype] = useState('AA');
-  const [regGender, setRegGender] = useState('Male');
-  const [regAvailability, setRegAvailability] = useState('Available Anytime');
-  const [regLastDonationDate, setRegLastDonationDate] = useState('2025-11-10');
-  const [regDonationsCount, setRegDonationsCount] = useState('3');
-  const [regLabReportName, setRegLabReportName] = useState<string | null>(null);
-  const [myDonorProfile, setMyDonorProfile] = useState<DonorItem | null>(null);
-  const [isEligibleConfirmed, setIsEligibleConfirmed] = useState(false);
+  // Create Request Form State
+  const [reqPatient, setReqPatient] = useState('');
+  const [reqRelative, setReqRelative] = useState('');
+  const [reqRelationship, setReqRelationship] = useState('Relative');
+  const [reqBloodGroup, setReqBloodGroup] = useState('O-');
+  const [reqUnits, setReqUnits] = useState('2');
+  const [reqHospital, setReqHospital] = useState(ACCREDITED_HOSPITALS[0].name);
+  const [reqWard, setReqWard] = useState('');
+  const [reqDoctor, setReqDoctor] = useState('');
+  const [reqUrgency, setReqUrgency] = useState<'Standard' | 'Urgent' | 'Critical Surgery'>('Urgent');
 
-  // Emergency Appeal Form State
-  const [appealPatient, setAppealPatient] = useState('');
-  const [appealBloodGroup, setAppealBloodGroup] = useState('O-');
-  const [appealUnits, setAppealUnits] = useState('2');
-  const [appealHospital, setAppealHospital] = useState('');
-  const [appealPhone, setAppealPhone] = useState('');
+  // Registered Volunteer Donor State (for current logged in user)
+  const [myDonorStatus, setMyDonorStatus] = useState<{
+    registered: boolean;
+    name: string;
+    bloodGroup: string;
+    genotype: string;
+    lastDonationDate: string;
+    approvedFacility: string;
+  }>({
+    registered: true,
+    name: 'Samuel Eze',
+    bloodGroup: 'O+',
+    genotype: 'AA',
+    lastDonationDate: '12 Nov 2025',
+    approvedFacility: 'Lagos General Hospital Marina',
+  });
 
-  // GPS Refresh simulation
-  const handleRefreshGPS = () => {
-    setIsRefreshingGPS(true);
+  // Pull-to-refresh handler with Heartbeat animation
+  const handleRefresh = () => {
+    setIsRefreshing(true);
     setTimeout(() => {
-      setIsRefreshingGPS(false);
-      toastSuccess('GPS Updated', 'Location refreshed: Ikeja, Lagos (GPS Accuracy: High)');
-    }, 1000);
+      setIsRefreshing(false);
+      toastSuccess('Blood Bank Stock Updated', 'Synchronized live inventory with accredited facility networks.');
+    }, 1100);
   };
 
-  // Filtered Donors list (Only show verified AA-genotype donors in public search results)
-  const filteredDonors = useMemo(() => {
-    return donorsList.filter((donor) => {
-      const matchBlood = selectedBloodGroup === 'ALL' || donor.bloodGroup === selectedBloodGroup;
-      const matchRadius = donor.distanceKm <= selectedRadius;
-      const matchQuery =
-        donor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        donor.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        donor.bloodGroup.toLowerCase().includes(searchQuery.toLowerCase());
-      // Platform policy: only AA-genotype verified donors are displayed
-      return matchBlood && matchRadius && matchQuery && donor.isVerified && donor.genotype === 'AA';
-    });
-  }, [donorsList, selectedBloodGroup, selectedRadius, searchQuery]);
-
-  // Handle Call Donor
-  const handleCallDonor = (phone: string, name: string) => {
-    Alert.alert(
-      `Call Donor: ${name}`,
-      `Are you sure you want to dial ${phone}? Please confirm this is for a legitimate medical need.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Call Now',
-          onPress: () => {
-            const url = `tel:${phone.replace(/\s+/g, '')}`;
-            Linking.canOpenURL(url)
-              .then((supported) => {
-                if (supported) Linking.openURL(url);
-                else toastSuccess('Dialing Demo', `Simulated dial to ${phone}`);
-              })
-              .catch(() => toastSuccess('Dialing Demo', `Simulated dial to ${phone}`));
-          },
-        },
-      ]
-    );
-  };
-
-  // Handle Send Request
-  const handleSendRequest = (donor: DonorItem) => {
-    Alert.alert(
-      `Send Blood Request to ${donor.name}`,
-      `Send an instant SMS & in-app notification requesting ${donor.bloodGroup} blood donation?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Send SOS Request',
-          onPress: () => {
-            toastSuccess('Request Sent', `Notification and SMS dispatched to ${donor.name}.`);
-          },
-        },
-      ]
-    );
-  };
-
-  // Simulated Lab Report Document Upload
-  const handleUploadLabReport = () => {
-    Alert.alert(
-      'Attach Blood Lab Report',
-      'Select document / lab test image from your device showing verified Blood Group & Blood Safety clearance.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Upload Lab Report Scan (PDF/JPG)',
-          onPress: () => {
-            const simulatedFilename = `blood_lab_report_${Date.now().toString().slice(-4)}.pdf`;
-            setRegLabReportName(simulatedFilename);
-            toastSuccess('Document Attached', `Selected ${simulatedFilename} for admin verification.`);
-          },
-        },
-      ]
-    );
-  };
-
-  // Handle Register Donor Submit
-  const handleRegisterSubmit = () => {
-    if (!regName.trim() || !regPhone.trim() || !regCity.trim() || !regAge.trim()) {
-      toastError('Missing Fields', 'Please fill in your name, age, phone number, and city.');
-      return;
-    }
-    if (!regLabReportName) {
-      toastError('Lab Report Required', 'You must upload your blood group lab report document before submitting for admin verification.');
-      return;
-    }
-    if (!isEligibleConfirmed) {
-      toastError('Eligibility Required', 'Please confirm that you meet the donor eligibility criteria.');
+  // Submit Blood Request through the official 8-stage flow
+  const handleCreateRequestSubmit = () => {
+    if (!reqPatient.trim() || !reqRelative.trim() || !reqWard.trim()) {
+      toastError('Missing Information', 'Please provide patient name, your name, and hospital ward.');
       return;
     }
 
-    const newDonor: DonorItem = {
-      id: `bd-${Date.now()}`,
-      name: regName.trim(),
-      bloodGroup: regBloodGroup,
-      genotype: 'AA', // Platform policy: immutable — only AA genotype donors are accepted
-      city: `${regCity.trim()}, ${regState.replace(' State', '')}`,
-      latitude: 6.5244,
-      longitude: 3.3792,
-      distanceKm: 0.8,
-      phone: regPhone.trim(),
-      availabilityStatus: regAvailability,
-      isVerified: false, // Requires admin verification!
-      lastDonationDate: regLastDonationDate,
-      donationsCount: parseInt(regDonationsCount, 10) || 1,
-      gender: regGender,
-      age: parseInt(regAge, 10) || 26,
-      labReportUrl: regLabReportName,
-      labReportStatus: 'pending',
+    const newRequest: BloodRequestPipeline = {
+      id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+      patientName: reqPatient.trim(),
+      relativeName: reqRelative.trim(),
+      relationship: reqRelationship,
+      bloodGroup: reqBloodGroup,
+      unitsNeeded: parseInt(reqUnits, 10) || 1,
+      urgency: reqUrgency,
+      hospitalName: reqHospital,
+      hospitalWard: reqWard.trim(),
+      attendingDoctor: reqDoctor.trim() || 'Attending Physician',
+      timestamp: 'Just now',
+      stage: 3, // Immediately moves through Stage 1 -> 2 -> 3 (OminiPulse auto-verifies license)
+      matchedDonorsCount: 4,
+      respondedDonorsCount: 0,
+      screenedAtFacility: false,
+      donationCompleted: false,
     };
 
-    setDonorsList([newDonor, ...donorsList]);
-    setMyDonorProfile(newDonor);
-    setIsRegisterModalOpen(false);
-    
+    setActivePipeline(newRequest);
+    setIsCreateRequestModalOpen(false);
+
     Alert.alert(
-      'Registration Submitted for Admin Review',
-      'Your donor profile and uploaded blood lab report have been submitted to the Admin portal for verification. Once verified by an admin, your profile will appear in emergency blood searches.',
-      [{ text: 'OK' }]
+      'Blood Request Submitted to Hospital Network',
+      `Your request for ${reqUnits} units of ${reqBloodGroup} at ${reqHospital} has been submitted.\n\nFlow initiated:\n• Stage 1 & 2: Patient and Hospital Details Attached\n• Stage 3: OminiPulse Automated Verification Active\n• Stage 4: Matching compatible AA-genotype donors\n• Stage 5: In-app notifications will be sent to suitable donors\n\nNo individual phone calls or messaging needed. All donations are screened and conducted safely at ${reqHospital}.`,
+      [{ text: 'View Pipeline Status' }]
     );
 
     // Reset Form
-    setRegName('');
-    setRegPhone('');
-    setRegLabReportName(null);
-    setIsEligibleConfirmed(false);
+    setReqPatient('');
+    setReqRelative('');
+    setReqWard('');
+    setReqDoctor('');
   };
 
-  // Handle Submit Appeal
-  const handleAppealSubmit = () => {
-    if (!appealPatient.trim() || !appealHospital.trim() || !appealPhone.trim()) {
-      toastError('Missing Fields', 'Please enter patient name, hospital location, and contact phone.');
-      return;
-    }
-
-    setIsAppealModalOpen(false);
-    toastSuccess('Emergency Appeal Broadcasted!', `Urgent request for ${appealUnits} Pints of ${appealBloodGroup} blood has been broadcasted to nearby donors.`);
-
-    setAppealPatient('');
-    setAppealHospital('');
-    setAppealPhone('');
-  };
-
-  // Handle Emergency Mode Broadcast
-  const handleTriggerEmergencyBroadcast = () => {
-    setEmergencyBroadcastActive(true);
-    toastSuccess('EMERGENCY BROADCAST ACTIVE!', `Instant SMS and push alerts dispatched to all verified ${emergencyBloodGroup} donors within 25km radius.`);
-  };
-
-  // Helper for Blood Compatibility Matching
-  const getCompatibleBloodGroups = (targetGroup: string): string[] => {
-    switch (targetGroup) {
-      case 'O-': return ['O-'];
-      case 'O+': return ['O-', 'O+'];
-      case 'A-': return ['O-', 'A-'];
-      case 'A+': return ['O-', 'O+', 'A-', 'A+'];
-      case 'B-': return ['O-', 'B-'];
-      case 'B+': return ['O-', 'O+', 'B-', 'B+'];
-      case 'AB-': return ['O-', 'A-', 'B-', 'AB-'];
-      case 'AB+': return ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+'];
-      default: return ['O-', 'O+', 'A+', 'B+'];
-    }
-  };
-
-  const emergencyMatchedDonors = useMemo(() => {
-    const compatibleGroups = getCompatibleBloodGroups(emergencyBloodGroup);
-    // Platform policy: only AA-genotype verified donors appear in emergency search
-    return donorsList.filter(
-      (d) => d.isVerified && compatibleGroups.includes(d.bloodGroup) && d.genotype === 'AA'
+  // Donor chooses to respond and volunteer for a verified hospital appeal
+  const handleDonorRespond = (hospitalName: string, bloodGroupNeeded: string) => {
+    Alert.alert(
+      'Confirm Donation at Approved Facility',
+      `You are volunteering to donate ${bloodGroupNeeded} blood for a verified medical request at:\n\n🏥 ${hospitalName}\n\n• You will NOT be contacted by strangers or asked to message anyone.\n• You will report directly to the hospital laboratory for your pre-donation screening (hemoglobin & vitals check).\n• Proceed to accept?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Accept & Book Screening',
+          style: 'default',
+          onPress: () => {
+            if (activePipeline) {
+              setActivePipeline({
+                ...activePipeline,
+                stage: 6,
+                respondedDonorsCount: activePipeline.respondedDonorsCount + 1,
+              });
+            }
+            toastSuccess('Screening Scheduled!', `Pre-donation appointment logged at ${hospitalName}. Please present your OminiPulse Donor ID at the laboratory reception.`);
+          },
+        },
+      ]
     );
-  }, [donorsList, emergencyBloodGroup]);
+  };
+
+  // Filtered Hospital List
+  const filteredHospitals = useMemo(() => {
+    return ACCREDITED_HOSPITALS.filter((h) => {
+      const matchSearch =
+        h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        h.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        h.state.toLowerCase().includes(searchQuery.toLowerCase());
+
+      if (selectedBloodGroup === 'ALL') return matchSearch;
+      const count = h.stock[selectedBloodGroup] || 0;
+      return matchSearch && count > 0;
+    });
+  }, [searchQuery, selectedBloodGroup]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* ── Header ────────────────────────────────────────────────────────── */}
+      {/* ── Top Header ──────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
           <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>Blood Donor Network</Text>
-          <Text style={styles.headerSubtitle}>GPS Proximity & Donor Match</Text>
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>Blood Services</Text>
+          <View style={styles.headerBadge}>
+            <Ionicons name="shield-checkmark" size={12} color="#059669" />
+            <Text style={styles.headerBadgeText}>Verified Hospital Network</Text>
+          </View>
         </View>
         <TouchableOpacity
-          style={styles.emergencyModeHeaderBtn}
-          onPress={() => setIsEmergencyModeOpen(true)}
+          style={styles.headerActionBtn}
+          onPress={() => setIsCreateRequestModalOpen(true)}
           activeOpacity={0.8}
         >
-          <Ionicons name="water" size={18} color="#FFFFFF" />
-          <Text style={styles.emergencyModeHeaderBtnText}>Request Blood Now</Text>
+          <Ionicons name="add" size={18} color="#FFFFFF" />
+          <Text style={styles.headerActionBtnText}>Request</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        {/* ── Emergency Mode "Request Blood Now" High-Priority Banner ──────── */}
+      {/* ── 2-Segment Switcher: Find Blood vs Donate Blood ──────────────────── */}
+      <View style={styles.tabSwitcher}>
         <TouchableOpacity
-          style={{
-            backgroundColor: '#7F1D1D', borderRadius: 14, padding: 14,
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-            borderWidth: 1.5, borderColor: '#EF4444', ...Shadows.md
-          }}
-          onPress={() => setIsEmergencyModeOpen(true)}
-          activeOpacity={0.88}
+          style={[styles.tabButton, activeTab === 'find' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('find')}
+          activeOpacity={0.8}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-            <View style={{
-              width: 44, height: 44, borderRadius: 22, backgroundColor: '#DC2626',
-              alignItems: 'center', justifyContent: 'center'
-            }}>
-              <Ionicons name="water" size={24} color="#FFFFFF" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>
-                  EMERGENCY MODE
-                </Text>
-                <View style={{ backgroundColor: '#EF4444', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
-                  <Text style={{ fontSize: 9, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>LIFE-THREATENING</Text>
-                </View>
-              </View>
-              <Text style={{ fontSize: 11.5, color: '#FCA5A5', marginTop: 2 }}>
-                Find compatible donors, dispatch urgent SMS alerts & locate nearest transfusion hospital labs
-              </Text>
-            </View>
-          </View>
-          <View style={{
-            backgroundColor: '#DC2626', paddingHorizontal: 12, paddingVertical: 8,
-            borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4
-          }}>
-            <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Request Blood Now</Text>
-            <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-          </View>
+          <Ionicons
+            name="search-outline"
+            size={16}
+            color={activeTab === 'find' ? '#DC2626' : Colors.text.secondary}
+          />
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === 'find' && styles.tabButtonTextActive,
+            ]}
+          >
+            Find Blood / Hospitals
+          </Text>
         </TouchableOpacity>
 
-        {/* ── Blood Donor Medical Safety & Screening Banner ───────────────── */}
-        <View style={{
-          flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-          backgroundColor: '#FEF2F2', borderLeftWidth: 4, borderLeftColor: '#DC2626',
-          padding: 12, borderRadius: 10, borderWidth: 1, borderColor: '#FCA5A5'
-        }}>
-          <Ionicons name="shield-checkmark" size={20} color="#DC2626" style={{ marginTop: 1 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 11.5, color: '#991B1B', lineHeight: 16, fontWeight: FontWeight.medium }}>
-              Blood group matching in OmniPulse is only for emergency donor discovery. All donations must be screened and approved by a licensed healthcare facility before transfusion. Required blood safety tests must be completed according to medical guidelines.
-            </Text>
-          </View>
-        </View>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'donate' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('donate')}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="heart-outline"
+            size={16}
+            color={activeTab === 'donate' ? '#DC2626' : Colors.text.secondary}
+          />
+          <Text
+            style={[
+              styles.tabButtonText,
+              activeTab === 'donate' && styles.tabButtonTextActive,
+            ]}
+          >
+            Volunteer to Donate
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* ── GPS Status Banner Card ─────────────────────────────────────── */}
-        <View style={styles.gpsCard}>
-          <View style={styles.gpsCardRow}>
-            <View style={styles.gpsCardLeft}>
-              <View style={styles.gpsPulseDot} />
-              <View>
-                <Text style={styles.gpsLocationTitle}>Ikeja, Lagos</Text>
-                <Text style={styles.gpsAccuracyText}>GPS Active • Radius filter enabled</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.gpsRefreshBtn} onPress={handleRefreshGPS} disabled={isRefreshingGPS}>
-              {isRefreshingGPS ? (
-                <ActivityIndicator size="small" color={Colors.primary[600]} />
-              ) : (
-                <>
-                  <Ionicons name="navigate" size={14} color={Colors.primary[600]} />
-                  <Text style={styles.gpsRefreshText}>Refresh GPS</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <HeartbeatRefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            color="#DC2626"
+          />
+        }
+      >
+        <HeartbeatRefreshHeader
+          refreshing={isRefreshing}
+          color="#DC2626"
+          message="Scanning verified hospital blood banks..."
+        />
 
-          {/* Radius Selector Pills */}
-          <View style={styles.radiusContainer}>
-            <Text style={styles.radiusLabel}>Filter Distance:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-              {DISTANCE_RADII.map((r) => (
-                <TouchableOpacity
-                  key={r.value}
-                  style={[styles.radiusPill, selectedRadius === r.value && styles.radiusPillActive]}
-                  onPress={() => setSelectedRadius(r.value)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.radiusPillText, selectedRadius === r.value && styles.radiusPillTextActive]}>
-                    {r.label}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB 1: FIND BLOOD (Patients & Relatives)                            */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'find' && (
+          <View style={styles.sectionContainer}>
+            {/* Primary Action Card: Create Blood Request */}
+            <TouchableOpacity
+              style={styles.requestHeroCard}
+              onPress={() => setIsCreateRequestModalOpen(true)}
+              activeOpacity={0.88}
+            >
+              <View style={styles.requestHeroLeft}>
+                <View style={styles.requestHeroIconCircle}>
+                  <Ionicons name="water" size={24} color="#FFFFFF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.requestHeroTitle}>Need Blood for a Patient?</Text>
+                  <Text style={styles.requestHeroSubtitle}>
+                    Route verified request to accredited hospital blood banks and eligible AA donors.
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
+                </View>
+              </View>
+              <View style={styles.requestHeroBtn}>
+                <Text style={styles.requestHeroBtnText}>Create Request</Text>
+                <Ionicons name="arrow-forward" size={14} color="#DC2626" />
+              </View>
+            </TouchableOpacity>
 
-        {/* ── My Donor Registration Status Card ────────────────────────────── */}
-        {myDonorProfile && (
-          <View style={{
-            backgroundColor: '#EFF6FF', borderRadius: 12, padding: 14,
-            borderWidth: 1, borderColor: '#BFDBFE', gap: 6
-          }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#1E40AF' }}>
-                My Donor Profile Status
-              </Text>
-              <View style={{
-                backgroundColor: myDonorProfile.isVerified ? '#DCFCE7' : '#FEF3C7',
-                paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6
-              }}>
-                <Text style={{
-                  fontSize: 10, fontWeight: FontWeight.bold,
-                  color: myDonorProfile.isVerified ? '#166534' : '#92400E'
-                }}>
-                  {myDonorProfile.isVerified ? 'VERIFIED ACTIVE' : 'PENDING ADMIN REVIEW'}
+            {/* Active Request Pipeline (The Exact 8-Stage Workflow) */}
+            {activePipeline && (
+              <View style={styles.pipelineCard}>
+                <View style={styles.pipelineHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="pulse" size={16} color="#DC2626" />
+                    <Text style={styles.pipelineTitle}>Active Blood Request</Text>
+                  </View>
+                  <View style={styles.pipelineBadge}>
+                    <Text style={styles.pipelineBadgeText}>
+                      Stage {activePipeline.stage} of 8
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.pipelineDetails}>
+                  <View style={styles.pipelineDetailCol}>
+                    <Text style={styles.pipelineDetailLabel}>Patient</Text>
+                    <Text style={styles.pipelineDetailVal}>{activePipeline.patientName}</Text>
+                  </View>
+                  <View style={styles.pipelineDetailCol}>
+                    <Text style={styles.pipelineDetailLabel}>Required</Text>
+                    <Text style={[styles.pipelineDetailVal, { color: '#DC2626', fontWeight: FontWeight.bold }]}>
+                      {activePipeline.unitsNeeded} Units • {activePipeline.bloodGroup}
+                    </Text>
+                  </View>
+                  <View style={styles.pipelineDetailCol}>
+                    <Text style={styles.pipelineDetailLabel}>Hospital</Text>
+                    <Text style={styles.pipelineDetailVal} numberOfLines={1}>
+                      {activePipeline.hospitalName.split('(')[0].trim()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Visual 8-Step Timeline */}
+                <View style={styles.timelineContainer}>
+                  <Text style={styles.timelineSectionTitle}>Workflow Pipeline (No direct contacts)</Text>
+                  {FLOW_STAGES.map((s) => {
+                    const isPassed = activePipeline.stage > s.step;
+                    const isCurrent = activePipeline.stage === s.step;
+                    return (
+                      <View key={s.step} style={styles.timelineRow}>
+                        <View style={styles.timelineIndicatorCol}>
+                          <View
+                            style={[
+                              styles.timelineDot,
+                              isPassed && styles.timelineDotPassed,
+                              isCurrent && styles.timelineDotCurrent,
+                            ]}
+                          >
+                            {isPassed ? (
+                              <Ionicons name="checkmark" size={10} color="#FFFFFF" />
+                            ) : isCurrent ? (
+                              <View style={styles.timelineDotPulse} />
+                            ) : (
+                              <Text style={styles.timelineDotNum}>{s.step}</Text>
+                            )}
+                          </View>
+                          {s.step < 8 && (
+                            <View
+                              style={[
+                                styles.timelineLine,
+                                isPassed && styles.timelineLinePassed,
+                              ]}
+                            />
+                          )}
+                        </View>
+                        <View style={styles.timelineTextCol}>
+                          <Text
+                            style={[
+                              styles.timelineStepTitle,
+                              isCurrent && styles.timelineStepTitleCurrent,
+                            ]}
+                          >
+                            {s.step}. {s.title}
+                          </Text>
+                          <Text style={styles.timelineStepDesc}>
+                            {s.step === 4 && activePipeline.matchedDonorsCount > 0
+                              ? `Found ${activePipeline.matchedDonorsCount} compatible AA donors nearby`
+                              : s.step === 5
+                              ? `In-app push notifications dispatched`
+                              : s.step === 6 && activePipeline.respondedDonorsCount > 0
+                              ? `${activePipeline.respondedDonorsCount} donor(s) confirmed to attend hospital lab`
+                              : s.desc}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* Accredited Hospital Blood Banks Section */}
+            <View style={styles.hospitalsSectionHeader}>
+              <View>
+                <Text style={styles.sectionHeading}>Hospital Blood Banks & Stock</Text>
+                <Text style={styles.sectionSubheading}>
+                  Accredited facilities with inventory or active donor intake
                 </Text>
               </View>
             </View>
-            <Text style={{ fontSize: 11.5, color: '#1E3A8A' }}>
-              {myDonorProfile.name} • Blood Group: {myDonorProfile.bloodGroup} • {myDonorProfile.city}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-              <Ionicons name="document-attach" size={14} color="#2563EB" />
-              <Text style={{ fontSize: 11, color: '#2563EB', fontWeight: FontWeight.medium }}>
-                Lab Report: {myDonorProfile.labReportUrl || 'Attached'} (Under Admin Audit)
-              </Text>
-            </View>
+
+            {/* Blood Group Filter Pills */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bloodFilterRow}
+            >
+              {BLOOD_GROUPS.map((bg) => {
+                const isSelected = selectedBloodGroup === bg;
+                return (
+                  <TouchableOpacity
+                    key={bg}
+                    style={[styles.bloodPill, isSelected && styles.bloodPillActive]}
+                    onPress={() => setSelectedBloodGroup(bg)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.bloodPillText,
+                        isSelected && styles.bloodPillTextActive,
+                      ]}
+                    >
+                      {bg}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {/* Hospitals Inventory Cards */}
+            {filteredHospitals.map((hosp) => (
+              <View key={hosp.id} style={styles.hospitalCard}>
+                <View style={styles.hospitalCardTop}>
+                  <View style={styles.hospitalIconCircle}>
+                    <Ionicons name="business" size={20} color="#0F6E6E" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hospitalName} numberOfLines={1}>
+                      {hosp.name}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                      <Ionicons name="location-outline" size={12} color={Colors.text.secondary} />
+                      <Text style={styles.hospitalAddress} numberOfLines={1}>
+                        {hosp.address} • {hosp.distanceKm} km away
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.accreditPill}>
+                    <Text style={styles.accreditPillText}>Accredited</Text>
+                  </View>
+                </View>
+
+                {/* Stock Chips */}
+                <View style={styles.stockRow}>
+                  <Text style={styles.stockRowLabel}>Current Stock:</Text>
+                  <View style={styles.stockChipsWrap}>
+                    {Object.entries(hosp.stock).map(([bg, count]) => {
+                      const isHighlighted = selectedBloodGroup === bg;
+                      return (
+                        <View
+                          key={bg}
+                          style={[
+                            styles.stockChip,
+                            count > 0 ? styles.stockChipAvailable : styles.stockChipEmpty,
+                            isHighlighted && styles.stockChipHighlighted,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.stockChipText,
+                              isHighlighted && styles.stockChipTextHighlighted,
+                            ]}
+                          >
+                            {bg}: {count}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* Facility Info & Action */}
+                <View style={styles.hospitalFooter}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="time-outline" size={13} color={Colors.text.secondary} />
+                    <Text style={styles.screeningHoursText}>{hosp.screeningHours}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.requestFromHospBtn}
+                    onPress={() => {
+                      setReqHospital(hosp.name);
+                      setIsCreateRequestModalOpen(true);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.requestFromHospBtnText}>Request from Facility</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
           </View>
         )}
 
-        {/* ── Search Bar ─────────────────────────────────────────────────── */}
-        <View style={styles.searchBarContainer}>
-          <Ionicons name="search" size={18} color="#94A3B8" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search donors by name, city, or blood type..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            placeholderTextColor="#94A3B8"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={18} color="#94A3B8" />
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {/* ── Blood Group Filter Horizontal List ──────────────────────────── */}
-        <View style={styles.bloodFilterSection}>
-          <Text style={styles.sectionHeading}>Target Blood Group:</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bloodPillsRow}>
-            {BLOOD_GROUPS.map((bg) => {
-              const isSelected = selectedBloodGroup === bg;
-              const isUniversal = bg === 'O-';
-              return (
-                <TouchableOpacity
-                  key={bg}
-                  style={[
-                    styles.bloodPill,
-                    isSelected && styles.bloodPillActive,
-                    isUniversal && !isSelected && styles.bloodPillUniversal,
-                  ]}
-                  onPress={() => setSelectedBloodGroup(bg)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.bloodPillText, isSelected && styles.bloodPillTextActive]}>
-                    {bg}
-                  </Text>
-                  {isUniversal && <Text style={styles.universalTag}>Universal</Text>}
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {/* ── Action Buttons Row ─────────────────────────────────────────── */}
-        <View style={styles.actionBannerRow}>
-          <TouchableOpacity
-            style={styles.registerBannerBtn}
-            onPress={() => setIsRegisterModalOpen(true)}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="heart" size={20} color="#DC2626" />
-            <Text style={styles.registerBannerText}>Register as a Donor</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Donors List ───────────────────────────────────────────────── */}
-        <View style={styles.donorListSection}>
-          <View style={styles.donorListHeader}>
-            <Text style={styles.sectionHeading}>
-              Nearby Donors ({filteredDonors.length})
-            </Text>
-            <Text style={styles.sortByText}>Sorted by Proximity</Text>
-          </View>
-
-          {filteredDonors.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <Ionicons name="water-outline" size={48} color="#CBD5E1" />
-              <Text style={styles.emptyStateTitle}>No Donors Found Nearby</Text>
-              <Text style={styles.emptyStateSub}>
-                Try expanding your distance radius filter or selecting a different blood group.
-              </Text>
-            </View>
-          ) : (
-            filteredDonors.map((donor) => (
-              <View key={donor.id} style={styles.donorCard}>
-                <View style={styles.donorCardTop}>
-                  <View style={styles.donorBadgeGroup}>
-                    <View style={styles.bloodBadgeContainer}>
-                      <Text style={styles.bloodBadgeText}>{donor.bloodGroup}</Text>
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-                        <Text style={styles.donorName} numberOfLines={1}>{donor.name}</Text>
-                        {donor.isVerified && (
-                          <Ionicons name="checkmark-circle" size={15} color="#10B981" />
-                        )}
-                      </View>
-                      <Text style={styles.donorLocationSub} numberOfLines={1}>
-                        {donor.city} • Genotype: <Text style={{ fontWeight: 'bold' }}>{donor.genotype}</Text>
-                      </Text>
-                    </View>
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* TAB 2: DONATE BLOOD (Volunteer Donors)                              */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {activeTab === 'donate' && (
+          <View style={styles.sectionContainer}>
+            {/* Donor Profile Card */}
+            {myDonorStatus.registered ? (
+              <View style={styles.donorProfileCard}>
+                <View style={styles.donorProfileHeader}>
+                  <View style={styles.donorAvatarCircle}>
+                    <Ionicons name="person" size={20} color="#FFFFFF" />
                   </View>
-
-                  <View style={styles.distanceBadge}>
-                    <Ionicons name="navigate-circle" size={13} color="#DC2626" />
-                    <Text style={styles.distanceBadgeText}>{donor.distanceKm} km</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.donorName}>{myDonorStatus.name}</Text>
+                    <Text style={styles.donorMeta}>
+                      Donor Status: <Text style={{ color: '#059669', fontWeight: FontWeight.bold }}>Active & Eligible</Text>
+                    </Text>
+                  </View>
+                  <View style={styles.bloodTypeBadge}>
+                    <Text style={styles.bloodTypeBadgeText}>{myDonorStatus.bloodGroup}</Text>
                   </View>
                 </View>
 
-                {/* Info row */}
-                <View style={styles.donorInfoRow}>
-                  <View style={[styles.infoPill, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5' }]}>
-                    <Ionicons name="location-sharp" size={11} color="#DC2626" />
-                    <Text style={[styles.infoPillText, { color: '#DC2626', fontWeight: 'bold' }]}>{donor.distanceKm} km Proximity</Text>
+                <View style={styles.donorStatsRow}>
+                  <View style={styles.donorStatBox}>
+                    <Text style={styles.donorStatLabel}>Genotype</Text>
+                    <Text style={styles.donorStatVal}>{myDonorStatus.genotype} (Clear)</Text>
                   </View>
-                  <View style={styles.infoPill}>
-                    <Ionicons name="time-outline" size={11} color="#475569" />
-                    <Text style={styles.infoPillText}>{donor.availabilityStatus}</Text>
+                  <View style={styles.donorStatBox}>
+                    <Text style={styles.donorStatLabel}>Last Donated</Text>
+                    <Text style={styles.donorStatVal}>{myDonorStatus.lastDonationDate}</Text>
                   </View>
-                  <View style={styles.infoPill}>
-                    <Ionicons name="ribbon-outline" size={11} color="#475569" />
-                    <Text style={styles.infoPillText}>{donor.donationsCount} donations</Text>
+                  <View style={styles.donorStatBox}>
+                    <Text style={styles.donorStatLabel}>Screening Center</Text>
+                    <Text style={styles.donorStatVal} numberOfLines={1}>
+                      {myDonorStatus.approvedFacility.split(' ')[0]}
+                    </Text>
                   </View>
-                </View>
-
-                {/* Actions Row */}
-                <View style={styles.donorCardActions}>
-                  <TouchableOpacity
-                    style={styles.callDonorBtn}
-                    onPress={() => handleCallDonor(donor.phone, donor.name)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="call" size={15} color="#FFFFFF" />
-                    <Text style={styles.callDonorBtnText} numberOfLines={1}>Call Donor</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.requestDonorBtn}
-                    onPress={() => handleSendRequest(donor)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="send-outline" size={14} color="#DC2626" />
-                    <Text style={styles.requestDonorBtnText} numberOfLines={1}>Send SOS</Text>
-                  </TouchableOpacity>
                 </View>
               </View>
-            ))
-          )}
-        </View>
+            ) : (
+              <View style={styles.becomeDonorCard}>
+                <Ionicons name="heart" size={32} color="#DC2626" />
+                <Text style={styles.becomeDonorTitle}>Register as a Volunteer Donor</Text>
+                <Text style={styles.becomeDonorSub}>
+                  OminiPulse maintains a secure, institutional donor directory. You will only receive official hospital appeals.
+                </Text>
+                <TouchableOpacity
+                  style={styles.registerDonorBtn}
+                  onPress={() => setIsRegisterDonorModalOpen(true)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.registerDonorBtnText}>Register Now</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Active Hospital Appeals for Donors */}
+            <View style={{ marginTop: Spacing[4] }}>
+              <View style={styles.hospitalsSectionHeader}>
+                <View>
+                  <Text style={styles.sectionHeading}>Verified Hospital Appeals</Text>
+                  <Text style={styles.sectionSubheading}>
+                    Hospitals currently requesting volunteer blood donations
+                  </Text>
+                </View>
+              </View>
+
+              {/* Appeal Card 1 */}
+              <View style={styles.appealCard}>
+                <View style={styles.appealTop}>
+                  <View style={styles.appealBloodPill}>
+                    <Text style={styles.appealBloodText}>O-</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.appealHospName}>Lagos University Teaching Hospital</Text>
+                    </View>
+                    <Text style={styles.appealReason}>Urgent Surgery • 2 Units Needed</Text>
+                  </View>
+                  <View style={styles.urgencyBadge}>
+                    <Text style={styles.urgencyBadgeText}>CRITICAL</Text>
+                  </View>
+                </View>
+                <Text style={styles.appealNotice}>
+                  Official verified hospital appeal. Screening and donation take place at the LUTH Blood Transfusion Lab.
+                </Text>
+                <TouchableOpacity
+                  style={styles.volunteerBtn}
+                  onPress={() => handleDonorRespond('Lagos University Teaching Hospital', 'O-')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="heart" size={15} color="#FFFFFF" />
+                  <Text style={styles.volunteerBtnText}>Volunteer to Donate at Hospital</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Appeal Card 2 */}
+              <View style={styles.appealCard}>
+                <View style={styles.appealTop}>
+                  <View style={[styles.appealBloodPill, { backgroundColor: '#EFF6FF' }]}>
+                    <Text style={[styles.appealBloodText, { color: '#2563EB' }]}>O+</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.appealHospName}>General Hospital Marina</Text>
+                    <Text style={styles.appealReason}>Maternity Delivery Support • 1 Unit Needed</Text>
+                  </View>
+                  <View style={[styles.urgencyBadge, { backgroundColor: '#FEF3C7' }]}>
+                    <Text style={[styles.urgencyBadgeText, { color: '#92400E' }]}>URGENT</Text>
+                  </View>
+                </View>
+                <Text style={styles.appealNotice}>
+                  Pre-donation Hb and vitals check conducted on arrival at the hospital donor clinic.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.volunteerBtn, { backgroundColor: '#2563EB' }]}
+                  onPress={() => handleDonorRespond('General Hospital Marina', 'O+')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="heart" size={15} color="#FFFFFF" />
+                  <Text style={styles.volunteerBtnText}>Volunteer to Donate at Hospital</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
-      {/* ── Modal: Become a Donor ────────────────────────────────────────── */}
-      <Modal visible={isRegisterModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      {/* ── Modal: Create Blood Request (8-Stage Flow Initiation) ─────────── */}
+      <Modal
+        visible={isCreateRequestModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsCreateRequestModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Register as a Blood Donor</Text>
-              <TouchableOpacity onPress={() => setIsRegisterModalOpen(false)}>
-                <Ionicons name="close" size={24} color="#64748B" />
+              <View>
+                <Text style={styles.modalTitle}>Create Blood Request</Text>
+                <Text style={styles.modalSub}>Stages 1 & 2: Patient & Hospital Details</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsCreateRequestModalOpen(false)}>
+                <Ionicons name="close" size={24} color={Colors.text.primary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 480 }}>
-              <Text style={styles.formLabel}>Full Name</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. Samuel Okon"
-                value={regName}
-                onChangeText={setRegName}
-              />
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+              {/* Notice */}
+              <View style={styles.modalSafetyNotice}>
+                <Ionicons name="shield-checkmark" size={16} color="#059669" />
+                <Text style={styles.modalSafetyText}>
+                  All requests are verified through hospital records. No personal contact numbers are displayed to donors.
+                </Text>
+              </View>
 
+              {/* Patient Name */}
+              <View>
+                <Text style={styles.inputLabel}>Patient Full Name *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. Amara Okafor"
+                  value={reqPatient}
+                  onChangeText={setReqPatient}
+                />
+              </View>
+
+              {/* Relative Name & Relationship */}
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>Age (Years)</Text>
+                  <Text style={styles.inputLabel}>Your Name (Requester) *</Text>
                   <TextInput
-                    style={styles.formInput}
-                    placeholder="e.g. 26"
-                    keyboardType="numeric"
-                    value={regAge}
-                    onChangeText={setRegAge}
+                    style={styles.textInput}
+                    placeholder="e.g. Chidi Okafor"
+                    value={reqRelative}
+                    onChangeText={setReqRelative}
                   />
                 </View>
+                <View style={{ width: 110 }}>
+                  <Text style={styles.inputLabel}>Relationship</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Brother"
+                    value={reqRelationship}
+                    onChangeText={setReqRelationship}
+                  />
+                </View>
+              </View>
+
+              {/* Blood Group & Units */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>Gender</Text>
-                  <View style={{ flexDirection: 'row', gap: 6 }}>
-                    {['Male', 'Female'].map((g) => (
+                  <Text style={styles.inputLabel}>Blood Group Needed *</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingVertical: 4 }}>
+                    {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
                       <TouchableOpacity
-                        key={g}
-                        style={[styles.selectPill, { flex: 1 }, regGender === g && styles.selectPillActive]}
-                        onPress={() => setRegGender(g)}
+                        key={bg}
+                        style={[
+                          styles.modalBgPill,
+                          reqBloodGroup === bg && styles.modalBgPillActive,
+                        ]}
+                        onPress={() => setReqBloodGroup(bg)}
                       >
-                        <Text style={[styles.selectPillText, regGender === g && styles.selectPillTextActive]}>
-                          {g}
+                        <Text
+                          style={[
+                            styles.modalBgPillText,
+                            reqBloodGroup === bg && styles.modalBgPillTextActive,
+                          ]}
+                        >
+                          {bg}
                         </Text>
                       </TouchableOpacity>
                     ))}
-                  </View>
+                  </ScrollView>
+                </View>
+                <View style={{ width: 80 }}>
+                  <Text style={styles.inputLabel}>Units</Text>
+                  <TextInput
+                    style={[styles.textInput, { textAlign: 'center' }]}
+                    keyboardType="numeric"
+                    value={reqUnits}
+                    onChangeText={setReqUnits}
+                  />
                 </View>
               </View>
 
-              <Text style={styles.formLabel}>Active Phone Number (For Emergency Alerts)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. +234 802 123 4567"
-                keyboardType="phone-pad"
-                value={regPhone}
-                onChangeText={setRegPhone}
-              />
-
-              <Text style={styles.formLabel}>Blood Group</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
-                  <TouchableOpacity
-                    key={bg}
-                    style={[styles.selectPill, regBloodGroup === bg && styles.selectPillActive]}
-                    onPress={() => setRegBloodGroup(bg)}
-                  >
-                    <Text style={[styles.selectPillText, regBloodGroup === bg && styles.selectPillTextActive]}>
-                      {bg}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.formLabel}>Genotype</Text>
-              {/* Genotype is locked to AA — platform policy only allows AA donors */}
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 10,
-                borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 6
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <View style={{
-                    backgroundColor: '#0F172A', paddingHorizontal: 12, paddingVertical: 4,
-                    borderRadius: 6
-                  }}>
-                    <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>AA</Text>
-                  </View>
-                  <Text style={{ fontSize: 12, color: '#475569', fontWeight: FontWeight.bold }}>Genotype AA</Text>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  <Ionicons name="lock-closed" size={13} color="#94A3B8" />
-                  <Text style={{ fontSize: 10.5, color: '#94A3B8' }}>Immutable</Text>
-                </View>
-              </View>
-              <View style={{
-                backgroundColor: '#EFF6FF', borderRadius: 8, padding: 10,
-                borderWidth: 1, borderColor: '#BFDBFE', marginBottom: 12, flexDirection: 'row', gap: 6
-              }}>
-                <Ionicons name="information-circle-outline" size={14} color="#2563EB" style={{ marginTop: 1 }} />
-                <Text style={{ fontSize: 10.5, color: '#1D4ED8', lineHeight: 15, flex: 1 }}>
-                  OmniPulse accepts only AA genotype donors. This ensures compatibility safety for recipients and meets our clinical screening standards. Donors with AS, AC, SS or SC genotypes cannot register on this platform.
-                </Text>
+              {/* Hospital Selection */}
+              <View>
+                <Text style={styles.inputLabel}>Attending Hospital / Blood Bank *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={reqHospital}
+                  onChangeText={setReqHospital}
+                  placeholder="Select hospital"
+                />
               </View>
 
-              {/* State Dropdown Selector */}
-              <Text style={styles.formLabel}>State / Region</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                {Object.keys(NIGERIA_STATES_AND_CITIES).map((st) => (
-                  <TouchableOpacity
-                    key={st}
-                    style={[styles.selectPill, regState === st && styles.selectPillActive]}
-                    onPress={() => {
-                      setRegState(st);
-                      const cities = NIGERIA_STATES_AND_CITIES[st];
-                      if (cities && cities.length > 0) {
-                        setRegCity(cities[0]);
-                      }
-                    }}
-                  >
-                    <Text style={[styles.selectPillText, regState === st && styles.selectPillTextActive]}>
-                      {st}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {/* City / Area Selector */}
-              <Text style={styles.formLabel}>City / Area ({regState})</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {(NIGERIA_STATES_AND_CITIES[regState] || ['Central']).map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    style={[styles.selectPill, regCity === city && styles.selectPillActive]}
-                    onPress={() => setRegCity(city)}
-                  >
-                    <Text style={[styles.selectPillText, regCity === city && styles.selectPillTextActive]}>
-                      {city}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
+              {/* Hospital Ward & Doctor */}
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>Last Donation Date</Text>
+                  <Text style={styles.inputLabel}>Ward / Room / Bed *</Text>
                   <TextInput
-                    style={styles.formInput}
-                    placeholder="YYYY-MM-DD"
-                    value={regLastDonationDate}
-                    onChangeText={setRegLastDonationDate}
+                    style={styles.textInput}
+                    placeholder="e.g. ICU Bed 4 / Ward 3B"
+                    value={reqWard}
+                    onChangeText={setReqWard}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.formLabel}>Past Donations Count</Text>
+                  <Text style={styles.inputLabel}>Attending Physician</Text>
                   <TextInput
-                    style={styles.formInput}
-                    placeholder="e.g. 3"
-                    keyboardType="numeric"
-                    value={regDonationsCount}
-                    onChangeText={setRegDonationsCount}
+                    style={styles.textInput}
+                    placeholder="e.g. Dr. Adeyemi"
+                    value={reqDoctor}
+                    onChangeText={setReqDoctor}
                   />
                 </View>
               </View>
 
-              <Text style={styles.formLabel}>Availability Status</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-                {['Available Anytime', 'On-Call Emergency'].map((st) => (
-                  <TouchableOpacity
-                    key={st}
-                    style={[styles.selectPill, regAvailability === st && styles.selectPillActive]}
-                    onPress={() => setRegAvailability(st)}
-                  >
-                    <Text style={[styles.selectPillText, regAvailability === st && styles.selectPillTextActive]}>
-                      {st}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Mandatory Upload Section for Admin Lab Report Verification */}
-              <View style={{
-                backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12,
-                borderWidth: 1, borderColor: '#CBD5E1', marginBottom: 14, gap: 6
-              }}>
-                <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#0F172A' }}>
-                  Mandatory Blood Lab Report Document
-                </Text>
-                <Text style={{ fontSize: 11, color: '#64748B', lineHeight: 15 }}>
-                  Upload a scanned lab report or photo confirming your blood group and basic infectious disease screening results for Admin verification.
-                </Text>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                    backgroundColor: regLabReportName ? '#DCFCE7' : '#EFF6FF',
-                    borderWidth: 1, borderColor: regLabReportName ? '#86EFAC' : '#BFDBFE',
-                    paddingVertical: 10, borderRadius: 8, marginTop: 4
-                  }}
-                  onPress={handleUploadLabReport}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name={regLabReportName ? 'checkmark-circle' : 'cloud-upload-outline'}
-                    size={18}
-                    color={regLabReportName ? '#166534' : '#2563EB'}
-                  />
-                  <Text style={{
-                    fontSize: 12, fontWeight: FontWeight.bold,
-                    color: regLabReportName ? '#166534' : '#2563EB'
-                  }}>
-                    {regLabReportName ? `Attached: ${regLabReportName}` : 'Upload Lab Report / Photo'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Eligibility Checkbox */}
+              {/* Submit CTA */}
               <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setIsEligibleConfirmed(!isEligibleConfirmed)}
-                activeOpacity={0.8}
+                style={styles.submitRequestBtn}
+                onPress={handleCreateRequestSubmit}
+                activeOpacity={0.88}
               >
-                <View style={[styles.checkbox, isEligibleConfirmed && styles.checkboxChecked]}>
-                  {isEligibleConfirmed && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
-                </View>
-                <Text style={styles.checkboxLabel}>
-                  I confirm I am aged 18-65, weigh over 50kg, and have no active medical contraindications.
-                </Text>
+                <Ionicons name="send" size={16} color="#FFFFFF" />
+                <Text style={styles.submitRequestBtnText}>Submit to OminiPulse Verification</Text>
               </TouchableOpacity>
             </ScrollView>
-
-            <TouchableOpacity
-              style={[styles.submitModalBtn, !isEligibleConfirmed && { backgroundColor: '#CBD5E1', opacity: 0.6 }]}
-              onPress={isEligibleConfirmed ? handleRegisterSubmit : undefined}
-              activeOpacity={isEligibleConfirmed ? 0.85 : 1}
-              disabled={!isEligibleConfirmed}
-            >
-              <Text style={styles.submitModalBtnText}>Complete Registration</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* ── Modal: Emergency Mode ("Request Blood Now") ───────────────── */}
-      <Modal visible={isEmergencyModeOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '92%' }]}>
-          <View style={[
-            styles.modalHeader,
-            { backgroundColor: '#7F1D1D', padding: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }
-          ]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, marginRight: 10 }}>
-              <Ionicons name="water" size={22} color="#FFFFFF" />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>
-                  EMERGENCY MODE: Request Blood Now
-                </Text>
-                <Text style={{ fontSize: 11, color: '#FCA5A5', marginTop: 1 }} numberOfLines={1}>
-                  Life-Threatening Emergency Transfusion
-                </Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => setIsEmergencyModeOpen(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView showsVerticalScrollIndicator={false} style={{ marginVertical: 10 }} contentContainerStyle={{ paddingHorizontal: 2, paddingBottom: 8 }}>
-              {/* Mandatory Non-Commercial Blood Regulatory Notice Banner */}
-              <View style={{
-                backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
-                borderWidth: 1.5, borderColor: '#FCA5A5', marginBottom: 14, gap: 4
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Ionicons name="alert-circle" size={18} color="#DC2626" />
-                  <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#991B1B' }}>
-                    ETHICAL & REGULATORY FACILITATION POLICY
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 11, color: '#7F1D1D', lineHeight: 16 }}>
-                  Direct buying or selling of blood is strictly prohibited. OmniPulse facilitates discovery through ethical clinical channels:
-                </Text>
-                <View style={{
-                  backgroundColor: '#FFFFFF', padding: 8, borderRadius: 6,
-                  borderWidth: 1, borderColor: '#FCA5A5', marginTop: 4
-                }}>
-                  <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#991B1B', textAlign: 'center' }}>
-                    Voluntary Donor ➔ Accredited Hospital / Blood Bank ➔ Patient
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 10.5, color: '#991B1B', fontStyle: 'italic', marginTop: 2 }}>
-                  No donor-to-patient monetary transactions are allowed on this platform. All processing and screening are conducted strictly by licensed hospital facilities.
-                </Text>
-              </View>
-
-              {/* Patient Blood Type Selection — System finds compatible donors automatically */}
-              <View style={{
-                backgroundColor: '#FFF7ED', borderRadius: 10, padding: 12,
-                borderWidth: 1, borderColor: '#FED7AA', marginBottom: 14
-              }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                  <Ionicons name="water-outline" size={15} color="#C2410C" />
-                  <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#9A3412' }}>
-                    Step 1: Select the Patient's Blood Group
-                  </Text>
-                </View>
-                <Text style={{ fontSize: 10.5, color: '#92400E', marginBottom: 10, lineHeight: 15 }}>
-                  Choose the blood group needed. The system will automatically find all compatible donor types based on transfusion compatibility rules.
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
-                    <TouchableOpacity
-                      key={bg}
-                      style={[
-                        styles.selectPill,
-                        emergencyBloodGroup === bg && styles.selectPillActiveDanger,
-                        { marginBottom: 0 }
-                      ]}
-                      onPress={() => setEmergencyBloodGroup(bg)}
-                    >
-                      <Text style={[styles.selectPillText, emergencyBloodGroup === bg && styles.selectPillTextActive]}>
-                        {bg}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                {emergencyBloodGroup ? (
-                  <View style={{
-                    marginTop: 8, backgroundColor: '#FEF2F2', padding: 8,
-                    borderRadius: 6, borderWidth: 1, borderColor: '#FCA5A5'
-                  }}>
-                    <Text style={{ fontSize: 10.5, color: '#991B1B', fontWeight: FontWeight.bold }}>
-                      Patient needs: {emergencyBloodGroup} — Compatible donors: {getCompatibleBloodGroups(emergencyBloodGroup).join(', ')}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-
-              {/* Compatible Donors Broadcast Status */}
-              <View style={{
-                backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12,
-                borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14
-              }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
-                  <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#0F172A', flex: 1 }} numberOfLines={2}>
-                    Compatible Nearby Donors ({emergencyMatchedDonors.length} Found)
-                  </Text>
-                  <TouchableOpacity
-                    style={{
-                      backgroundColor: emergencyBroadcastActive ? '#059669' : '#DC2626',
-                      paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6,
-                      flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0
-                    }}
-                    onPress={handleTriggerEmergencyBroadcast}
-                  >
-                    <Ionicons name="radio-outline" size={14} color="#FFFFFF" />
-                    <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>
-                      {emergencyBroadcastActive ? 'Broadcast Active' : 'Dispatch Alert'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {emergencyMatchedDonors.slice(0, 3).map((d) => (
-                  <View key={d.id} style={{
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                    paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 8
-                  }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                      <View style={{
-                        width: 34, height: 34, borderRadius: 17, backgroundColor: '#FEF2F2',
-                        alignItems: 'center', justifyContent: 'center', flexShrink: 0
-                      }}>
-                        <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#DC2626' }}>{d.bloodGroup}</Text>
-                      </View>
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#0F172A' }} numberOfLines={1}>{d.name}</Text>
-                        <Text style={{ fontSize: 10.5, color: '#64748B' }} numberOfLines={1}>{d.city} • {d.distanceKm} km away</Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6, flexShrink: 0 }}
-                      onPress={() => handleCallDonor(d.phone, d.name)}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#2563EB' }}>Call</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-
-              {/* Nearest Transfusion Accredited Hospitals & Blood Banks */}
-              <View style={{ marginBottom: 14 }}>
-                <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#0F172A', marginBottom: 8 }}>
-                  Nearest Accredited Transfusion Hospitals & Blood Banks
-                </Text>
-                {[
-                  { name: 'LUTH Transfusion Center & Blood Bank', area: 'Idi-Araba, Surulere', dist: '3.2 km', phone: '+234 803 111 2233' },
-                  { name: 'Lagos State Blood Transfusion Service', area: 'Ikeja General Hospital', dist: '1.8 km', phone: '+234 802 999 4455' },
-                  { name: 'Federal Medical Center Blood Bank', area: 'Yaba, Lagos', dist: '4.1 km', phone: '+234 805 777 0011' },
-                ].map((hosp, idx) => (
-                  <View key={idx} style={{
-                    backgroundColor: '#FFFFFF', padding: 12, borderRadius: 10,
-                    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8,
-                    flexDirection: 'row', alignItems: 'center', gap: 10
-                  }}>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#0F172A' }} numberOfLines={2}>{hosp.name}</Text>
-                      <Text style={{ fontSize: 11, color: '#64748B', marginTop: 2 }} numberOfLines={1}>{hosp.area} • {hosp.dist}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={{ backgroundColor: '#DC2626', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 6, flexShrink: 0 }}
-                      onPress={() => handleCallDonor(hosp.phone, hosp.name)}
-                    >
-                      <Text style={{ fontSize: 11, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Call Desk</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-
-              {/* National & Platform Emergency Contacts */}
-              <View style={{
-                backgroundColor: '#FEF2F2', padding: 12, borderRadius: 10,
-                borderWidth: 1, borderColor: '#FCA5A5', gap: 8
-              }}>
-                <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#991B1B' }}>
-                  National Emergency & Ambulance Hotlines
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    style={{ flex: 1, backgroundColor: '#DC2626', paddingVertical: 10, borderRadius: 6, alignItems: 'center', paddingHorizontal: 4 }}
-                    onPress={() => handleCallDonor('112', 'National Emergency 112')}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>Dial 112 Ambulance</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={{ flex: 1, backgroundColor: '#991B1B', paddingVertical: 10, borderRadius: 6, alignItems: 'center', paddingHorizontal: 4 }}
-                    onPress={() => handleCallDonor('+2348001111', 'OminiPulse Emergency Desk')}
-                  >
-                    <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }} numberOfLines={1}>OmniPulse Blood Desk</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-          </ScrollView>
-
-          <TouchableOpacity
-            style={{ backgroundColor: '#334155', paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginTop: 4 }}
-            onPress={() => setIsEmergencyModeOpen(false)}
-          >
-            <Text style={{ fontSize: 13, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Close Emergency Mode</Text>
-          </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── Modal: Emergency SOS Appeal ─────────────────────────────────── */}
-      <Modal visible={isAppealModalOpen} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
+      {/* ── Modal: Register as Donor ─────────────────────────────────────── */}
+      <Modal
+        visible={isRegisterDonorModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsRegisterDonorModalOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Ionicons name="alert-circle" size={22} color="#DC2626" />
-                <Text style={[styles.modalTitle, { color: '#DC2626' }]}>Emergency Blood Appeal</Text>
+              <View>
+                <Text style={styles.modalTitle}>Donor Registration</Text>
+                <Text style={styles.modalSub}>Verified AA-Genotype Lifesaver Program</Text>
               </View>
-              <TouchableOpacity onPress={() => setIsAppealModalOpen(false)}>
-                <Ionicons name="close" size={24} color="#64748B" />
+              <TouchableOpacity onPress={() => setIsRegisterDonorModalOpen(false)}>
+                <Ionicons name="close" size={24} color={Colors.text.primary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 440 }}>
-              <Text style={styles.formLabel}>Patient Name</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. Mrs. Adeola Johnson"
-                value={appealPatient}
-                onChangeText={setAppealPatient}
-              />
-
-              <Text style={styles.formLabel}>Required Blood Group</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                {['O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'].map((bg) => (
-                  <TouchableOpacity
-                    key={bg}
-                    style={[styles.selectPill, appealBloodGroup === bg && styles.selectPillActiveDanger]}
-                    onPress={() => setAppealBloodGroup(bg)}
-                  >
-                    <Text style={[styles.selectPillText, appealBloodGroup === bg && styles.selectPillTextActive]}>
-                      {bg}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <Text style={styles.formLabel}>Required Units (Pints)</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. 2 Pints"
-                keyboardType="numeric"
-                value={appealUnits}
-                onChangeText={setAppealUnits}
-              />
-
-              <Text style={styles.formLabel}>Target Hospital & Location</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. LUTH Hospital, Idi-Araba, Lagos"
-                value={appealHospital}
-                onChangeText={setAppealHospital}
-              />
-
-              <Text style={styles.formLabel}>Emergency Contact Phone</Text>
-              <TextInput
-                style={styles.formInput}
-                placeholder="e.g. +234 803 999 8888"
-                keyboardType="phone-pad"
-                value={appealPhone}
-                onChangeText={setAppealPhone}
-              />
-            </ScrollView>
-
-            <TouchableOpacity style={styles.submitDangerBtn} onPress={handleAppealSubmit} activeOpacity={0.85}>
-              <Ionicons name="megaphone-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.submitModalBtnText}>Broadcast Urgent SOS Appeal</Text>
-            </TouchableOpacity>
+            <View style={{ gap: 14 }}>
+              <View style={styles.modalSafetyNotice}>
+                <Ionicons name="shield-checkmark" size={16} color="#059669" />
+                <Text style={styles.modalSafetyText}>
+                  Your contact information is strictly protected. Only official accredited hospitals receive donation authorizations.
+                </Text>
+              </View>
+              <Text style={{ fontSize: 13, color: Colors.text.secondary, lineHeight: 18 }}>
+                Criteria for registration:
+                {'\n'}• Age between 18 and 65
+                {'\n'}• Weight at least 50 kg
+                {'\n'}• AA Genotype (platform requirement for donor safety)
+                {'\n'}• Pre-donation screening completed at certified hospital lab
+              </Text>
+              <TouchableOpacity
+                style={styles.submitRequestBtn}
+                onPress={() => {
+                  setMyDonorStatus({
+                    registered: true,
+                    name: 'Registered Donor',
+                    bloodGroup: 'O+',
+                    genotype: 'AA',
+                    lastDonationDate: 'Pending first donation',
+                    approvedFacility: 'Accredited General Hospital',
+                  });
+                  setIsRegisterDonorModalOpen(false);
+                  toastSuccess('Registration Complete', 'You are now an active volunteer donor in the verified network.');
+                }}
+                activeOpacity={0.88}
+              >
+                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                <Text style={styles.submitRequestBtnText}>Confirm Eligibility & Register</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -1114,381 +937,581 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    gap: 12,
+    borderBottomColor: '#F1F5F9',
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitleContainer: {
+  headerTitleWrap: {
     flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: FontSize.lg,
+    fontSize: FontSize.md,
     fontWeight: FontWeight.bold,
-    color: '#0F172A',
+    color: Colors.text.primary,
   },
-  headerSubtitle: {
-    fontSize: 11,
-    color: '#64748B',
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
   },
-  sosHeaderBtn: {
+  headerBadgeText: {
+    fontSize: 10.5,
+    fontWeight: FontWeight.medium,
+    color: '#059669',
+  },
+  headerActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#DC2626',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     borderRadius: 8,
   },
-  emergencyModeHeaderBtn: {
+  headerActionBtnText: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+  },
+  tabSwitcher: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[2],
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 10,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+  },
+  tabButtonActive: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  tabButtonText: {
+    fontSize: 12.5,
+    fontWeight: FontWeight.medium,
+    color: Colors.text.secondary,
+  },
+  tabButtonTextActive: {
+    color: '#DC2626',
+    fontWeight: FontWeight.bold,
+  },
+  scrollContent: {
+    padding: Spacing[4],
+    paddingBottom: 40,
+  },
+  sectionContainer: {
+    gap: Spacing[3],
+  },
+  requestHeroCard: {
+    backgroundColor: '#DC2626',
+    borderRadius: 16,
+    padding: Spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...Shadows.sm,
+  },
+  requestHeroLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  requestHeroIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  requestHeroTitle: {
+    fontSize: 14.5,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+  },
+  requestHeroSubtitle: {
+    fontSize: 11,
+    color: '#FEE2E2',
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  requestHeroBtn: {
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#7F1D1D',
-    borderWidth: 1,
-    borderColor: '#EF4444',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
+    marginLeft: 8,
   },
-  emergencyModeHeaderBtnText: {
-    color: '#FFFFFF',
+  requestHeroBtnText: {
     fontSize: 11.5,
     fontWeight: FontWeight.bold,
+    color: '#DC2626',
   },
-  sosHeaderBtnText: {
-    color: '#FFFFFF',
-    fontSize: 11.5,
-    fontWeight: FontWeight.bold,
-  },
-  scrollBody: {
-    padding: Spacing[4],
-    gap: 16,
-  },
-  gpsCard: {
+  pipelineCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 14,
+    padding: Spacing[4],
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#F1F5F9',
     ...Shadows.sm,
+    gap: 12,
   },
-  gpsCardRow: {
+  pipelineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
-  gpsCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  pipelineTitle: {
+    fontSize: 13.5,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
   },
-  gpsPulseDot: {
-    width: 12,
-    height: 12,
+  pipelineBadge: {
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 6,
-    backgroundColor: '#10B981',
   },
-  gpsLocationTitle: {
-    fontSize: 14,
+  pipelineBadgeText: {
+    fontSize: 10.5,
     fontWeight: FontWeight.bold,
-    color: '#0F172A',
+    color: '#DC2626',
   },
-  gpsAccuracyText: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  gpsRefreshBtn: {
+  pipelineDetails: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#E6F4F4',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  gpsRefreshText: {
-    fontSize: 11,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary[700],
-  },
-  radiusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
     gap: 8,
+  },
+  pipelineDetailCol: {
+    flex: 1,
+  },
+  pipelineDetailLabel: {
+    fontSize: 10,
+    color: Colors.text.secondary,
+  },
+  pipelineDetailVal: {
+    fontSize: 12,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
+    marginTop: 2,
+  },
+  timelineContainer: {
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingTop: 10,
   },
-  radiusLabel: {
+  timelineSectionTitle: {
     fontSize: 11,
-    color: '#64748B',
-    fontWeight: FontWeight.semiBold,
-  },
-  radiusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: '#F1F5F9',
-  },
-  radiusPillActive: {
-    backgroundColor: Colors.secondary[600],
-  },
-  radiusPillText: {
-    fontSize: 11,
-    color: '#475569',
-    fontWeight: FontWeight.medium,
-  },
-  radiusPillTextActive: {
-    color: '#FFFFFF',
     fontWeight: FontWeight.bold,
+    color: Colors.text.secondary,
+    marginBottom: 8,
+    textTransform: 'uppercase',
   },
-  searchBarContainer: {
+  timelineRow: {
     flexDirection: 'row',
+    minHeight: 34,
+  },
+  timelineIndicatorCol: {
+    width: 22,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    height: 42,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 8,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: '#0F172A',
-  },
-  bloodFilterSection: {
-    gap: 8,
-  },
-  sectionHeading: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
-    color: '#334155',
-  },
-  bloodPillsRow: {
-    gap: 8,
-  },
-  bloodPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  timelineDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 48,
+  },
+  timelineDotPassed: {
+    backgroundColor: '#10B981',
+  },
+  timelineDotCurrent: {
+    backgroundColor: '#DC2626',
+  },
+  timelineDotPulse: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  timelineDotNum: {
+    fontSize: 9,
+    fontWeight: FontWeight.bold,
+    color: '#94A3B8',
+  },
+  timelineLine: {
+    flex: 1,
+    width: 2,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 2,
+  },
+  timelineLinePassed: {
+    backgroundColor: '#10B981',
+  },
+  timelineTextCol: {
+    flex: 1,
+    paddingLeft: 8,
+    paddingBottom: 8,
+  },
+  timelineStepTitle: {
+    fontSize: 12,
+    fontWeight: FontWeight.medium,
+    color: Colors.text.secondary,
+  },
+  timelineStepTitleCurrent: {
+    color: '#DC2626',
+    fontWeight: FontWeight.bold,
+  },
+  timelineStepDesc: {
+    fontSize: 10.5,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  hospitalsSectionHeader: {
+    marginTop: Spacing[2],
+  },
+  sectionHeading: {
+    fontSize: 14,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  sectionSubheading: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  bloodFilterRow: {
+    gap: 6,
+    paddingVertical: 4,
+  },
+  bloodPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   bloodPillActive: {
     backgroundColor: '#DC2626',
     borderColor: '#DC2626',
   },
-  bloodPillUniversal: {
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEF2F2',
-  },
   bloodPillText: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
-    color: '#334155',
+    fontSize: 12,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
   },
   bloodPillTextActive: {
     color: '#FFFFFF',
   },
-  universalTag: {
-    fontSize: 8,
-    color: '#DC2626',
-    fontWeight: 'bold',
-    marginTop: -2,
+  hospitalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: Spacing[3],
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...Shadows.sm,
+    gap: 10,
   },
-  actionBannerRow: {
-    marginVertical: 4,
-  },
-  registerBannerBtn: {
+  hospitalCardTop: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  hospitalIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(15, 110, 110, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    paddingVertical: 12,
-    borderRadius: 10,
   },
-  registerBannerText: {
+  hospitalName: {
     fontSize: 13.5,
     fontWeight: FontWeight.bold,
-    color: '#DC2626',
+    color: Colors.text.primary,
   },
-  donorListSection: {
+  hospitalAddress: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+  },
+  accreditPill: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  accreditPillText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: '#059669',
+  },
+  stockRow: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 8,
+    gap: 6,
+  },
+  stockRowLabel: {
+    fontSize: 10.5,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.secondary,
+  },
+  stockChipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  stockChip: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  stockChipAvailable: {
+    backgroundColor: '#E0F2FE',
+  },
+  stockChipEmpty: {
+    backgroundColor: '#F1F5F9',
+  },
+  stockChipHighlighted: {
+    backgroundColor: '#DC2626',
+  },
+  stockChipText: {
+    fontSize: 10.5,
+    fontWeight: FontWeight.medium,
+    color: '#0369A1',
+  },
+  stockChipTextHighlighted: {
+    color: '#FFFFFF',
+    fontWeight: FontWeight.bold,
+  },
+  hospitalFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
+  },
+  screeningHoursText: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+  },
+  requestFromHospBtn: {
+    backgroundColor: '#0F6E6E',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  requestFromHospBtnText: {
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
+  },
+  donorProfileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: Spacing[4],
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...Shadows.sm,
     gap: 12,
   },
-  donorListHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sortByText: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  donorCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 10,
-    ...Shadows.sm,
-  },
-  donorCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  donorBadgeGroup: {
+  donorProfileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    flex: 1,
-    minWidth: 0,
+    gap: 12,
   },
-  bloodBadgeContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  donorAvatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#DC2626',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
-  },
-  bloodBadgeText: {
-    fontSize: 15,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
   },
   donorName: {
     fontSize: 14,
     fontWeight: FontWeight.bold,
-    color: '#0F172A',
-    flexShrink: 1,
+    color: Colors.text.primary,
   },
-  donorLocationSub: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 1,
+  donorMeta: {
+    fontSize: 11.5,
+    color: Colors.text.secondary,
+    marginTop: 2,
   },
-  distanceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  bloodTypeBadge: {
     backgroundColor: '#FEF2F2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#FCA5A5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    flexShrink: 0,
   },
-  distanceBadgeText: {
-    fontSize: 11,
+  bloodTypeBadgeText: {
+    fontSize: 15,
     fontWeight: FontWeight.bold,
     color: '#DC2626',
   },
-  donorInfoRow: {
+  donorStatsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  infoPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
     backgroundColor: '#F8FAFC',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+  },
+  donorStatBox: {
+    flex: 1,
+  },
+  donorStatLabel: {
+    fontSize: 10,
+    color: Colors.text.secondary,
+  },
+  donorStatVal: {
+    fontSize: 11.5,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
+    marginTop: 2,
+  },
+  becomeDonorCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: Spacing[5],
+    alignItems: 'center',
+    textAlign: 'center',
     borderWidth: 1,
     borderColor: '#F1F5F9',
-  },
-  infoPillText: {
-    fontSize: 11,
-    color: '#475569',
-  },
-  donorCardActions: {
-    flexDirection: 'row',
+    ...Shadows.sm,
     gap: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
   },
-  callDonorBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#10B981',
-    paddingVertical: 9,
-    paddingHorizontal: 8,
+  becomeDonorTitle: {
+    fontSize: 15,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+    textAlign: 'center',
+  },
+  becomeDonorSub: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+  registerDonorBtn: {
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 8,
+    marginTop: 4,
   },
-  callDonorBtnText: {
-    fontSize: 12.5,
+  registerDonorBtnText: {
+    fontSize: 13,
     fontWeight: FontWeight.bold,
     color: '#FFFFFF',
   },
-  requestDonorBtn: {
-    flex: 1,
+  appealCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: Spacing[3],
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...Shadows.sm,
+    gap: 8,
+    marginTop: 10,
+  },
+  appealTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  appealBloodPill: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appealBloodText: {
+    fontSize: 15,
+    fontWeight: FontWeight.bold,
+    color: '#DC2626',
+  },
+  appealHospName: {
+    fontSize: 13,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  appealReason: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    marginTop: 1,
+  },
+  urgencyBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  urgencyBadgeText: {
+    fontSize: 9.5,
+    fontWeight: FontWeight.bold,
+    color: '#DC2626',
+  },
+  appealNotice: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    lineHeight: 15,
+  },
+  volunteerBtn: {
+    backgroundColor: '#DC2626',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
     paddingVertical: 9,
-    paddingHorizontal: 8,
     borderRadius: 8,
+    marginTop: 2,
   },
-  requestDonorBtnText: {
-    fontSize: 12.5,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
-  },
-  emptyStateContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    gap: 8,
-  },
-  emptyStateTitle: {
-    fontSize: 15,
-    fontWeight: FontWeight.bold,
-    color: '#475569',
-  },
-  emptyStateSub: {
+  volunteerBtnText: {
     fontSize: 12,
-    color: '#94A3B8',
-    textAlign: 'center',
-    paddingHorizontal: 24,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
   },
-  modalOverlay: {
+  modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
@@ -1496,106 +1519,86 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: Spacing[4],
-    gap: 12,
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    marginBottom: 14,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: FontWeight.bold,
-    color: '#0F172A',
+    color: Colors.text.primary,
   },
-  formLabel: {
-    fontSize: 12,
+  modalSub: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    marginTop: 1,
+  },
+  modalSafetyNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#ECFDF5',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  modalSafetyText: {
+    fontSize: 11,
+    color: '#065F46',
+    flex: 1,
+    lineHeight: 15,
+  },
+  inputLabel: {
+    fontSize: 11.5,
     fontWeight: FontWeight.semiBold,
-    color: '#334155',
+    color: Colors.text.primary,
     marginBottom: 4,
-    marginTop: 8,
   },
-  formInput: {
+  textInput: {
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
+    borderColor: '#E2E8F0',
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 42,
+    paddingVertical: 9,
     fontSize: 13,
-    color: '#0F172A',
-    marginBottom: 8,
+    color: Colors.text.primary,
   },
-  selectPill: {
-    paddingHorizontal: 12,
+  modalBgPill: {
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 6,
     backgroundColor: '#F1F5F9',
-    marginRight: 6,
   },
-  selectPillActive: {
-    backgroundColor: Colors.secondary[600],
-  },
-  selectPillActiveDanger: {
+  modalBgPillActive: {
     backgroundColor: '#DC2626',
   },
-  selectPillText: {
-    fontSize: 12,
-    color: '#475569',
-    fontWeight: FontWeight.medium,
+  modalBgPillText: {
+    fontSize: 11,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
   },
-  selectPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: FontWeight.bold,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginVertical: 12,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: '#94A3B8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: Colors.secondary[600],
-    borderColor: Colors.secondary[600],
-  },
-  checkboxLabel: {
-    flex: 1,
-    fontSize: 11.5,
-    color: '#475569',
-    lineHeight: 16,
-  },
-  submitModalBtn: {
-    backgroundColor: Colors.secondary[600],
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitModalBtnText: {
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
+  modalBgPillTextActive: {
     color: '#FFFFFF',
   },
-  submitDangerBtn: {
+  submitRequestBtn: {
+    backgroundColor: '#DC2626',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#DC2626',
     paddingVertical: 12,
     borderRadius: 10,
-    marginTop: 8,
+    marginTop: 10,
+  },
+  submitRequestBtnText: {
+    fontSize: 13,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
   },
 });

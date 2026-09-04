@@ -466,7 +466,7 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
                       <Text style={styles.slotsCount}>
                         {slots > 0
                           ? `${slots} appointment slot${slots !== 1 ? 's' : ''} available`
-                          : '⚠ End time must be after start time'}
+                          : 'End time must be after start time'}
                       </Text>
                     );
                   })()}

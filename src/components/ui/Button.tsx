@@ -9,6 +9,7 @@ import {
   TouchableOpacityProps,
 } from 'react-native';
 import { Colors, Spacing, BorderRadius, FontWeight, FontSize, Shadows } from '../../theme';
+import { HeartbeatLoader } from '../feedback/HeartbeatLoader';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type Size = 'sm' | 'md' | 'lg';
@@ -95,8 +96,9 @@ export const Button = memo<ButtonProps>(({
       {...rest}
     >
       {isLoading ? (
-        <ActivityIndicator
-          size="small"
+        <HeartbeatLoader
+          size="sm"
+          showEcg={false}
           color={variant === 'outline' || variant === 'ghost' ? Colors.primary[600] : Colors.neutral[0]}
         />
       ) : (

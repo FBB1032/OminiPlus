@@ -282,7 +282,7 @@ export default function SettingsScreen({ navigation }: any) {
       >
         <View style={styles.langOverlay}>
           <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setLangModalOpen(false)}
           />

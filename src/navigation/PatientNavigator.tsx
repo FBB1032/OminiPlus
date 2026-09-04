@@ -39,6 +39,7 @@ import PremiumScreen from '../screens/patient/PremiumScreen';
 import AIHealthInsightsScreen from '../screens/patient/AIHealthInsightsScreen';
 import SpecialistsScreen from '../screens/patient/SpecialistsScreen';
 import PaymentResultScreen from '../screens/patient/PaymentResultScreen';
+import SymptomCheckerScreen from '../screens/patient/SymptomCheckerScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -122,6 +123,7 @@ export const PatientNavigator = () => (
       component={PaymentResultScreen}
       options={{ animation: 'fade', gestureEnabled: false }}
     />
+    <Stack.Screen name="SymptomChecker" component={SymptomCheckerScreen} />
   </Stack.Navigator>
 );
 

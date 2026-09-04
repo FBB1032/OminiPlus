@@ -176,7 +176,7 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
   const handleSend = (text?: string, customAttachment?: Message['attachment']) => {
     if (isUnverifiedDoctor) {
       toast.error(
-        'Verification Pending ⏳',
+        'Verification Pending',
         'Your MDCN license is under review by Compliance. Unverified doctors cannot send consultation messages.'
       );
       return;

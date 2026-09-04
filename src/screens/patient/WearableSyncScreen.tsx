@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   },
   altHeading: {
     fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
+    fontWeight: FontWeight.semiBold,
     color: Colors.text.primary,
     textAlign: 'center',
   },

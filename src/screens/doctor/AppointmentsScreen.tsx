@@ -15,7 +15,7 @@ import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
 import { useDoctorAppointments, useUpdateAppointmentStatus } from '../../hooks/useDoctor';
-import { Avatar, SkeletonList, EmptyState, ErrorState, Button } from '../../components';
+import { Avatar, SkeletonList, EmptyState, ErrorState, Button, HeartbeatRefreshControl } from '../../components';
 import { DoctorAppointmentItem } from '../../components/list-items/DoctorAppointmentItem';
 import { useToast, useAuth } from '../../hooks/useAuth';
 
@@ -295,6 +295,7 @@ export default function AppointmentsScreen({ navigation }: any) {
             );
           }}
           showsHorizontalScrollIndicator={false}
+          // @ts-ignore - TS complains but this prop is required by FlashList
           estimatedItemSize={80}
           contentContainerStyle={styles.filterContent}
         />
@@ -323,9 +324,9 @@ export default function AppointmentsScreen({ navigation }: any) {
             isTablet && styles.listContainerTablet,
           ]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={_isLoading}
-          onRefresh={refetch}
+          refreshControl={<HeartbeatRefreshControl refreshing={_isLoading} onRefresh={refetch} />}
           showsVerticalScrollIndicator={false}
+          // @ts-ignore - TS complains but this prop is required by FlashList
           estimatedItemSize={340}
         />
       )}
@@ -342,7 +343,7 @@ export default function AppointmentsScreen({ navigation }: any) {
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setDeclineModal((m) => ({ ...m, visible: false }))}
           />
@@ -392,7 +393,7 @@ export default function AppointmentsScreen({ navigation }: any) {
       >
         <View style={styles.modalOverlayBottom}>
           <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setRescheduleModal((m) => ({ ...m, visible: false }))}
           />

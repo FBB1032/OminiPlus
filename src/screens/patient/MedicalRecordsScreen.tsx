@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { useMedicalRecords } from '../../hooks/usePatient';
-import { Card, SkeletonList, EmptyState, ErrorState, Button, MedicalRecordsHeader } from '../../components';
+import { Card, SkeletonList, EmptyState, ErrorState, Button, MedicalRecordsHeader, HeartbeatRefreshControl } from '../../components';
 import { useRecordVisibilityStore } from '../../store/recordVisibilityStore';
 import { useToast } from '../../hooks/useAuth';
 import { Alert } from 'react-native';
@@ -271,8 +271,7 @@ export default function MedicalRecordsScreen() {
           renderItem={renderRecordItem}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={_isLoading}
-          onRefresh={refetch}
+          refreshControl={<HeartbeatRefreshControl refreshing={_isLoading} onRefresh={refetch} />}
           showsVerticalScrollIndicator={false}
         />
       )}

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Button } from './Button';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ConfirmationDialogProps {
   visible: boolean;
@@ -74,7 +75,7 @@ export const ConfirmationDialog = memo<ConfirmationDialogProps>(({
                   color: isDangerous ? Colors.error.main : Colors.info.main,
                 }}
               >
-                {isDangerous ? '⚠️' : 'ℹ️'}
+                <Ionicons name={isDangerous ? 'warning-outline' : 'information-circle-outline'} size={20} color={isDangerous ? '#EF4444' : Colors.primary[600]} />
               </Text>
             </View>
           </View>

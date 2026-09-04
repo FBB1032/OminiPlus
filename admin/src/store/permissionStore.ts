@@ -17,10 +17,13 @@ import { useAuthStore } from './authStore';
 //   'doctor' — doctor workspace only (isAdmin: false)
 
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
+  // ── 1. Platform Admin: Complete platform oversight across all services ──
   admin: [
     'dashboard.view',
-    'doctor_portal.view', 'doctor_portal.manage',
     'doctors.view', 'doctors.verify', 'doctors.suspend',
+    'patients.view', 'patients.manage',
+    'payments.view', 'payments.manage',
+    'billing.view', 'billing.manage',
     'hospitals.view', 'hospitals.onboard', 'hospitals.manage',
     'pharmacies.view', 'pharmacies.onboard', 'pharmacies.manage',
     'blood_donors.view', 'blood_donors.manage',
@@ -33,12 +36,48 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'settings.view', 'settings.manage',
   ],
 
+  // ── 2. Doctor: Clinical patient care, SOAP notes, consultations ONLY ──
   doctor: [
-    'dashboard.view',
     'doctor_portal.view', 'doctor_portal.manage',
-    'appointments.view_overview', 'appointments.resolve_issues',
     'notifications.view',
     'settings.view',
+  ],
+
+  // ── 3. Hospital Admin: Manages the hospital facility, staff, beds, services, blood ──
+  hospital_admin: [
+    'hospital_portal.view', 'hospital_portal.manage',
+    'notifications.view',
+    'settings.view',
+  ],
+
+  // ── 4. Nurse: Inpatient care, vitals, triage queue ONLY ──
+  nurse: [
+    'hospital_portal.view',
+    'notifications.view',
+  ],
+
+  // ── 5. Receptionist: Queue check-in & patient registration ONLY ──
+  receptionist: [
+    'hospital_portal.view',
+    'notifications.view',
+  ],
+
+  // ── 6. Blood Officer: Hospital blood bank inventory & donor screenings ONLY ──
+  blood_officer: [
+    'hospital_portal.view',
+    'notifications.view',
+  ],
+
+  // ── 7. Pharmacist: Hospital internal pharmacy & prescription dispensing ONLY ──
+  pharmacist: [
+    'hospital_portal.view',
+    'notifications.view',
+  ],
+
+  // ── 8. Lab Technician: Hospital diagnostic orders & test results entry ONLY ──
+  lab_technician: [
+    'hospital_portal.view',
+    'notifications.view',
   ],
 };
 
@@ -132,11 +171,23 @@ export function checkPermission(perm: Permission): boolean {
 
 // Role display labels
 export const ROLE_LABELS: Record<AdminRole, string> = {
-  admin:  'Admin',
-  doctor: 'Doctor',
+  admin:          'Platform Admin',
+  doctor:         'Doctor',
+  hospital_admin: 'Hospital Admin',
+  nurse:          'Nurse',
+  receptionist:   'Receptionist',
+  blood_officer:  'Blood Officer',
+  pharmacist:     'Pharmacist',
+  lab_technician: 'Lab Scientist',
 };
 
 export const ROLE_COLORS: Record<AdminRole, { bg: string; color: string }> = {
-  admin:  { bg: '#faf5ff', color: '#7c3aed' },
-  doctor: { bg: '#e6f4f4', color: '#0f6e6e' },
+  admin:          { bg: '#faf5ff', color: '#7c3aed' },
+  doctor:         { bg: '#e6f4f4', color: '#0f6e6e' },
+  hospital_admin: { bg: '#eff6ff', color: '#2563eb' },
+  nurse:          { bg: '#f0fdf4', color: '#16a34a' },
+  receptionist:   { bg: '#fffbeb', color: '#d97706' },
+  blood_officer:  { bg: '#fef2f2', color: '#dc2626' },
+  pharmacist:     { bg: '#f0fdfa', color: '#0d9488' },
+  lab_technician: { bg: '#fdf4ff', color: '#c026d3' },
 };

@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { 
   Building2, Search, Download, Eye, CheckCircle, XCircle, 
-  Award, FileText, Clock, Check, Plus, AlertCircle
+  Award, FileText, Clock, Check, Plus, AlertCircle,
+  Key, ExternalLink, Copy, ShieldCheck, Phone, Mail, MapPin, UserPlus
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -20,9 +22,40 @@ interface VerificationHospital extends Hospital {
   documentsCount: number;
   permitUrl?: string;
   operationsLicenseUrl?: string;
+  facilityType?: string;
+  adminName?: string;
+  adminEmail?: string;
+  adminPhone?: string;
+  adminTempPassword?: string;
+  emergencyHotline?: string;
 }
 
 const INITIAL_HOSPITALS: VerificationHospital[] = [
+  {
+    id: 'h-100',
+    name: 'XYZ Specialist Hospital',
+    address: 'Plot 12 Muhammadu Buhari Way, Kaduna Central',
+    city: 'Kaduna',
+    country: 'Nigeria',
+    phone: '+234 803 444 8888',
+    emergencyHotline: '+234 800 999 0000',
+    email: 'info@xyzspecialist.ng',
+    website: 'https://xyzspecialist.ng',
+    partnerStatus: 'active',
+    doctorCount: 38,
+    facilityType: 'Specialist Referral Center',
+    adminName: 'Dr. Ibrahim Sani',
+    adminEmail: 'i.sani@xyzspecialist.ng',
+    adminPhone: '+234 803 111 0001',
+    adminTempPassword: 'AdminPass2026!',
+    createdAt: '2026-05-15T08:00:00Z',
+    verificationSubmittedAt: '2026-05-15T08:30:00Z',
+    verificationReviewedAt: '2026-05-15T12:00:00Z',
+    verificationReviewedBy: 'super_admin_1',
+    documentsCount: 3,
+    permitUrl: 'hospital_premises_permit_xyz.png',
+    operationsLicenseUrl: 'healthcare_operations_license_xyz.pdf',
+  },
   {
     id: 'h-101',
     name: 'Lagos General Hospital Marina',
@@ -30,10 +63,16 @@ const INITIAL_HOSPITALS: VerificationHospital[] = [
     city: 'Lagos',
     country: 'Nigeria',
     phone: '+234 803 000 0001',
+    emergencyHotline: '+234 800 111 2222',
     email: 'marina@lagosgeneral.gov.ng',
     website: 'https://lagosgeneral.gov.ng',
     partnerStatus: 'pending',
     doctorCount: 42,
+    facilityType: 'General Hospital',
+    adminName: 'Dr. Babatunde Williams',
+    adminEmail: 'admin@lagosgeneral.gov.ng',
+    adminPhone: '+234 803 000 0001',
+    adminTempPassword: 'LagosGen2026!',
     createdAt: '2026-06-04T10:00:00Z',
     verificationSubmittedAt: '2026-06-04T10:15:00Z',
     documentsCount: 2,
@@ -47,10 +86,16 @@ const INITIAL_HOSPITALS: VerificationHospital[] = [
     city: 'Lagos',
     country: 'Nigeria',
     phone: '+234 805 987 0001',
+    emergencyHotline: '+234 800 333 4444',
     email: 'info@vimc.ng',
     website: 'https://vimc.ng',
     partnerStatus: 'active',
     doctorCount: 28,
+    facilityType: 'Private Tertiary Hospital',
+    adminName: 'Dr. Folashade Adeyemi',
+    adminEmail: 'admin@vimc.ng',
+    adminPhone: '+234 805 987 0001',
+    adminTempPassword: 'VIMCPass2026!',
     createdAt: '2026-06-03T14:30:00Z',
     verificationSubmittedAt: '2026-06-03T14:45:00Z',
     verificationReviewedAt: '2026-06-04T09:00:00Z',
@@ -66,10 +111,16 @@ const INITIAL_HOSPITALS: VerificationHospital[] = [
     city: 'Lagos',
     country: 'Nigeria',
     phone: '+234 812 345 0002',
+    emergencyHotline: '+234 800 555 6666',
     email: 'contact@ekomc.ng',
     website: 'https://ekomc.ng',
     partnerStatus: 'rejected',
     doctorCount: 35,
+    facilityType: 'Medical Center',
+    adminName: 'Dr. Chukwuma Obi',
+    adminEmail: 'admin@ekomc.ng',
+    adminPhone: '+234 812 345 0002',
+    adminTempPassword: 'EkoMed2026!',
     createdAt: '2026-06-02T09:15:00Z',
     verificationSubmittedAt: '2026-06-02T09:30:00Z',
     verificationReviewedAt: '2026-06-02T16:00:00Z',
@@ -101,9 +152,30 @@ export default function HospitalsPage() {
   // Onboard Modal states
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newCity, setNewCity] = useState('');
+  const [newCity, setNewCity] = useState('Kaduna');
+  const [newAddress, setNewAddress] = useState('');
   const [newPhone, setNewPhone] = useState('');
+  const [newEmergencyHotline, setNewEmergencyHotline] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newFacilityType, setNewFacilityType] = useState('Specialist Referral Center');
+
+  // Hospital Admin states
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPhone, setNewAdminPhone] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('HospAdmin2026!');
+
+  // Credentials slip modal
+  const [credentialsHospital, setCredentialsHospital] = useState<VerificationHospital | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, key: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2500);
+  };
 
   // Dialog Actions State
   const [confirmAction, setConfirmAction] = useState<{
@@ -128,32 +200,46 @@ export default function HospitalsPage() {
   const rejectedCount = hospitals.filter((h) => h.partnerStatus === 'rejected').length;
   const suspendedCount = hospitals.filter((h) => h.partnerStatus === 'suspended').length;
 
-  const handleCreateHospital = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newName.trim() || !newCity.trim()) return;
+  const handleCreateHospital = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!newName.trim() || !newAdminEmail.trim()) return;
 
     const newHosp: VerificationHospital = {
-      id: `h-${Date.now()}`,
-      name: newName,
-      address: 'Omini Pulse Partner Facility Address',
-      city: newCity || 'Lagos',
+      id: `h-${Date.now().toString().slice(-4)}`,
+      name: newName.trim(),
+      address: newAddress.trim() || 'Central Healthcare Boulevard',
+      city: newCity.trim() || 'Kaduna',
       country: 'Nigeria',
-      phone: newPhone || '+234 800 000 0000',
-      email: newEmail || 'contact@partner.ominipulse.ai',
-      partnerStatus: 'pending',
-      doctorCount: 0,
+      phone: newPhone.trim() || '+234 800 123 4567',
+      emergencyHotline: newEmergencyHotline.trim() || '+234 800 999 0000',
+      email: newEmail.trim() || `info@${newName.toLowerCase().replace(/[^a-z0-9]/g, '')}.ng`,
+      partnerStatus: 'active',
+      doctorCount: 1,
       createdAt: new Date().toISOString(),
       documentsCount: 2,
+      facilityType: newFacilityType,
+      adminName: newAdminName.trim() || 'Hospital Medical Director',
+      adminEmail: newAdminEmail.trim(),
+      adminPhone: newAdminPhone.trim() || newPhone.trim(),
+      adminTempPassword: newAdminPassword || 'HospAdmin2026!',
       permitUrl: 'hospital_premises_permit.png',
       operationsLicenseUrl: 'healthcare_operations_license.pdf',
     };
 
     setHospitals(prev => [newHosp, ...prev]);
     setIsNewModalOpen(false);
+    setCredentialsHospital(newHosp);
+
+    // Reset Form
     setNewName('');
-    setNewCity('');
+    setNewAddress('');
     setNewPhone('');
+    setNewEmergencyHotline('');
     setNewEmail('');
+    setNewAdminName('');
+    setNewAdminEmail('');
+    setNewAdminPhone('');
+    setNewAdminPassword('HospAdmin2026!');
   };
 
   // Handle Action Trigger
@@ -395,7 +481,31 @@ export default function HospitalsPage() {
 
                       {/* Actions */}
                       <td>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'nowrap' }}>
+                          {/* Admin Login Credentials Slip */}
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            leftIcon={<Key size={12} />}
+                            onClick={() => setCredentialsHospital(hosp)}
+                            title="View / Copy Hospital Admin Login Credentials"
+                          >
+                            Admin Login
+                          </Button>
+
+                          {/* Direct Portal Link */}
+                          <Link href={`/dashboard/hospital-portal?facilityId=${hosp.id}`} style={{ textDecoration: 'none' }}>
+                            <Button 
+                              variant="secondary" 
+                              size="sm"
+                              leftIcon={<ExternalLink size={12} />}
+                              title={`Open ${hosp.name} Portal Dashboard`}
+                            >
+                              Portal
+                            </Button>
+                          </Link>
+
+                          {/* Review Accreditations */}
                           <Button 
                             variant="secondary" 
                             size="sm"
@@ -412,14 +522,27 @@ export default function HospitalsPage() {
                                 size="sm" 
                                 leftIcon={<CheckCircle size={12} />}
                                 onClick={() => openConfirmDialog('approve', hosp.id)}
+                                title="Approve Facility"
                               />
                               <Button 
                                 variant="danger" 
-                                size="sm"
+                                size="sm" 
                                 leftIcon={<XCircle size={12} />}
                                 onClick={() => openConfirmDialog('reject', hosp.id)}
+                                title="Reject Facility"
                               />
                             </>
+                          )}
+
+                          {hosp.partnerStatus === 'active' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openConfirmDialog('suspend', hosp.id)}
+                              style={{ color: '#ef4444', fontSize: 11 }}
+                            >
+                              Suspend
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -883,6 +1006,317 @@ export default function HospitalsPage() {
           requireReason={confirmAction.type === 'reject'}
           reasonPlaceholder="Enter rejection feedback for the applicant..."
         />
+      )}
+
+      {/* ── Modal 1: Register New Hospital & Create Hospital Admin Account ──── */}
+      {isNewModalOpen && (
+        <Modal
+          isOpen={isNewModalOpen}
+          onClose={() => setIsNewModalOpen(false)}
+          title="Register Hospital Facility & Create Hospital Admin Account"
+          size="lg"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{
+              background: '#eff6ff', borderRadius: 8, padding: '12px 14px',
+              border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: 10
+            }}>
+              <ShieldCheck size={22} style={{ color: '#2563eb', flexShrink: 0 }} />
+              <p style={{ margin: 0, fontSize: 12, color: '#1e40af', lineHeight: 1.4 }}>
+                Register an approved hospital partner on OminiPulse. Upon registration, an official <strong>Hospital Admin Onboarding & Credentials Slip</strong> will be generated with login details for the hospital medical director / chief administrator.
+              </p>
+            </div>
+
+            {/* Section A: Facility Info */}
+            <div>
+              <h3 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                1. Healthcare Facility Profile
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Hospital Name *</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="e.g. National Hospital Abuja / St. Nicholas Hospital"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Facility Category</label>
+                  <select
+                    value={newFacilityType}
+                    onChange={(e) => setNewFacilityType(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4 }}
+                  >
+                    <option value="Specialist Referral Center">Specialist Referral Center</option>
+                    <option value="General Hospital">General Hospital</option>
+                    <option value="Teaching Hospital">Teaching Hospital</option>
+                    <option value="Private Tertiary Hospital">Private Tertiary Hospital</option>
+                    <option value="Diagnostic & Transfusion Center">Diagnostic & Transfusion Center</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>City & State *</label>
+                  <input
+                    type="text"
+                    value={newCity}
+                    onChange={(e) => setNewCity(e.target.value)}
+                    placeholder="e.g. Kaduna / Lagos Island / Abuja"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Physical Street Address</label>
+                  <input
+                    type="text"
+                    value={newAddress}
+                    onChange={(e) => setNewAddress(e.target.value)}
+                    placeholder="e.g. Plot 12 Muhammadu Buhari Way"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginTop: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>General Phone</label>
+                  <input
+                    type="tel"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    placeholder="+234 800 111 2222"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>24/7 Emergency Hotline</label>
+                  <input
+                    type="tel"
+                    value={newEmergencyHotline}
+                    onChange={(e) => setNewEmergencyHotline(e.target.value)}
+                    placeholder="+234 800 999 0000"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Official Hospital Email</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="info@hospital.ng"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section B: Hospital Admin Account */}
+            <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
+              <h3 style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                2. Hospital Administrator Account (Medical Director)
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Admin Full Name *</label>
+                  <input
+                    type="text"
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    placeholder="e.g. Dr. Ibrahim Sani / Prof. Oladipo Johnson"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Admin Login Email *</label>
+                  <input
+                    type="email"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    placeholder="admin@hospital.ng"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Admin Phone</label>
+                  <input
+                    type="tel"
+                    value={newAdminPhone}
+                    onChange={(e) => setNewAdminPhone(e.target.value)}
+                    placeholder="+234 803 111 0001"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#334155' }}>Initial Admin Password</label>
+                    <button
+                      type="button"
+                      onClick={() => setNewAdminPassword(`HospAdmin${Math.floor(1000 + Math.random() * 9000)}!xyz`)}
+                      style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Generate New
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={newAdminPassword}
+                    onChange={(e) => setNewAdminPassword(e.target.value)}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #cbd5e1', marginTop: 4, fontFamily: 'monospace', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
+              <Button variant="outline" onClick={() => setIsNewModalOpen(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleCreateHospital}>
+                <Building2 size={14} style={{ marginRight: 6 }} /> Register Hospital & Generate Credentials
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Modal 2: Official Hospital Admin Account Credentials Slip ────────── */}
+      {credentialsHospital && (
+        <Modal
+          isOpen={Boolean(credentialsHospital)}
+          onClose={() => setCredentialsHospital(null)}
+          title={`Hospital Admin Credentials: ${credentialsHospital.name}`}
+          size="md"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Facility Header Slip */}
+            <div style={{
+              background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+              borderRadius: 12, padding: '16px 18px', color: '#ffffff', border: '1px solid #334155'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Building2 size={16} style={{ color: '#38bdf8' }} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      {credentialsHospital.facilityType || 'Accredited Healthcare Partner'}
+                    </span>
+                  </div>
+                  <h3 style={{ margin: '4px 0 0', fontSize: 17, fontWeight: 700, color: '#f8fafc' }}>
+                    {credentialsHospital.name}
+                  </h3>
+                  <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#94a3b8' }}>
+                    {credentialsHospital.address}, {credentialsHospital.city}
+                  </p>
+                </div>
+                <Badge variant="success">ACTIVE PARTNER</Badge>
+              </div>
+
+              <div style={{ display: 'flex', gap: 16, marginTop: 12, paddingTop: 10, borderTop: '1px solid #334155', fontSize: 11.5, color: '#cbd5e1' }}>
+                <span>Facility ID: <strong style={{ color: '#ffffff' }}>{credentialsHospital.id}</strong></span>
+                <span>•</span>
+                <span>Hospital Admin: <strong style={{ color: '#ffffff' }}>{credentialsHospital.adminName || 'Dr. Ibrahim Sani'}</strong></span>
+              </div>
+            </div>
+
+            {/* Login Credentials Box */}
+            <div style={{
+              background: '#f8fafc', borderRadius: 10, padding: 14,
+              border: '1.5px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: 10
+            }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Portal Web URL</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0', marginTop: 2 }}>
+                  <code style={{ fontSize: 12, color: '#0f172a' }}>http://localhost:3000/login</code>
+                  <button
+                    onClick={() => copyToClipboard('http://localhost:3000/login', 'hosp-url')}
+                    style={{ background: 'none', border: 'none', color: copiedKey === 'hosp-url' ? '#16a34a' : '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600 }}
+                  >
+                    {copiedKey === 'hosp-url' ? <Check size={13} /> : <Copy size={13} />}
+                    {copiedKey === 'hosp-url' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Hospital Admin Login Email</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0', marginTop: 2 }}>
+                  <code style={{ fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>{credentialsHospital.adminEmail || credentialsHospital.email}</code>
+                  <button
+                    onClick={() => copyToClipboard(credentialsHospital.adminEmail || credentialsHospital.email, 'hosp-email')}
+                    style={{ background: 'none', border: 'none', color: copiedKey === 'hosp-email' ? '#16a34a' : '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600 }}
+                  >
+                    {copiedKey === 'hosp-email' ? <Check size={13} /> : <Copy size={13} />}
+                    {copiedKey === 'hosp-email' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>Temporary Admin Password</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', padding: '6px 10px', borderRadius: 6, border: '1px solid #e2e8f0', marginTop: 2 }}>
+                  <code style={{ fontSize: 13, fontWeight: 700, color: '#dc2626', fontFamily: 'monospace' }}>
+                    {credentialsHospital.adminTempPassword || 'AdminPass2026!'}
+                  </code>
+                  <button
+                    onClick={() => copyToClipboard(credentialsHospital.adminTempPassword || 'AdminPass2026!', 'hosp-pass')}
+                    style={{ background: 'none', border: 'none', color: copiedKey === 'hosp-pass' ? '#16a34a' : '#2563eb', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, fontWeight: 600 }}
+                  >
+                    {copiedKey === 'hosp-pass' ? <Check size={13} /> : <Copy size={13} />}
+                    {copiedKey === 'hosp-pass' ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin Capabilities Notice */}
+            <div style={{ background: '#f0fdf4', borderRadius: 8, padding: 12, border: '1px solid #bbf7d0', fontSize: 12, color: '#166534', lineHeight: 1.5 }}>
+              <strong>Authority of this Hospital Admin Account:</strong>
+              <p style={{ margin: '4px 0 0' }}>
+                This account allows the Medical Director to access the dedicated Hospital Web Portal, register facility doctors, nurses, receptionists, and blood officers, and issue their role-scoped credentials.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const slip = `OMINIPULSE HOSPITAL ACCREDITATION & ADMIN ONBOARDING SLIP\nHospital Facility: ${credentialsHospital.name}\nFacility ID: ${credentialsHospital.id}\nAdmin Name: ${credentialsHospital.adminName || 'Medical Director'}\nLogin URL: http://localhost:3000/login\nAdmin Email: ${credentialsHospital.adminEmail || credentialsHospital.email}\nTemporary Password: ${credentialsHospital.adminTempPassword || 'AdminPass2026!'}`;
+                  copyToClipboard(slip, 'hosp-all');
+                }}
+              >
+                {copiedKey === 'hosp-all' ? <Check size={14} style={{ marginRight: 6, color: '#16a34a' }} /> : <Copy size={14} style={{ marginRight: 6 }} />}
+                {copiedKey === 'hosp-all' ? 'Slip Copied!' : 'Copy Full Admin Slip'}
+              </Button>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Link href={`/dashboard/hospital-portal?facilityId=${credentialsHospital.id}`} style={{ textDecoration: 'none' }}>
+                  <Button variant="secondary" size="sm">
+                    <ExternalLink size={14} style={{ marginRight: 6 }} /> Open Hospital Portal
+                  </Button>
+                </Link>
+                <Button variant="primary" size="sm" onClick={() => setCredentialsHospital(null)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

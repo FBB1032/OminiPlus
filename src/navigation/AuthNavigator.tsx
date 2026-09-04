@@ -5,6 +5,7 @@ import { Colors } from '../theme';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
+import RoleSelectionScreen from '../features/auth/screens/RoleSelectionScreen';
 import LoginScreen from '../features/auth/screens/LoginScreen';
 import RegisterScreen from '../features/auth/screens/RegisterScreen';
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen';
@@ -15,12 +16,14 @@ import PendingApprovalScreen from '../features/auth/screens/PendingApprovalScree
 
 export const AuthNavigator = () => (
   <Stack.Navigator
+    initialRouteName="RoleSelection"
     screenOptions={{
       headerShown: false,
-      contentStyle: { backgroundColor: Colors.background },
+      contentStyle: { backgroundColor: Colors.primary[800] },
       animation: 'slide_from_right',
     }}
   >
+    <Stack.Screen name="RoleSelection" component={RoleSelectionScreen as any} />
     <Stack.Screen name="Login" component={LoginScreen as any} />
     <Stack.Screen name="Register" component={RegisterScreen as any} />
     <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen as any} />
