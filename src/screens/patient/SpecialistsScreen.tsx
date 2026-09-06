@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Shadows, BorderRadius } from '../../theme';
+import { HospitalBadge } from '../../components';
 
 const MIN_CONSULT_FEE = 2000;
 export type FormatTiers = { chat: number; audio: number; video: number };
@@ -255,9 +256,13 @@ export default function SpecialistsScreen({ route, navigation }: any) {
                   </View>
 
                   <Text style={s.docSpec}>{doc.spec}</Text>
-                  <View style={s.hospitalRow}>
-                    <Ionicons name="location-outline" size={11} color="#94A3B8" />
-                    <Text style={s.docHospital} numberOfLines={1}>{doc.hospital}</Text>
+                  <View style={{ marginTop: 2, marginBottom: 2 }}>
+                    <HospitalBadge
+                      hospitalName={doc.hospital}
+                      isIndependent={!doc.hospital || doc.hospital.toLowerCase().includes('independent')}
+                      isVerified={doc.mdcnVerified}
+                      size="sm"
+                    />
                   </View>
 
                   {/* Stats row */}

@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation';
 import {
   Activity, ArrowLeft, Heart, Droplet, User, Calendar, Clock,
   Video, Pill, AlertTriangle, ShieldCheck, CheckCircle2, ChevronRight,
-  Sliders, Info, FileText, Sparkles, RefreshCw
+  Sliders, Info, FileText, Sparkles, RefreshCw, Lock, ShieldAlert
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { ThreeBodyMap } from '@/components/clinical/ThreeBodyMap';
+import { useAuthStore } from '@/store/authStore';
 
 interface PatientRecord {
   id: string;
@@ -142,6 +143,106 @@ const BODY_REGIONS = [
 
 export default function BodyMapPage() {
   const router = useRouter();
+  const { admin } = useAuthStore();
+
+  // ── Medical Privacy & NDPA Barrier: Platform Admins cannot inspect clinical body maps
+  if (admin?.role === 'admin') {
+    return (
+      <div style={{
+        maxWidth: 780,
+        margin: '60px auto',
+        background: '#ffffff',
+        borderRadius: 20,
+        padding: '40px 44px',
+        border: '1.5px solid #e2e8f0',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 20
+      }}>
+        <div style={{
+          width: 72,
+          height: 72,
+          borderRadius: 20,
+          background: '#fef2f2',
+          border: '1.5px solid #fecaca',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#dc2626'
+        }}>
+          <Lock size={36} />
+        </div>
+
+        <div>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            background: '#fee2e2',
+            color: '#b91c1c',
+            padding: '4px 12px',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 800,
+            marginBottom: 12
+          }}>
+            <ShieldAlert size={14} />
+            MEDICAL CONFIDENTIALITY & NDPA COMPLIANCE PROTOCOL
+          </div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, color: '#0f172a', margin: '0 0 8px' }}>
+            Clinical Records Restricted from Platform Admin
+          </h2>
+          <p style={{ fontSize: 14, color: '#64748b', margin: 0, lineHeight: 1.6, maxWidth: 620 }}>
+            Under the Nigeria Data Protection Act (NDPA 2023) Section 30 and medical confidentiality ethics, 3D anatomical body maps, symptom severity markers, diagnostic ECG notes, and patient clinical charts are privileged health records strictly restricted to attending physicians and hospital medical staff.
+          </p>
+        </div>
+
+        <div style={{
+          background: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: 14,
+          padding: '18px 22px',
+          textAlign: 'left',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          fontSize: 13,
+          color: '#334155'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <CheckCircle2 size={16} color="#0f6e6e" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span><strong>Authorized Clinical Access Only:</strong> Only licensed attending doctors and hospital clinical staff can inspect patient anatomical body maps and treatment notes.</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <CheckCircle2 size={16} color="#0f6e6e" style={{ flexShrink: 0, marginTop: 2 }} />
+            <span><strong>Platform Administrator Boundary:</strong> Platform Super-Admins are strictly limited to hospital accreditation, doctor credential verification, and financial billing audits.</span>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => router.push('/dashboard/hospitals')}
+          >
+            Return to Hospital Governance
+          </Button>
+          <Button
+            variant="outline"
+            size="md"
+            onClick={() => router.push('/dashboard/doctors')}
+          >
+            Doctor Credentials Directory
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const [selectedPatientId, setSelectedPatientId] = useState('pat-101');
   const patient = PATIENTS.find((p) => p.id === selectedPatientId) || PATIENTS[0];
 

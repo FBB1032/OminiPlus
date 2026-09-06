@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
-import { Avatar, Card } from '../../components';
+import { Avatar, Card, HospitalBadge } from '../../components';
 import { useToast } from '../../hooks/useAuth';
 import type { FormatTiers } from './SpecialistsScreen';
 
@@ -139,6 +139,14 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
             )}
           </View>
           <Text style={styles.docSpec}>{doctorData.spec}</Text>
+          <View style={{ marginTop: 6, marginBottom: 4 }}>
+            <HospitalBadge
+              hospitalName={doctorData.hospital}
+              isIndependent={!doctorData.hospital || doctorData.hospital.toLowerCase().includes('independent')}
+              isVerified={doctorData.mdcnVerified}
+              size="sm"
+            />
+          </View>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: doctorData.available ? '#0F6E6E' : '#94A3B8' }]} />
             <Text style={styles.statusText}>{doctorData.available ? 'Available Today' : 'Unavailable'}</Text>
@@ -212,14 +220,31 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
           <Text style={styles.aboutText}>{doctorData.about}</Text>
         </View>
 
-        {/* Hospital */}
+        {/* Hospital Affiliation & Practice Location */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Hospital / Clinic</Text>
-          <View style={styles.hospitalRow}>
-            <View style={styles.hospitalIcon}>
-              <Ionicons name="business" size={18} color="#2563EB" />
+          <Text style={styles.sectionTitle}>Hospital Affiliation & Practice Location</Text>
+          <View style={styles.hospitalCardBox}>
+            <View style={styles.hospitalRow}>
+              <View style={styles.hospitalIcon}>
+                <Ionicons name="business-outline" size={20} color="#0F6E6E" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.hospitalName}>{doctorData.hospital || 'Independent Practice'}</Text>
+                <Text style={styles.hospitalLocationSub}>
+                  {doctorData.hospital ? 'Accredited Health Partner' : 'Licensed Independent Specialist'}
+                </Text>
+              </View>
+              <View style={styles.verifiedClinicBadge}>
+                <Ionicons name="shield-checkmark-outline" size={13} color="#0F6E6E" />
+                <Text style={styles.verifiedClinicText}>Verified</Text>
+              </View>
             </View>
-            <Text style={styles.hospitalName}>{doctorData.hospital}</Text>
+            <View style={styles.hospitalInfoNotice}>
+              <Ionicons name="location-outline" size={14} color="#0F6E6E" />
+              <Text style={styles.hospitalInfoNoticeText}>
+                In-person appointments take place at this facility. Telehealth sessions are conducted digitally through OmniPlus.
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -388,9 +413,70 @@ const styles = StyleSheet.create({
   trustNote:     { flexDirection: 'row', alignItems: 'flex-start', gap: 6, backgroundColor: '#EFF6FF', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#BFDBFE' },
   trustNoteText: { flex: 1, fontSize: 11, color: '#1D4ED8', lineHeight: 16 },
 
-  hospitalRow:  { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: '#FFFFFF', padding: Spacing[4], borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' },
-  hospitalIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
-  hospitalName: { fontSize: FontSize.sm, fontWeight: FontWeight.semiBold, color: '#0F172A', flex: 1 },
+  hospitalCardBox: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    ...Shadows.xs,
+  },
+  hospitalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    padding: Spacing[3],
+  },
+  hospitalIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: '#E6F4F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hospitalName: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semiBold,
+    color: '#0F172A',
+  },
+  hospitalLocationSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  verifiedClinicBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#E6F4F4',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#B2DFDB',
+  },
+  verifiedClinicText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: '#0F6E6E',
+  },
+  hospitalInfoNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F0FDFA',
+    paddingHorizontal: Spacing[3],
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E6F4F4',
+  },
+  hospitalInfoNoticeText: {
+    fontSize: 11,
+    color: '#0F6E6E',
+    flex: 1,
+    lineHeight: 15,
+  },
 
   slotsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
   slotChip: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF' },

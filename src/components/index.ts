@@ -34,6 +34,7 @@ export { NDPAGuard } from './security/NDPAGuard';
 export { BodyMap } from './ui/BodyMap';
 export { AIDisclaimerBanner } from './common/AIDisclaimerBanner';
 export { DoctorStatusBadge } from './common/DoctorStatusBadge';
+export { HospitalBadge } from './common/HospitalBadge';
 export { ConsentModal } from './consent/ConsentModal';
 export { SocialLoginButtons } from './auth/SocialLoginButtons';
 export { MedicalRecordsHeader } from './medical-records/MedicalRecordsHeader';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Stethoscope, Calendar, Clock, Users, FileText, Pill,
@@ -9,7 +9,7 @@ import {
   Smartphone, Download, Video, Phone, Radio, Activity, Fingerprint, Lock, ExternalLink,
   Droplet, Sparkles, Bot, Mic, MicOff, VideoOff, PhoneOff, Settings, RefreshCw,
   ChevronRight, ArrowRight, ShieldCheck, Heart, Info, Check, X, AlertTriangle, Camera,
-  Maximize2, Minimize2, ArrowLeftRight, Expand, Shrink, Copy
+  Maximize2, Minimize2, ArrowLeftRight, Expand, Shrink, Copy, Building2
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -407,6 +407,158 @@ function DoctorPortalContent() {
     setIsFeeModalOpen(false);
     setFeeValidationErr(null);
     triggerFeedback(`Tiered consultation fees successfully updated: Chat ₦${c.toLocaleString()} · Audio ₦${a.toLocaleString()} · Video ₦${v.toLocaleString()}`);
+  };
+
+  // ── Hospital Affiliation & 6-Digit Code Connection (Desktop & Phone Synced) ─
+  const MOCK_DESKTOP_INVITES: Record<string, { hospitalId: string; hospitalName: string; department: string; address: string; admin: string }> = {
+    '492817': {
+      hospitalId: 'hosp-evercare',
+      hospitalName: 'Evercare Hospital Lekki',
+      department: 'Cardiology',
+      address: 'Bisola Durosinmi Etti Drive, Lekki Phase 1, Lagos',
+      admin: 'Dr. Adeola Benson (Chief Medical Officer)',
+    },
+    '715392': {
+      hospitalId: 'hosp-luth',
+      hospitalName: 'Lagos University Teaching Hospital (LUTH)',
+      department: 'Cardiology',
+      address: 'Ishaga Road, Idi-Araba, Surulere, Lagos',
+      admin: 'Prof. Olufemi Osinowo (Clinical Director)',
+    },
+    '830146': {
+      hospitalId: 'hosp-reddington',
+      hospitalName: 'Reddington Hospital Victoria Island',
+      department: 'Internal Medicine',
+      address: '12 Idowu Martins Street, Victoria Island, Lagos',
+      admin: 'Dr. Charles Majekodunmi (Medical Superintendent)',
+    },
+  };
+
+  const [desktopAffiliation, setDesktopAffiliation] = useState<{
+    hospitalId: string;
+    hospitalName: string;
+    department: string;
+    address: string;
+    linkedViaCode: string;
+    linkedAt: string;
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ominipulse_doctor_hospital_affiliation');
+      if (saved) {
+        setDesktopAffiliation(JSON.parse(saved));
+      }
+    } catch {}
+  }, []);
+
+  const [codeInputValue, setCodeInputValue] = useState('');
+  const [patientRosterType, setPatientRosterType] = useState<'private' | 'hospital'>('private');
+
+  const HOSPITAL_PATIENTS_ROSTER = [
+    {
+      id: 'hp-1',
+      fullName: 'Amara Obi',
+      mrn: 'EVR-2024-0089',
+      phone: '+234 803 112 3344',
+      email: 'amara.obi@example.com',
+      age: 36,
+      gender: 'Female',
+      bloodGroup: 'O+',
+      department: 'Cardiology',
+      isAppUser: true,
+      lastVisit: 'Aug 28, 2026',
+      notes: 'Hypertension follow-up. Teleconsultation synced via OmniPlus app.',
+    },
+    {
+      id: 'hp-2',
+      fullName: 'Alhaji Ibrahim Danladi',
+      mrn: 'EVR-2023-1492',
+      phone: '+234 802 555 7891',
+      email: undefined,
+      age: 65,
+      gender: 'Male',
+      bloodGroup: 'B+',
+      department: 'Cardiology',
+      isAppUser: false,
+      lastVisit: 'Aug 15, 2026',
+      notes: 'Paper chart archive. Attends physical hospital clinic appointments only.',
+    },
+    {
+      id: 'hp-3',
+      fullName: 'Folashade Adeleke',
+      mrn: 'EVR-2024-0311',
+      phone: '+234 814 777 9022',
+      email: 'fola.adeleke@corporate.ng',
+      age: 29,
+      gender: 'Female',
+      bloodGroup: 'A+',
+      department: 'Cardiology',
+      isAppUser: true,
+      lastVisit: 'Sep 02, 2026',
+      notes: 'Holter monitor scheduled. Digital reports sent through OmniPlus.',
+    },
+    {
+      id: 'hp-4',
+      fullName: 'Emmanuel Okafor',
+      mrn: 'EVR-2024-0552',
+      phone: '+234 806 888 3311',
+      email: undefined,
+      age: 50,
+      gender: 'Male',
+      bloodGroup: 'O-',
+      department: 'Cardiology',
+      isAppUser: false,
+      lastVisit: 'Jul 30, 2026',
+      notes: 'In-hospital post-op check. Phone number on file for hospital reception contact.',
+    },
+  ];
+
+  const previewHospitalInvite = useMemo(() => {
+    const clean = codeInputValue.trim().replace(/\D/g, '');
+    if (clean.length === 6) {
+      return MOCK_DESKTOP_INVITES[clean] || null;
+    }
+    return null;
+  }, [codeInputValue]);
+
+  const handleConnectDesktopHospital = () => {
+    const clean = codeInputValue.trim().replace(/\D/g, '');
+    if (clean.length !== 6) {
+      triggerFeedback('Please enter a valid 6-digit hospital code.');
+      return;
+    }
+    const found = MOCK_DESKTOP_INVITES[clean];
+    if (!found) {
+      triggerFeedback('Invalid or expired 6-digit code. Please check with your hospital admin.');
+      return;
+    }
+
+    const aff = {
+      hospitalId: found.hospitalId,
+      hospitalName: found.hospitalName,
+      department: found.department,
+      address: found.address,
+      linkedViaCode: clean,
+      linkedAt: new Date().toISOString(),
+    };
+
+    setDesktopAffiliation(aff);
+    try {
+      localStorage.setItem('ominipulse_doctor_hospital_affiliation', JSON.stringify(aff));
+    } catch {}
+    setCodeInputValue('');
+    triggerFeedback(`Successfully connected to ${found.hospitalName} (${found.department} Dept)! Hospital patient roster synced.`);
+  };
+
+  const handleDisconnectDesktopHospital = () => {
+    if (confirm(`Disconnect from ${desktopAffiliation?.hospitalName}? You will revert to independent practice status.`)) {
+      setDesktopAffiliation(null);
+      try {
+        localStorage.removeItem('ominipulse_doctor_hospital_affiliation');
+      } catch {}
+      triggerFeedback('Disconnected from hospital. You are now operating as an Independent Specialist.');
+    }
   };
 
 
@@ -878,6 +1030,36 @@ function DoctorPortalContent() {
     ? filteredPatients
     : filteredPatients.slice((patientPage - 1) * patientPageSize, patientPage * patientPageSize);
 
+  const filteredHospitalPatients = HOSPITAL_PATIENTS_ROSTER.filter(hp =>
+    !patientSearch ||
+    hp.fullName.toLowerCase().includes(patientSearch.toLowerCase()) ||
+    hp.mrn.toLowerCase().includes(patientSearch.toLowerCase()) ||
+    hp.phone.toLowerCase().includes(patientSearch.toLowerCase()) ||
+    hp.bloodGroup.toLowerCase().includes(patientSearch.toLowerCase())
+  );
+
+  const handleSelectHospitalPatient = (hp: typeof HOSPITAL_PATIENTS_ROSTER[0]) => {
+    const mapped: Consultation = {
+      id: hp.id,
+      patientName: hp.fullName,
+      patientAge: hp.age,
+      patientGender: hp.gender === 'Female' ? 'Female' : 'Male',
+      bloodGroup: hp.bloodGroup,
+      genotype: 'AA',
+      time: hp.lastVisit,
+      status: hp.isAppUser ? 'waiting' : 'completed',
+      type: hp.isAppUser ? 'video' : 'in_person',
+      reason: hp.notes,
+      history: hp.notes,
+      allergies: ['No documented adverse drug reactions'],
+      vitals: { bp: '126/82 mmHg', hr: '72 bpm', temp: '36.7 °C', weight: '70 kg', spo2: '99%' },
+      painRegion: { region: 'Chest', severity: 3, color: 'orange', notes: hp.notes },
+    };
+    setActiveChartPatient(mapped);
+    setSelectedBodyRegion('Chest');
+    setPainIntensity(3);
+  };
+
   const displayedAppts = apptIsSeeAll
     ? TODAY_CONSULTATIONS
     : TODAY_CONSULTATIONS.slice((apptPage - 1) * apptPageSize, apptPage * apptPageSize);
@@ -967,7 +1149,21 @@ function DoctorPortalContent() {
             <p style={{ fontSize: 13, color: '#64748b', margin: '5px 0 0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span>Cardiology Specialist · General Medical Practitioner</span>
               <span>•</span>
-              <span>OmniPulse Heart Center (Lagos)</span>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                background: desktopAffiliation ? '#e6f4f4' : '#eef2ff',
+                color: desktopAffiliation ? '#0f6e6e' : '#3730a3',
+                border: `1px solid ${desktopAffiliation ? '#b2dfdb' : '#c7d2fe'}`,
+                padding: '2px 8px',
+                borderRadius: 6,
+                fontWeight: 600,
+                fontSize: 12
+              }}>
+                <Building2 size={13} />
+                {desktopAffiliation ? `${desktopAffiliation.hospitalName} (${desktopAffiliation.department})` : 'Independent Specialist'}
+              </span>
               <span>•</span>
               <span>Folio: <strong style={{ color: '#0f6e6e', fontFamily: 'monospace' }}>LIC-98754-C3</strong></span>
             </p>
@@ -1048,6 +1244,7 @@ function DoctorPortalContent() {
           { key: 'schedule', label: 'Duty Shifts & Hours', icon: Clock },
           { key: 'reviews', label: 'Patient Reviews', icon: Star },
           { key: 'profile', label: 'Doctor Profile & MDCN', icon: Stethoscope },
+          { key: 'hospital', label: 'Hospital Affiliation', icon: Building2 },
         ].map((tab) => {
           const Icon = tab.icon;
           const isSelected = activeTab === tab.key;
@@ -2046,18 +2243,85 @@ function DoctorPortalContent() {
               flexDirection: 'column',
               gap: 12
             }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Patients Directory ({TODAY_CONSULTATIONS.length})
-              </h3>
-              <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>
-                Click a patient to inspect 3D Anatomical Body Map & EHR
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Patients Directory
+                  </h3>
+                  <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
+                    {patientRosterType === 'private' ? 'Private Telehealth Roster' : `${desktopAffiliation?.hospitalName || 'Hospital'} Patient Records`}
+                  </p>
+                </div>
+                {desktopAffiliation && (
+                  <span style={{
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    background: '#e6f4f4',
+                    color: '#0f6e6e',
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}>
+                    <Building2 size={12} />
+                    {desktopAffiliation.department}
+                  </span>
+                )}
+              </div>
+
+              {/* Segmented Roster Selector */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 4,
+                background: '#f1f5f9',
+                padding: 4,
+                borderRadius: 10
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setPatientRosterType('private')}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: 7,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: patientRosterType === 'private' ? '#ffffff' : 'transparent',
+                    color: patientRosterType === 'private' ? '#0f6e6e' : '#64748b',
+                    boxShadow: patientRosterType === 'private' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 150ms'
+                  }}
+                >
+                  Private Telehealth ({TODAY_CONSULTATIONS.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPatientRosterType('hospital')}
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: 7,
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    background: patientRosterType === 'hospital' ? '#ffffff' : 'transparent',
+                    color: patientRosterType === 'hospital' ? '#0f6e6e' : '#64748b',
+                    boxShadow: patientRosterType === 'hospital' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                    transition: 'all 150ms'
+                  }}
+                >
+                  Hospital Roster ({HOSPITAL_PATIENTS_ROSTER.length})
+                </button>
+              </div>
 
               <div style={{ position: 'relative' }}>
                 <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: 12, top: 12 }} />
                 <input
                   type="text"
-                  placeholder="Search patient name, MRN, phone..."
+                  placeholder={patientRosterType === 'private' ? 'Search private patient name, ID, blood...' : 'Search hospital patient, MRN, phone...'}
                   value={patientSearch}
                   onChange={(e) => {
                     setPatientSearch(e.target.value);
@@ -2075,78 +2339,284 @@ function DoctorPortalContent() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {displayedPatients.length === 0 ? (
-                <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', background: '#ffffff', borderRadius: 12 }}>
-                  No patients match "{patientSearch}"
-                </div>
-              ) : (
-                displayedPatients.map((pt) => {
-                  const isSelected = activeChartPatient?.id === pt.id;
-                  return (
-                    <div
-                      key={pt.id}
-                      onClick={() => {
-                        setActiveChartPatient(pt);
-                        if (pt.painRegion) {
-                          setSelectedBodyRegion(pt.painRegion.region);
-                          setPainIntensity(pt.painRegion.severity);
-                        }
-                      }}
-                      style={{
-                        background: isSelected ? '#f0fdfa' : '#ffffff',
-                        border: `1.5px solid ${isSelected ? '#0f6e6e' : '#e2e8f0'}`,
-                        borderRadius: 14,
-                        padding: '16px 18px',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 14,
-                        boxShadow: isSelected ? '0 4px 14px rgba(15,110,110,0.1)' : '0 1px 3px rgba(0,0,0,0.02)',
-                        transition: 'all 150ms'
-                      }}
-                    >
-                      <div style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: '50%',
-                        background: isSelected ? '#0f6e6e' : '#e2e8f0',
-                        color: isSelected ? '#ffffff' : '#334155',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        flexShrink: 0
-                      }}>
-                        {pt.patientName.split(' ').map(n => n[0]).join('')}
-                      </div>
-
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <h4 style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', margin: 0 }}>{pt.patientName}</h4>
-                          <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e' }}>{pt.bloodGroup} ({pt.genotype})</span>
-                        </div>
-                        <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
-                          {pt.patientAge}y · {pt.patientGender} · Last Visit: {pt.time}
-                        </p>
-                      </div>
+            {/* Patients List Render */}
+            {patientRosterType === 'private' ? (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {displayedPatients.length === 0 ? (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', background: '#ffffff', borderRadius: 12 }}>
+                      No private patients match "{patientSearch}"
                     </div>
-                  );
-                })
-              )}
-            </div>
+                  ) : (
+                    displayedPatients.map((pt) => {
+                      const isSelected = activeChartPatient?.id === pt.id;
+                      return (
+                        <div
+                          key={pt.id}
+                          onClick={() => {
+                            setActiveChartPatient(pt);
+                            if (pt.painRegion) {
+                              setSelectedBodyRegion(pt.painRegion.region);
+                              setPainIntensity(pt.painRegion.severity);
+                            }
+                          }}
+                          style={{
+                            background: isSelected ? '#f0fdfa' : '#ffffff',
+                            border: `1.5px solid ${isSelected ? '#0f6e6e' : '#e2e8f0'}`,
+                            borderRadius: 14,
+                            padding: '16px 18px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 14,
+                            boxShadow: isSelected ? '0 4px 14px rgba(15,110,110,0.1)' : '0 1px 3px rgba(0,0,0,0.02)',
+                            transition: 'all 150ms'
+                          }}
+                        >
+                          <div style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '50%',
+                            background: isSelected ? '#0f6e6e' : '#e2e8f0',
+                            color: isSelected ? '#ffffff' : '#334155',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            flexShrink: 0
+                          }}>
+                            {pt.patientName.split(' ').map(n => n[0]).join('')}
+                          </div>
 
-            {/* Pagination & See All Bar for Patients Directory */}
-            <Pagination
-              page={patientPage}
-              totalPages={Math.ceil(filteredPatients.length / patientPageSize)}
-              onPageChange={setPatientPage}
-              total={filteredPatients.length}
-              pageSize={patientPageSize}
-              onPageSizeChange={(newSize) => { setPatientPageSize(newSize); setPatientPage(1); }}
-              isSeeAll={patientIsSeeAll}
-              onToggleSeeAll={() => setPatientIsSeeAll(!patientIsSeeAll)}
-            />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h4 style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', margin: 0 }}>{pt.patientName}</h4>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e' }}>{pt.bloodGroup} ({pt.genotype})</span>
+                            </div>
+                            <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
+                              {pt.patientAge}y · {pt.patientGender} · Last Visit: {pt.time}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Pagination & See All Bar for Patients Directory */}
+                <Pagination
+                  page={patientPage}
+                  totalPages={Math.ceil(filteredPatients.length / patientPageSize)}
+                  onPageChange={setPatientPage}
+                  total={filteredPatients.length}
+                  pageSize={patientPageSize}
+                  onPageSizeChange={(newSize) => { setPatientPageSize(newSize); setPatientPage(1); }}
+                  isSeeAll={patientIsSeeAll}
+                  onToggleSeeAll={() => setPatientIsSeeAll(!patientIsSeeAll)}
+                />
+              </>
+            ) : !desktopAffiliation ? (
+              <div style={{
+                background: '#ffffff',
+                borderRadius: 16,
+                padding: '32px 24px',
+                border: '1.5px dashed #cbd5e1',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 14
+              }}>
+                <div style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 14,
+                  background: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#475569'
+                }}>
+                  <Building2 size={28} />
+                </div>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Independent Doctor Mode
+                  </h4>
+                  <p style={{ fontSize: 12.5, color: '#64748b', margin: '6px 0 0', lineHeight: 1.5, maxWidth: 300 }}>
+                    You are not currently affiliated with an accredited hospital. Connect via a 6-digit hospital code to access your hospital clinic roster.
+                  </p>
+                </div>
+                <Button
+                  variant="teal"
+                  size="sm"
+                  leftIcon={<Building2 size={14} />}
+                  onClick={() => setActiveTab('hospital')}
+                >
+                  Enter Hospital Code
+                </Button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {filteredHospitalPatients.length === 0 ? (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', background: '#ffffff', borderRadius: 12 }}>
+                    No hospital patients match "{patientSearch}"
+                  </div>
+                ) : (
+                  filteredHospitalPatients.map((hp) => {
+                    const isSelected = activeChartPatient?.id === hp.id;
+                    return (
+                      <div
+                        key={hp.id}
+                        onClick={() => handleSelectHospitalPatient(hp)}
+                        style={{
+                          background: isSelected ? '#f0fdfa' : '#ffffff',
+                          border: `1.5px solid ${isSelected ? '#0f6e6e' : '#e2e8f0'}`,
+                          borderRadius: 14,
+                          padding: '16px 18px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                          boxShadow: isSelected ? '0 4px 14px rgba(15,110,110,0.1)' : '0 1px 3px rgba(0,0,0,0.02)',
+                          transition: 'all 150ms'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: '50%',
+                            background: isSelected ? '#0f6e6e' : '#f1f5f9',
+                            color: isSelected ? '#ffffff' : '#334155',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 800,
+                            flexShrink: 0
+                          }}>
+                            {hp.fullName.split(' ').map(n => n[0]).join('')}
+                          </div>
+
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <h4 style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', margin: 0 }}>{hp.fullName}</h4>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e' }}>{hp.bloodGroup}</span>
+                            </div>
+                            <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
+                              MRN: <strong style={{ fontFamily: 'monospace', color: '#334155' }}>{hp.mrn}</strong> · {hp.age}y · {hp.gender}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* App Status Indicator Badge */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                          {hp.isAppUser ? (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              background: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}>
+                              <CheckCircle2 size={12} />
+                              App Patient (Digital Care Enabled)
+                            </span>
+                          ) : (
+                            <span style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              background: '#fef3c7',
+                              color: '#b45309',
+                              border: '1px solid #fde68a',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700
+                            }}>
+                              <AlertTriangle size={12} />
+                              Hospital Record Only (Not on App)
+                            </span>
+                          )}
+
+                          <span style={{ fontSize: 11.5, color: '#94a3b8' }}>
+                            Visit: {hp.lastVisit}
+                          </span>
+                        </div>
+
+                        {/* Offline In-Hospital Patient Warning & Quick Actions */}
+                        {!hp.isAppUser && (
+                          <div style={{
+                            background: '#fffbeb',
+                            border: '1px solid #fef3c7',
+                            borderRadius: 8,
+                            padding: '10px 12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            marginTop: 4
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                              <AlertTriangle size={14} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                              <p style={{ fontSize: 11.5, color: '#92400e', margin: 0, lineHeight: 1.4 }}>
+                                <strong>Phone/Email not on app:</strong> In-hospital physical care only. Telehealth video consultation and digital prescription dispatch are disabled until patient registers on the app.
+                              </p>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  triggerFeedback(`SMS invitation sent to ${hp.phone} with link to download OmniPlus & sync hospital chart.`);
+                                }}
+                                style={{
+                                  padding: '6px 8px',
+                                  background: '#ffffff',
+                                  border: '1px solid #fde68a',
+                                  borderRadius: 6,
+                                  color: '#b45309',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Send App Invite (SMS)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  triggerFeedback(`${hp.fullName} added to ${desktopAffiliation?.hospitalName} on-site clinic queue.`);
+                                }}
+                                style={{
+                                  padding: '6px 8px',
+                                  background: '#fef3c7',
+                                  border: '1px solid #fde68a',
+                                  borderRadius: 6,
+                                  color: '#78350f',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Queue Clinic Visit
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
 
           {/* Patient Details & 3D Anatomical Body Map Inspector */}
@@ -3274,6 +3744,363 @@ function DoctorPortalContent() {
                 );
               })}
             </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* TAB 8: HOSPITAL AFFILIATION & 6-DIGIT CODE MANAGEMENT                */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'hospital' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+          {/* Top Affiliation Status Hero */}
+          <div style={{
+            background: desktopAffiliation ? 'linear-gradient(135deg, #0f6e6e 0%, #0d9488 100%)' : 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+            borderRadius: 20,
+            padding: '28px 32px',
+            color: '#ffffff',
+            boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 20
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: 16,
+                background: 'rgba(255,255,255,0.15)',
+                backdropFilter: 'blur(8px)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#ffffff',
+                flexShrink: 0
+              }}>
+                <Building2 size={34} />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <h2 style={{ fontSize: 22, fontWeight: 900, margin: 0, color: '#ffffff' }}>
+                    {desktopAffiliation ? desktopAffiliation.hospitalName : 'Independent Specialist Practice'}
+                  </h2>
+                  <span style={{
+                    background: desktopAffiliation ? '#ffffff' : 'rgba(255,255,255,0.15)',
+                    color: desktopAffiliation ? '#0f6e6e' : '#f8fafc',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '3px 10px',
+                    borderRadius: 8,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 5
+                  }}>
+                    <ShieldCheck size={13} />
+                    {desktopAffiliation ? 'Verified Hospital Partner' : 'Independent Doctor'}
+                  </span>
+                </div>
+
+                <p style={{ fontSize: 13.5, color: 'rgba(255,255,255,0.85)', margin: '6px 0 0', maxWidth: 640, lineHeight: 1.5 }}>
+                  {desktopAffiliation
+                    ? `${desktopAffiliation.department} Department · ${desktopAffiliation.address}`
+                    : 'You are currently registered as an independent specialist. You can accept private telehealth consults or affiliate with any accredited hospital using their 6-digit code.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {desktopAffiliation ? (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<ExternalLink size={14} />}
+                    onClick={() => router.push('/dashboard/hospital-portal')}
+                    style={{ background: '#ffffff', color: '#0f6e6e', border: 'none' }}
+                  >
+                    Hospital Staff Portal
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDisconnectDesktopHospital}
+                    style={{ color: '#fecaca', background: 'rgba(239, 68, 68, 0.2)' }}
+                  >
+                    Disconnect
+                  </Button>
+                </>
+              ) : (
+                <span style={{
+                  background: 'rgba(255,255,255,0.12)',
+                  padding: '8px 14px',
+                  borderRadius: 10,
+                  fontSize: 12.5,
+                  fontWeight: 700
+                }}>
+                  Enter 6-digit Code Below
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Main 2-Column Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 24 }}>
+
+            {/* Left: 6-Digit Code Connection Form */}
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 18,
+              padding: '26px 28px',
+              border: '1.5px solid #e2e8f0',
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 20
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Building2 size={18} color="#0f6e6e" />
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    {desktopAffiliation ? 'Switch / Reconnect Hospital' : 'Connect to Hospital with 6-Digit Code'}
+                  </h3>
+                </div>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+                  Enter the 6-digit affiliation code generated by your hospital medical director or clinical superintendent.
+                </p>
+              </div>
+
+              {/* 6-Digit Monospace Input */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#334155', display: 'block', marginBottom: 6 }}>
+                  6-Digit Invitation Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={codeInputValue}
+                  onChange={(e) => setCodeInputValue(e.target.value.replace(/\D/g, ''))}
+                  placeholder="e.g. 492817"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    borderRadius: 12,
+                    border: `2px solid ${previewHospitalInvite ? '#0f6e6e' : '#cbd5e1'}`,
+                    fontSize: 22,
+                    fontWeight: 900,
+                    letterSpacing: '10px',
+                    textAlign: 'center',
+                    fontFamily: 'monospace',
+                    color: '#0f172a',
+                    background: previewHospitalInvite ? '#f0fdfa' : '#ffffff',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    transition: 'all 150ms'
+                  }}
+                />
+              </div>
+
+              {/* Fast Test Code Chips */}
+              <div>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', display: 'block', marginBottom: 8 }}>
+                  Sample Registered Hospital Codes (Click to autofill):
+                </span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    { code: '492817', label: 'Evercare Lekki' },
+                    { code: '715392', label: 'LUTH Surulere' },
+                    { code: '830146', label: 'Reddington VI' },
+                  ].map((chip) => (
+                    <button
+                      key={chip.code}
+                      type="button"
+                      onClick={() => setCodeInputValue(chip.code)}
+                      style={{
+                        padding: '6px 12px',
+                        background: codeInputValue === chip.code ? '#e6f4f4' : '#f8fafc',
+                        border: `1px solid ${codeInputValue === chip.code ? '#0f6e6e' : '#cbd5e1'}`,
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: codeInputValue === chip.code ? '#0f6e6e' : '#334155',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <span style={{ fontFamily: 'monospace', fontWeight: 800 }}>{chip.code}</span>
+                      <span>• {chip.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Real-time Code Preview Card */}
+              {previewHospitalInvite ? (
+                <div style={{
+                  background: '#f0fdfa',
+                  border: '1.5px solid #99f6e4',
+                  borderRadius: 14,
+                  padding: '16px 18px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle2 size={16} color="#0f6e6e" />
+                        <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                          {previewHospitalInvite.hospitalName}
+                        </h4>
+                      </div>
+                      <p style={{ fontSize: 12.5, color: '#475569', margin: '3px 0 0' }}>
+                        Department: <strong>{previewHospitalInvite.department}</strong>
+                      </p>
+                    </div>
+                    <span style={{
+                      background: '#ccfbf1',
+                      color: '#0f6e6e',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: 6
+                    }}>
+                      Valid Code
+                    </span>
+                  </div>
+
+                  <div style={{ fontSize: 12, color: '#64748b', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <span>Facility Address: {previewHospitalInvite.address}</span>
+                    <span>Admin Approver: {previewHospitalInvite.admin}</span>
+                  </div>
+
+                  <Button
+                    variant="teal"
+                    size="md"
+                    leftIcon={<Building2 size={16} />}
+                    onClick={handleConnectDesktopHospital}
+                    style={{ marginTop: 4, width: '100%', justifyContent: 'center' }}
+                  >
+                    Confirm & Connect to {previewHospitalInvite.hospitalName}
+                  </Button>
+                </div>
+              ) : codeInputValue.length === 6 ? (
+                <div style={{
+                  background: '#fff1f2',
+                  border: '1px solid #fecdd3',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  color: '#be123c',
+                  fontSize: 12.5
+                }}>
+                  <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+                  <span>Invalid or expired 6-digit code. Please contact your hospital clinical administrator.</span>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Right: Affiliation Details & Governance Rules */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* Current Affiliation Snapshot */}
+              <div style={{
+                background: '#ffffff',
+                borderRadius: 18,
+                padding: '24px 26px',
+                border: '1.5px solid #e2e8f0',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16
+              }}>
+                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Affiliation Status & Credentials
+                </h4>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Hospital Name:</span>
+                    <strong style={{ color: '#0f172a' }}>{desktopAffiliation ? desktopAffiliation.hospitalName : 'None (Independent)'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Clinical Department:</span>
+                    <strong style={{ color: '#0f172a' }}>{desktopAffiliation ? desktopAffiliation.department : 'Cardiology / General Practice'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Hospital Identity Status:</span>
+                    <strong style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Lock size={12} /> Permanent & Locked
+                    </strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: 8, borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{ color: '#64748b' }}>Connected Code:</span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0f6e6e' }}>
+                      {desktopAffiliation ? desktopAffiliation.linkedViaCode : 'N/A'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Hospital Roster Sync:</span>
+                    <strong style={{ color: desktopAffiliation ? '#059669' : '#64748b' }}>
+                      {desktopAffiliation ? 'Active (4 Patients)' : 'Inactive'}
+                    </strong>
+                  </div>
+                </div>
+
+                {desktopAffiliation && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leftIcon={<ExternalLink size={14} />}
+                    onClick={() => router.push('/dashboard/hospital-portal')}
+                    style={{ width: '100%', justifyContent: 'center' }}
+                  >
+                    Open Hospital Staff Portal
+                  </Button>
+                )}
+              </div>
+
+              {/* System Architecture & Governance Card */}
+              <div style={{
+                background: '#f8fafc',
+                borderRadius: 16,
+                padding: '20px 22px',
+                border: '1px solid #e2e8f0',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 14
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ShieldCheck size={16} color="#0f6e6e" />
+                  <h5 style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Platform Architecture & Multi-Tenancy Rules
+                  </h5>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12, color: '#475569', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0 }}>
+                    <strong>1. Permanent Hospital Identity:</strong> Hospitals are registered and verified by Platform Super-Admins. Hospital names cannot be modified by staff.
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <strong>2. Doctor Account Autonomy:</strong> Hospital admins manage staff permissions and clinic rosters, but cannot create doctor accounts. Doctors register independently and connect using secure 6-digit tokens.
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    <strong>3. Split Patient Roster:</strong> Patients registered on the OmniPlus app receive full digital treatment. Unregistered patients are flagged for in-hospital physical care only with SMS invite links.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
           </div>
 
         </div>

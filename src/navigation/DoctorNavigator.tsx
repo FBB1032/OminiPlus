@@ -28,6 +28,8 @@ import PrivacyPolicyScreen from '../screens/shared/PrivacyPolicyScreen';
 import SuspendedAccountScreen from '../screens/doctor/SuspendedAccountScreen';
 import DoctorTermsScreen from '../screens/doctor/DoctorTermsScreen';
 import BloodDonorsScreen from '../screens/patient/BloodDonorsScreen';
+import HospitalPortalScreen from '../screens/hospital/HospitalPortalScreen';
+import PlatformAdminHospitalScreen from '../screens/admin/PlatformAdminHospitalScreen';
 
 type TabIcon = keyof typeof Ionicons.glyphMap;
 
@@ -203,6 +205,8 @@ export const DoctorNavigator = () => (
     <Stack.Screen name="SuspendedAccount" component={SuspendedAccountScreen as React.ComponentType} />
     <Stack.Screen name="DoctorTerms" component={DoctorTermsScreen as React.ComponentType} />
     <Stack.Screen name="BloodDonors" component={BloodDonorsScreen as React.ComponentType} />
+    <Stack.Screen name="HospitalPortal" component={HospitalPortalScreen as React.ComponentType} />
+    <Stack.Screen name="PlatformAdminHospital" component={PlatformAdminHospitalScreen as React.ComponentType} />
   </Stack.Navigator>
 );
 

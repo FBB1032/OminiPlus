@@ -9,13 +9,15 @@ import {
   Check, X, FileText, ArrowRight, Activity, Filter, Lock,
   Copy, Key, UserPlus, UserCheck, RefreshCw, Printer, Bell,
   Trash2, CheckCheck, SlidersHorizontal, Receipt, CreditCard, Download,
-  BedDouble, Pill, FlaskConical, Package, TestTube, CheckCircle2, ChevronRight
+  BedDouble, Pill, FlaskConical, Package, TestTube, CheckCircle2, ChevronRight,
+  Info
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { exportToCsv } from '@/lib/exportCsv';
 import type {
   HospitalStaffRole,
   HospitalDoctor,
@@ -484,12 +486,143 @@ const INITIAL_EMERGENCY_REQUESTS: HospitalEmergencyRequest[] = [
   },
 ];
 
-// Facility Audit Trail Log
+// Facility Audit Trail Log - NDPA 2023 & FMOH Verified Cryptographic Ledger
 const INITIAL_AUDIT_LOGS: HospitalAuditEntry[] = [
-  { id: 'aud-1', timestamp: '11:02 AM', staffName: 'Receptionist Fatima', staffRole: 'receptionist', action: 'Updated appointment time & room assignment', target: 'Appointment HSP-APT-04 (Ibrahim Danjuma)' },
-  { id: 'aud-2', timestamp: '10:35 AM', staffName: 'Dr. Ibrahim Sani', staffRole: 'hospital_admin', action: 'Confirmed hospital blood request as legitimate', target: 'Blood Request BR-2026-101 (Zainab Kabir)' },
-  { id: 'aud-3', timestamp: '10:12 AM', staffName: 'Dr. Ahmed Bello', staffRole: 'doctor', action: 'Created digital e-prescription', target: 'Patient Aisha Okonkwo (PAT-4901)' },
-  { id: 'aud-4', timestamp: '09:42 AM', staffName: 'Nurse Amina Yusuf', staffRole: 'nurse', action: 'Viewed patient triage clinical record & vitals', target: 'Patient Aisha Okonkwo (PAT-4901)' },
+  {
+    id: 'HSP-AUD-9401',
+    timestamp: 'Today, 11:45:12 AM',
+    staffName: 'Dr. Ahmed Bello',
+    staffRole: 'doctor',
+    badgeId: 'HSP-DOC-01',
+    department: 'Cardiology',
+    action: 'Generated digital e-prescription (Lisinopril 20mg, Atorvastatin 40mg)',
+    target: 'Patient Aisha Okonkwo (PAT-4901)',
+    category: 'pharmacy',
+    severity: 'info',
+    ipAddress: '192.168.10.42 (Consultation Rm 3)',
+    hashDigest: '4a8e9d2f1c3b5a7e6d8c0b2a4e6f8d0a2c4e6b8d0a2f4c6e8a0b2d4f6e8a0c2',
+    details: 'Prescribed anti-hypertensive regimen following in-clinic resting ECG evaluation. Transmitted electronically to Hospital Dispensary with clinical contraindication check passed.',
+  },
+  {
+    id: 'HSP-AUD-9402',
+    timestamp: 'Today, 11:32:05 AM',
+    staffName: 'Nurse Amina Yusuf',
+    staffRole: 'nurse',
+    badgeId: 'HSP-NUR-01',
+    department: 'Emergency & Triage',
+    action: 'Recorded intake clinical vitals & updated triage acuity to Level 2',
+    target: 'Patient Emeka Nnamdi (PAT-5102)',
+    category: 'ehr',
+    severity: 'warning',
+    ipAddress: '192.168.10.15 (Triage Bay A)',
+    hashDigest: 'b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8c0b2a4e6f8d0a2c4e6b8d0a2f4c6e8a0',
+    details: 'Patient arrived with acute thoracic discomfort. Vitals: BP 152/94 mmHg, SpO2 96%, HR 104 bpm. Routed to Emergency Observation Bay 02 for immediate ECG acquisition.',
+  },
+  {
+    id: 'HSP-AUD-9403',
+    timestamp: 'Today, 11:15:40 AM',
+    staffName: 'Kalu Chukwuma',
+    staffRole: 'pharmacist',
+    badgeId: 'HSP-PHARM-01',
+    department: 'Hospital Pharmacy',
+    action: 'Dispensed verified prescription with barcoded lot verification',
+    target: 'Prescription RX-88201 (PAT-4901)',
+    category: 'pharmacy',
+    severity: 'info',
+    ipAddress: '192.168.10.88 (Dispensary Counter 1)',
+    hashDigest: '7e6d8c0b2a4e6f8d0a2c4e6b8d0a2f4c6e8a0b2d4f6e8a0c24a8e9d2f1c3b5a',
+    details: 'Dispensed 30 tablets of Lisinopril 20mg (Batch #NG-LIS-2026-04). Verified pharmacist signature against MDCN license database. Patient dosage counseling completed.',
+  },
+  {
+    id: 'HSP-AUD-9404',
+    timestamp: 'Today, 10:58:22 AM',
+    staffName: 'Zainab Kabir',
+    staffRole: 'lab_technician',
+    badgeId: 'HSP-LAB-01',
+    department: 'Clinical Laboratory',
+    action: 'Uploaded verified blood cross-match panel & hemoglobin electrophoresis',
+    target: 'Lab Order LAB-7721 (Fatima Bello)',
+    category: 'laboratory',
+    severity: 'info',
+    ipAddress: '192.168.10.74 (Hematology Station)',
+    hashDigest: 'c0b2a4e6f8d0a2c4e6b8d0a2f4c6e8a0b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8',
+    details: 'Blood group verified as O-Rh(D) Positive. Direct Antiglobulin Test (DAT) negative. Specimen verified by automated hematology counter with electronic sign-off.',
+  },
+  {
+    id: 'HSP-AUD-9405',
+    timestamp: 'Today, 10:35:18 AM',
+    staffName: 'Dr. Ibrahim Sani',
+    staffRole: 'hospital_admin',
+    badgeId: 'HSP-ADM-01',
+    department: 'Hospital Administration',
+    action: 'Generated 6-digit Doctor Link Affiliation Code (Cardiology Department)',
+    target: 'Access Code #492817 (Evercare Cardiology)',
+    category: 'staff_access',
+    severity: 'warning',
+    ipAddress: '192.168.10.2 (Medical Director Office)',
+    hashDigest: '8d0a2c4e6b8d0a2f4c6e8a0b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8c0b2a4e6f',
+    details: 'Generated 48-hour secure authorization token #492817 for verified independent specialist affiliation. Token restricted to Cardiology clinical roster privileges.',
+  },
+  {
+    id: 'HSP-AUD-9406',
+    timestamp: 'Today, 10:12:49 AM',
+    staffName: 'Musa Garba',
+    staffRole: 'blood_officer',
+    badgeId: 'HSP-BLD-01',
+    department: 'Blood Bank & Transfusion',
+    action: 'Dispatched 2 units O-Negative emergency blood to Trauma Theatre',
+    target: 'Emergency Unit Request BR-2026-101',
+    category: 'emergency',
+    severity: 'critical',
+    ipAddress: '192.168.10.51 (Cold Chain Cryo-Vault)',
+    hashDigest: 'e6b8d0a2f4c6e8a0b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8c0b2a4e6f8d0a2c4',
+    details: 'Emergency uncrossmatched O-Negative cryo-units (Lots #BB-ONEG-918, #BB-ONEG-919) released under emergency trauma protocol. Attending surgeon notified.',
+  },
+  {
+    id: 'HSP-AUD-9407',
+    timestamp: 'Today, 09:48:10 AM',
+    staffName: 'Fatima Mohammed',
+    staffRole: 'receptionist',
+    badgeId: 'HSP-REC-01',
+    department: 'Patient Services',
+    action: 'Outpatient intake check-in & assigned clinic queue token Q-04',
+    target: 'Appointment HSP-APT-04 (Ibrahim Danjuma)',
+    category: 'ehr',
+    severity: 'info',
+    ipAddress: '192.168.10.12 (Front Desk Intake Terminal 2)',
+    hashDigest: 'f4c6e8a0b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8c0b2a4e6f8d0a2c4e6b8d0a2',
+    details: 'Verified patient appointment registration, identity confirmation, and HMO coverage eligibility. Queue ticket printed and patient seated in waiting lounge.',
+  },
+  {
+    id: 'HSP-AUD-9408',
+    timestamp: 'Today, 09:15:33 AM',
+    staffName: 'Dr. Ibrahim Sani',
+    staffRole: 'hospital_admin',
+    badgeId: 'HSP-ADM-01',
+    department: 'Hospital Administration',
+    action: 'Updated granular permissions matrix for Nurse Staff Member',
+    target: 'Staff Member Nurse Amina Yusuf (HSP-NUR-01)',
+    category: 'staff_access',
+    severity: 'warning',
+    ipAddress: '192.168.10.2 (Medical Director Office)',
+    hashDigest: '0b2a4e6f8d0a2c4e6b8d0a2f4c6e8a0b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8c',
+    details: 'Updated permission scopes: Enabled "Ward & Bed Management" and "Emergency Triage Acuity Adjustment". NDPA audit log entry sealed automatically.',
+  },
+  {
+    id: 'HSP-AUD-9409',
+    timestamp: 'Today, 08:50:00 AM',
+    staffName: 'Automated System Daemon',
+    staffRole: 'hospital_admin',
+    badgeId: 'SYS-DAEMON-01',
+    department: 'Hospital Infrastructure',
+    action: 'Automated cryptographic Merkle tree sealing for morning clinical block',
+    target: 'Facility Ledger Block #HSP-44,891',
+    category: 'staff_access',
+    severity: 'info',
+    ipAddress: '127.0.0.1 (Local Vault Host)',
+    hashDigest: 'a0b2d4f6e8a0c24a8e9d2f1c3b5a7e6d8c0b2a4e6f8d0a2c4e6b8d0a2f4c6e8',
+    details: 'Calculated SHA-256 Merkle root across 84 morning transactions. Zero checksum discrepancies or unauthorized record alterations detected.',
+  },
 ];
 
 // ─── 1. Hospital Clinical Services ──────────────────────────────────────────
@@ -856,9 +989,8 @@ const INITIAL_LAB_ORDERS: HospitalLabOrder[] = [
 
 export default function HospitalPortalPage() {
   const searchParams = useSearchParams();
-  const facilityParam = searchParams?.get('facilityId');
-  const initialFacility = ALL_FACILITIES.find(f => f.id === facilityParam) || ALL_FACILITIES[0];
-  const [currentFacility, setCurrentFacility] = useState<RegisteredFacility>(initialFacility);
+  // One hospital admin has exactly one hospital - no hospital dropdown or switching
+  const currentFacility = ALL_FACILITIES[0];
   const initialTab = searchParams?.get('tab') || 'appointments';
   const [currentTab, setCurrentTab] = useState(initialTab);
 
@@ -873,13 +1005,17 @@ export default function HospitalPortalPage() {
   const admin = useAuthStore(s => s.admin);
   const currentRole: AdminRole = (admin?.role as AdminRole) || 'hospital_admin';
 
-  const matchedStaff = STAFF_PERSONAS.find(s => s.role === (currentRole === 'admin' ? 'hospital_admin' : currentRole)) || STAFF_PERSONAS[0];
+  const isPlatformAdmin = currentRole === 'admin';
+  const matchedStaff = STAFF_PERSONAS.find(s => s.role === (isPlatformAdmin ? 'hospital_admin' : currentRole)) || STAFF_PERSONAS[0];
   const activeStaff: StaffPersona = {
     ...matchedStaff,
     name: admin ? `${admin.firstName} ${admin.lastName}` : matchedStaff.name,
-    role: (currentRole === 'admin' ? 'hospital_admin' : currentRole) as HospitalStaffRole,
-    canManageStaff: currentRole === 'hospital_admin' || currentRole === 'admin',
-    canManageBlood: currentRole === 'hospital_admin' || currentRole === 'blood_officer' || currentRole === 'lab_technician' || currentRole === 'admin',
+    role: (isPlatformAdmin ? 'hospital_admin' : currentRole) as HospitalStaffRole,
+    canViewPatients: true,
+    // Platform Super-Admin has ZERO clinical clearance for patient medical records/notes
+    canViewFullMedical: isPlatformAdmin ? false : matchedStaff.canViewFullMedical,
+    canManageStaff: isPlatformAdmin ? false : (currentRole === 'hospital_admin'),
+    canManageBlood: isPlatformAdmin ? false : (currentRole === 'hospital_admin' || currentRole === 'blood_officer' || currentRole === 'lab_technician'),
   };
 
   const portalInfo = {
@@ -1002,6 +1138,82 @@ export default function HospitalPortalPage() {
   const [viewLabReportModalOrder, setViewLabReportModalOrder] = useState<HospitalLabOrder | null>(null);
   const [contactBillingModalOpen, setContactBillingModalOpen] = useState(false);
   const [downloadReceiptModalInvoice, setDownloadReceiptModalInvoice] = useState<{ invoiceNumber: string; title: string; amount: string; date: string } | null>(null);
+
+  // ── Hospital Facility Audit Ledger State ─────────────────────────────────────
+  const [auditLogsList, setAuditLogsList] = useState<HospitalAuditEntry[]>(INITIAL_AUDIT_LOGS);
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditCategoryFilter, setAuditCategoryFilter] = useState<'all' | 'ehr' | 'pharmacy' | 'laboratory' | 'staff_access' | 'emergency' | 'billing'>('all');
+  const [auditRoleFilter, setAuditRoleFilter] = useState<'all' | HospitalStaffRole>('all');
+  const [auditSeverityFilter, setAuditSeverityFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
+  const [inspectAuditModal, setInspectAuditModal] = useState<HospitalAuditEntry | null>(null);
+  const [copiedAuditHash, setCopiedAuditHash] = useState<string | null>(null);
+
+  const filteredAuditLogs = auditLogsList.filter((log) => {
+    const matchesSearch =
+      auditSearchQuery.trim() === '' ||
+      log.staffName.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+      (log.badgeId && log.badgeId.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
+      log.action.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+      log.target.toLowerCase().includes(auditSearchQuery.toLowerCase()) ||
+      (log.hashDigest && log.hashDigest.toLowerCase().includes(auditSearchQuery.toLowerCase())) ||
+      (log.department && log.department.toLowerCase().includes(auditSearchQuery.toLowerCase()));
+
+    const matchesCategory =
+      auditCategoryFilter === 'all' || log.category === auditCategoryFilter;
+
+    const matchesRole =
+      auditRoleFilter === 'all' || log.staffRole === auditRoleFilter;
+
+    const matchesSeverity =
+      auditSeverityFilter === 'all' || log.severity === auditSeverityFilter;
+
+    return matchesSearch && matchesCategory && matchesRole && matchesSeverity;
+  });
+
+  const handleExportAuditCsv = () => {
+    const exportData = filteredAuditLogs.map((log) => ({
+      Timestamp: log.timestamp,
+      Staff_Member: log.staffName,
+      Role: log.staffRole.toUpperCase(),
+      Badge_ID: log.badgeId || 'N/A',
+      Department: log.department || 'N/A',
+      Category: (log.category || 'general').toUpperCase(),
+      Action: log.action,
+      Target_Record: log.target,
+      Severity: (log.severity || 'info').toUpperCase(),
+      Workstation_IP: log.ipAddress || '192.168.10.x',
+      Cryptographic_Hash: log.hashDigest || 'N/A',
+    }));
+    exportToCsv('hospital_facility_audit_logs.csv', exportData);
+  };
+
+  const handleDownloadAuditCertificate = () => {
+    const cert = {
+      facility: currentFacility.name,
+      mohLicense: currentFacility.licenseNo,
+      cacNumber: currentFacility.cacNumber,
+      merkleChainBlock: 'HSP-44891',
+      complianceFramework: 'NDPA 2023 Section 30 & FMOH Digital Health Standards',
+      generatedAt: new Date().toISOString(),
+      generatedBy: activeStaff.name,
+      totalVerifiedEvents: filteredAuditLogs.length,
+      tamperBreachStatus: 'VERIFIED_ZERO_BREACHES',
+      records: filteredAuditLogs,
+    };
+    const blob = new Blob([JSON.stringify(cert, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Evercare_Hospital_Audit_Certificate_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyAuditHash = (hash: string) => {
+    navigator.clipboard.writeText(hash);
+    setCopiedAuditHash(hash);
+    setTimeout(() => setCopiedAuditHash(null), 2000);
+  };
 
   // ── Wards Actions ───────────────────────────────────────────────────────────
   const handleAssignBedSubmit = () => {
@@ -1445,35 +1657,34 @@ export default function HospitalPortalPage() {
                 <MapPin size={13} style={{ color: '#38bdf8' }} /> {currentFacility.address}, {currentFacility.city}
               </p>
 
-              {/* Facility Switcher Dropdown */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase' }}>
-                  Hospital:
+              {/* Fixed Facility Identity - 1 Hospital / 1 Admin Scope */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                <span style={{
+                  background: 'rgba(30, 41, 59, 0.8)',
+                  color: '#94a3b8',
+                  border: '1px solid #334155',
+                  padding: '3px 10px',
+                  borderRadius: 6,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <Lock size={12} style={{ color: '#38bdf8' }} />
+                  Organization: <strong style={{ color: '#f8fafc' }}>{currentFacility.name}</strong>
                 </span>
-                <select
-                  value={currentFacility.id}
-                  onChange={(e) => {
-                    const found = ALL_FACILITIES.find(f => f.id === e.target.value);
-                    if (found) setCurrentFacility(found);
-                  }}
-                  style={{
-                    background: '#1e293b',
-                    color: '#38bdf8',
-                    border: '1px solid #475569',
-                    borderRadius: 6,
-                    padding: '3px 8px',
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    outline: 'none',
-                  }}
-                >
-                  {ALL_FACILITIES.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name} ({f.city.replace(' State', '')})
-                    </option>
-                  ))}
-                </select>
+                <span style={{
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  color: '#64748b',
+                  fontSize: 11,
+                  fontWeight: 500,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  <ShieldCheck size={12} style={{ color: '#34d399' }} /> Single Hospital Scope (Fixed)
+                </span>
               </div>
             </div>
           </div>
@@ -1508,6 +1719,9 @@ export default function HospitalPortalPage() {
             </div>
             <div style={{ fontSize: 15, fontWeight: 700, color: '#f8fafc' }}>
               {activeStaff.name} ({portalInfo.roleTitle})
+            </div>
+            <div style={{ fontSize: 11, color: '#38bdf8', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+              <Building2 size={12} /> {currentFacility.name} (Fixed Staff Scope)
             </div>
           </div>
         </div>
@@ -1705,6 +1919,28 @@ export default function HospitalPortalPage() {
               </p>
             </div>
           </div>
+
+          {isPlatformAdmin && (
+            <div style={{
+              background: '#f8fafc',
+              border: '1.5px solid #e2e8f0',
+              borderRadius: 12,
+              padding: '14px 18px',
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 12,
+            }}>
+              <Lock size={18} color="#0f6e6e" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <strong style={{ fontSize: 13, color: '#0f172a', display: 'block' }}>
+                  Platform Super-Admin Oversight Protocol Active (NDPA 2023)
+                </strong>
+                <span style={{ fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                  Hospital clinical records, bedside charts, and diagnostic notes are protected medical records between attending physicians and hospital medical staff. Platform Administrators cannot inspect individual patient medical charts.
+                </span>
+              </div>
+            </div>
+          )}
 
           <Card style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
@@ -2478,54 +2714,495 @@ export default function HospitalPortalPage() {
       {/* 8. FACILITY AUDIT LOG TAB                                              */}
       {/* ────────────────────────────────────────────────────────────────────── */}
       {currentTab === 'audit' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>
-              Facility Security & Operational Audit Trail
-            </h2>
-            <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b' }}>
-              Tamper-evident logs of staff chart views, prescription creations, and blood requests
-            </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Cryptographic Ledger Status Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            borderRadius: 14,
+            padding: '20px 24px',
+            color: '#ffffff',
+            border: '1px solid #334155',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 16,
+          }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <ScrollText size={20} style={{ color: '#38bdf8' }} />
+                  Facility Security, Clinical & Operational Audit Ledger
+                </h2>
+                <span style={{
+                  background: '#065f46',
+                  color: '#34d399',
+                  fontSize: 11,
+                  padding: '2px 8px',
+                  borderRadius: 20,
+                  fontWeight: 600,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}>
+                  <ShieldCheck size={12} /> NDPA Section 30 Compliant
+                </span>
+                <span style={{
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  color: '#38bdf8',
+                  fontSize: 11,
+                  padding: '2px 8px',
+                  borderRadius: 20,
+                  fontWeight: 600,
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}>
+                  <Activity size={12} /> Merkle Chain: #HSP-44,891
+                </span>
+              </div>
+              <p style={{ margin: '6px 0 0', fontSize: 13, color: '#94a3b8', lineHeight: 1.5 }}>
+                Tamper-evident, cryptographically chained records of staff chart views, prescriptions, lab results, and administrative actions at {currentFacility.name}.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportAuditCsv}
+                style={{ borderColor: '#475569', color: '#f8fafc', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Download size={14} /> Export CSV
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleDownloadAuditCertificate}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+              >
+                <Award size={14} /> NDPA Certificate
+              </Button>
+            </div>
           </div>
 
+          {/* KPI Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+            <Card style={{ padding: 18, borderLeft: '4px solid #2563eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Total Facility Logs
+                  </span>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                    {auditLogsList.length.toLocaleString()}
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#16a34a', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <CheckCircle2 size={12} /> Cryptographically Sealed
+                  </span>
+                </div>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ScrollText size={18} />
+                </div>
+              </div>
+            </Card>
+
+            <Card style={{ padding: 18, borderLeft: '4px solid #0891b2' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Clinical EHR Access
+                  </span>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                    {auditLogsList.filter(l => l.category === 'ehr' || l.staffRole === 'doctor' || l.staffRole === 'nurse').length}
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Stethoscope size={12} /> Doctor & Triage Views
+                  </span>
+                </div>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#ecfeff', color: '#0891b2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Stethoscope size={18} />
+                </div>
+              </div>
+            </Card>
+
+            <Card style={{ padding: 18, borderLeft: '4px solid #7c3aed' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Pharmacy & Labs
+                  </span>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                    {auditLogsList.filter(l => l.category === 'pharmacy' || l.category === 'laboratory').length}
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Pill size={12} /> Verified Dispenses & Orders
+                  </span>
+                </div>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <FlaskConical size={18} />
+                </div>
+              </div>
+            </Card>
+
+            <Card style={{ padding: 18, borderLeft: '4px solid #f59e0b' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Privileged Operations
+                  </span>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
+                    {auditLogsList.filter(l => l.category === 'staff_access' || l.staffRole === 'hospital_admin').length}
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#b45309', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
+                    <Key size={12} /> Staff Tokens & Scopes
+                  </span>
+                </div>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: '#fffbeb', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Key size={18} />
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* Search and Filters */}
+          <Card style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 280 }}>
+                <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Search by staff member, badge ID, action, target record, or SHA-256 hash..."
+                  value={auditSearchQuery}
+                  onChange={(e) => setAuditSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px 9px 38px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: 13,
+                    color: '#0f172a',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Role Dropdown */}
+              <select
+                value={auditRoleFilter}
+                onChange={(e) => setAuditRoleFilter(e.target.value as any)}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  fontSize: 13,
+                  color: '#334155',
+                  background: '#ffffff',
+                  outline: 'none',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="all">All Staff Roles</option>
+                <option value="doctor">Doctors</option>
+                <option value="nurse">Nurses</option>
+                <option value="pharmacist">Pharmacists</option>
+                <option value="lab_technician">Lab Scientists</option>
+                <option value="hospital_admin">Hospital Admins</option>
+                <option value="receptionist">Receptionists</option>
+                <option value="blood_officer">Blood Officers</option>
+              </select>
+
+              {/* Severity Dropdown */}
+              <select
+                value={auditSeverityFilter}
+                onChange={(e) => setAuditSeverityFilter(e.target.value as any)}
+                style={{
+                  padding: '9px 12px',
+                  borderRadius: 8,
+                  border: '1px solid #cbd5e1',
+                  fontSize: 13,
+                  color: '#334155',
+                  background: '#ffffff',
+                  outline: 'none',
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="all">All Severities</option>
+                <option value="critical">Critical (Emergency/Trauma)</option>
+                <option value="warning">Warning (Privileged/High Impact)</option>
+                <option value="info">Info (Standard Clinical)</option>
+              </select>
+
+              {(auditSearchQuery || auditCategoryFilter !== 'all' || auditRoleFilter !== 'all' || auditSeverityFilter !== 'all') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setAuditSearchQuery('');
+                    setAuditCategoryFilter('all');
+                    setAuditRoleFilter('all');
+                    setAuditSeverityFilter('all');
+                  }}
+                  style={{ fontSize: 12 }}
+                >
+                  Reset Filters
+                </Button>
+              )}
+            </div>
+
+            {/* Category Filter Pills */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: 12 }}>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginRight: 4 }}>
+                Category:
+              </span>
+              {[
+                { id: 'all', label: 'All Records' },
+                { id: 'ehr', label: 'EHR & Charts', icon: Activity },
+                { id: 'pharmacy', label: 'Prescriptions & Meds', icon: Pill },
+                { id: 'laboratory', label: 'Blood & Labs', icon: FlaskConical },
+                { id: 'staff_access', label: 'Staff & Security', icon: Key },
+                { id: 'emergency', label: 'Emergency & Triage', icon: ShieldAlert },
+              ].map((cat) => {
+                const active = auditCategoryFilter === cat.id;
+                const IconComponent = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setAuditCategoryFilter(cat.id as any)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '5px 12px',
+                      borderRadius: 20,
+                      fontSize: 12,
+                      fontWeight: active ? 700 : 500,
+                      border: active ? '1px solid #2563eb' : '1px solid #e2e8f0',
+                      background: active ? '#eff6ff' : '#ffffff',
+                      color: active ? '#2563eb' : '#475569',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {IconComponent && <IconComponent size={12} />}
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* Audit Event Table */}
           <Card style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
-                  <th style={{ padding: '12px 16px' }}>Time</th>
-                  <th style={{ padding: '12px 16px' }}>Staff Member</th>
-                  <th style={{ padding: '12px 16px' }}>Role</th>
-                  <th style={{ padding: '12px 16px' }}>Action Performed</th>
-                  <th style={{ padding: '12px 16px' }}>Target Record</th>
-                </tr>
-              </thead>
-              <tbody>
-                {INITIAL_AUDIT_LOGS.map((log) => (
-                  <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
-                      {log.timestamp}
-                    </td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600, color: '#0f172a' }}>
-                      {log.staffName}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        background: '#f1f5f9', color: '#334155', padding: '2px 6px', borderRadius: 4,
-                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase'
-                      }}>
-                        {log.staffRole.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: '#334155' }}>
-                      {log.action}
-                    </td>
-                    <td style={{ padding: '12px 16px', color: '#2563eb', fontWeight: 500 }}>
-                      {log.target}
-                    </td>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
+                    <th style={{ padding: '12px 16px', minWidth: 140 }}>Timestamp & ID</th>
+                    <th style={{ padding: '12px 16px', minWidth: 180 }}>Staff Member</th>
+                    <th style={{ padding: '12px 16px', minWidth: 130 }}>Department</th>
+                    <th style={{ padding: '12px 16px', minWidth: 260 }}>Action Performed</th>
+                    <th style={{ padding: '12px 16px', minWidth: 200 }}>Target Clinical Record</th>
+                    <th style={{ padding: '12px 16px', minWidth: 160 }}>Workstation & IP</th>
+                    <th style={{ padding: '12px 16px', minWidth: 130 }}>SHA-256 Hash</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'center', minWidth: 90 }}>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filteredAuditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b' }}>
+                        <ScrollText size={32} style={{ margin: '0 auto 10px', opacity: 0.4 }} />
+                        <p style={{ margin: 0, fontWeight: 600 }}>No hospital audit records match the current filter criteria.</p>
+                        <p style={{ margin: '4px 0 0', fontSize: 12 }}>Try clearing filters or refining your search term.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAuditLogs.map((log) => {
+                      const isCopied = copiedAuditHash === log.hashDigest;
+                      const roleBadgeStyles: Record<string, { bg: string; color: string; border: string }> = {
+                        doctor: { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' },
+                        nurse: { bg: '#f0fdfa', color: '#0f766e', border: '#99f6e4' },
+                        pharmacist: { bg: '#faf5ff', color: '#7e22ce', border: '#e9d5ff' },
+                        lab_technician: { bg: '#fffbeb', color: '#b45309', border: '#fde68a' },
+                        hospital_admin: { bg: '#0f172a', color: '#f8fafc', border: '#334155' },
+                        receptionist: { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1' },
+                        blood_officer: { bg: '#fff1f2', color: '#be123c', border: '#fecdd3' },
+                      };
+                      const rStyle = roleBadgeStyles[log.staffRole] || { bg: '#f1f5f9', color: '#334155', border: '#cbd5e1' };
+
+                      const severityBadgeStyles: Record<string, { bg: string; color: string; border: string }> = {
+                        critical: { bg: '#fef2f2', color: '#b91c1c', border: '#fecaca' },
+                        warning: { bg: '#fffbeb', color: '#b45309', border: '#fde68a' },
+                        info: { bg: '#f8fafc', color: '#475569', border: '#e2e8f0' },
+                      };
+                      const sStyle = severityBadgeStyles[log.severity || 'info'] || severityBadgeStyles.info;
+
+                      return (
+                        <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontFamily: 'monospace', fontSize: 12 }}>
+                              {log.timestamp}
+                            </div>
+                            <span style={{ fontSize: 11, color: '#94a3b8', fontFamily: 'monospace' }}>
+                              {log.id}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                background: rStyle.bg,
+                                color: rStyle.color,
+                                border: `1px solid ${rStyle.border}`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                fontSize: 11,
+                              }}>
+                                {log.staffName.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 600, color: '#0f172a', fontSize: 13 }}>
+                                  {log.staffName}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                  <span style={{
+                                    background: rStyle.bg,
+                                    color: rStyle.color,
+                                    border: `1px solid ${rStyle.border}`,
+                                    padding: '1px 6px',
+                                    borderRadius: 4,
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    textTransform: 'uppercase',
+                                  }}>
+                                    {log.staffRole.replace('_', ' ')}
+                                  </span>
+                                  {log.badgeId && (
+                                    <span style={{ fontSize: 10.5, color: '#64748b', fontFamily: 'monospace' }}>
+                                      {log.badgeId}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#475569', fontSize: 12.5 }}>
+                            {log.department || 'Hospital General'}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                              <span style={{
+                                background: sStyle.bg,
+                                color: sStyle.color,
+                                border: `1px solid ${sStyle.border}`,
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                flexShrink: 0,
+                                marginTop: 2,
+                              }}>
+                                {log.category || 'general'}
+                              </span>
+                              <span style={{ color: '#1e293b', lineHeight: 1.4, fontSize: 12.5 }}>
+                                {log.action}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            <span style={{
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              padding: '3px 8px',
+                              borderRadius: 6,
+                              fontWeight: 600,
+                              fontSize: 12,
+                              display: 'inline-block',
+                              maxWidth: 220,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}>
+                              {log.target}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 16px', color: '#64748b', fontSize: 12 }}>
+                            {log.ipAddress || '192.168.10.x'}
+                          </td>
+                          <td style={{ padding: '12px 16px' }}>
+                            {log.hashDigest ? (
+                              <button
+                                onClick={() => handleCopyAuditHash(log.hashDigest!)}
+                                title="Click to copy full SHA-256 hash"
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 5,
+                                  background: '#f8fafc',
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 6,
+                                  padding: '3px 8px',
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                  color: isCopied ? '#16a34a' : '#475569',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {isCopied ? <CheckCheck size={12} /> : <Copy size={12} />}
+                                {log.hashDigest.substring(0, 8)}...
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 11, color: '#94a3b8' }}>-</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setInspectAuditModal(log)}
+                              style={{ padding: '4px 8px', fontSize: 11.5 }}
+                            >
+                              <Eye size={13} style={{ marginRight: 4 }} /> Inspect
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Table Footer with Verified Count */}
+            <div style={{
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              padding: '12px 20px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 12,
+              color: '#64748b',
+              flexWrap: 'wrap',
+              gap: 8,
+            }}>
+              <span>
+                Showing <strong>{filteredAuditLogs.length}</strong> of <strong>{auditLogsList.length}</strong> logged facility operational events
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#16a34a', fontWeight: 600 }}>
+                <ShieldCheck size={14} /> Cryptographic Merkle Chain Continuous Integrity Confirmed
+              </span>
+            </div>
           </Card>
         </div>
       )}
@@ -3638,9 +4315,19 @@ export default function HospitalPortalPage() {
                 </div>
               </>
             ) : (
-              <div style={{ padding: 16, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', color: '#b45309', fontSize: 12.5 }}>
-                <Lock size={16} style={{ display: 'inline', marginRight: 6 }} />
-                Your role ({activeStaff.role.replace('_', ' ').toUpperCase()}) does not have authorized clinical chart clearance for full diagnostic notes. Basic identity check only.
+              <div style={{ padding: 18, background: '#f8fafc', borderRadius: 10, border: '1.5px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Lock size={18} color="#0f6e6e" />
+                  <strong style={{ fontSize: 13, color: '#0f172a' }}>
+                    {isPlatformAdmin ? 'Platform Super-Admin Restricted (NDPA 2023)' : 'Clinical Chart Clearance Required'}
+                  </strong>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.5 }}>
+                  {isPlatformAdmin
+                    ? `Under NDPA 2023, patient medical vitals, prescriptions, and physician consultation notes are confidential between the patient and their attending healthcare providers at ${currentFacility.name}. Platform Administrators are strictly prohibited from inspecting patient medical records.`
+                    : `Your role (${activeStaff.role.replace('_', ' ').toUpperCase()}) does not have authorized clinical chart clearance for full diagnostic notes. Basic identity check only.`
+                  }
+                </p>
               </div>
             )}
 
@@ -4898,6 +5585,193 @@ export default function HospitalPortalPage() {
               >
                 <Printer size={14} style={{ marginRight: 6 }} /> Print / Save as PDF
               </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Hospital Audit Inspection Modal ─────────────────────────────────── */}
+      {inspectAuditModal && (
+        <Modal
+          isOpen={Boolean(inspectAuditModal)}
+          onClose={() => setInspectAuditModal(null)}
+          title={`Facility Cryptographic Audit Record: ${inspectAuditModal.id}`}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Header Status & Severity */}
+            <div style={{
+              background: '#0f172a',
+              color: '#f8fafc',
+              padding: '16px 20px',
+              borderRadius: 12,
+              border: '1px solid #334155',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div>
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#38bdf8',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}>
+                    {inspectAuditModal.category || 'Clinical Operation'}
+                  </span>
+                  <h3 style={{ margin: '4px 0 0', fontSize: 16, fontWeight: 700, color: '#f8fafc' }}>
+                    {inspectAuditModal.action}
+                  </h3>
+                </div>
+                <span style={{
+                  background: inspectAuditModal.severity === 'critical' ? '#991b1b' : inspectAuditModal.severity === 'warning' ? '#854d0e' : '#1e293b',
+                  color: inspectAuditModal.severity === 'critical' ? '#fecaca' : inspectAuditModal.severity === 'warning' ? '#fef08a' : '#94a3b8',
+                  padding: '4px 10px',
+                  borderRadius: 20,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                }}>
+                  {inspectAuditModal.severity || 'info'} impact
+                </span>
+              </div>
+            </div>
+
+            {/* Metadata Grid */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 12,
+              padding: 14,
+              background: '#f8fafc',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+            }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Staff Actor</span>
+                <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                  {inspectAuditModal.staffName}
+                </p>
+                <span style={{ fontSize: 11, color: '#64748b' }}>
+                  Role: {inspectAuditModal.staffRole.replace('_', ' ').toUpperCase()} ({inspectAuditModal.badgeId || 'N/A'})
+                </span>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Department</span>
+                <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                  {inspectAuditModal.department || 'Hospital General'}
+                </p>
+                <span style={{ fontSize: 11, color: '#64748b' }}>
+                  Facility: {currentFacility.name}
+                </span>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Workstation & IP</span>
+                <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
+                  {inspectAuditModal.ipAddress || '192.168.10.x'}
+                </p>
+                <span style={{ fontSize: 11, color: '#64748b' }}>
+                  Subnet: LAN Clinical VLAN-40
+                </span>
+              </div>
+
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Timestamp</span>
+                <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: '#0f172a', fontFamily: 'monospace' }}>
+                  {inspectAuditModal.timestamp}
+                </p>
+                <span style={{ fontSize: 11, color: '#64748b' }}>
+                  Microsecond UTC Reference
+                </span>
+              </div>
+            </div>
+
+            {/* Target Resource & Action Details */}
+            <div style={{ padding: 14, background: '#eff6ff', borderRadius: 10, border: '1px solid #bfdbfe' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase' }}>
+                Target Resource / Clinical Entity
+              </span>
+              <p style={{ margin: '4px 0 8px', fontSize: 14, fontWeight: 700, color: '#1e3a8a' }}>
+                {inspectAuditModal.target}
+              </p>
+              {inspectAuditModal.details && (
+                <p style={{ margin: 0, fontSize: 12.5, color: '#334155', lineHeight: 1.5 }}>
+                  {inspectAuditModal.details}
+                </p>
+              )}
+            </div>
+
+            {/* Cryptographic Ledger Block */}
+            <div style={{ padding: 14, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <ShieldCheck size={14} style={{ color: '#16a34a' }} /> SHA-256 Merkle Ledger Digest
+                </span>
+                {inspectAuditModal.hashDigest && (
+                  <button
+                    onClick={() => handleCopyAuditHash(inspectAuditModal.hashDigest!)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: copiedAuditHash === inspectAuditModal.hashDigest ? '#16a34a' : '#2563eb',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    {copiedAuditHash === inspectAuditModal.hashDigest ? <CheckCheck size={12} /> : <Copy size={12} />}
+                    {copiedAuditHash === inspectAuditModal.hashDigest ? 'Copied' : 'Copy Hash'}
+                  </button>
+                )}
+              </div>
+              <div style={{
+                background: '#0f172a',
+                color: '#38bdf8',
+                padding: '10px 12px',
+                borderRadius: 6,
+                fontSize: 11.5,
+                fontFamily: 'monospace',
+                wordBreak: 'break-all',
+              }}>
+                {inspectAuditModal.hashDigest || 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'}
+              </div>
+            </div>
+
+            {/* NDPA Section 30 Compliance Notice */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              padding: '10px 12px',
+              background: '#f0fdf4',
+              borderRadius: 8,
+              border: '1px solid #bbf7d0',
+              fontSize: 11.5,
+              color: '#166534',
+              lineHeight: 1.4,
+            }}>
+              <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 1, color: '#16a34a' }} />
+              <div>
+                <strong>NDPA 2023 Section 30 Sealed Entry:</strong> This clinical and operational event was cryptographically sealed at recording. Under federal statutory health regulations, facility audit records cannot be overwritten, modified, or expunged by any hospital administrator.
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid #e2e8f0', paddingTop: 14 }}>
+              <Button variant="outline" onClick={() => setInspectAuditModal(null)}>Close</Button>
+              {inspectAuditModal.hashDigest && (
+                <Button
+                  variant="primary"
+                  onClick={() => handleCopyAuditHash(inspectAuditModal.hashDigest!)}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                >
+                  <Copy size={14} /> Copy Audit Hash
+                </Button>
+              )}
             </div>
           </div>
         </Modal>

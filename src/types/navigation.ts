@@ -39,6 +39,8 @@ export type DoctorStackParamList = {
   DoctorTerms: undefined;
   BloodDonors: undefined;
   ChangePassword: undefined;
+  HospitalPortal: undefined;
+  PlatformAdminHospital: undefined;
 };
 
 // ─── Patient Tabs ─────────────────────────────────────────────────────────────

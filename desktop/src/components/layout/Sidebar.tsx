@@ -170,8 +170,7 @@ function getNavigationForRole(role: AdminRole, isMoreHospitalOpen: boolean): Nav
           items: [
             { href: '/dashboard/hospitals', label: 'Hospitals', icon: 'Building2' },
             { href: '/dashboard/doctors', label: 'Doctors', icon: 'Stethoscope' },
-            { href: '/dashboard/patients', label: 'Patients', icon: 'Users' },
-            { href: '/dashboard/body-map', label: '3D Body Map Triage', icon: 'Activity' },
+            { href: '/dashboard/patients', label: 'Patient Accounts', icon: 'Users' },
             { href: '/dashboard/appointments', label: 'Appointments', icon: 'Calendar' },
             { href: '/dashboard/billing', label: 'Institutional & Doctor Billing', icon: 'Receipt' },
             { href: '/dashboard/payments', label: 'Payments & Escrow', icon: 'CreditCard' },

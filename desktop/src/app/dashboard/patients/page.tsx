@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import {
   Users, Search, Eye, ShieldCheck, ShieldAlert, Download,
-  CheckCircle, XCircle, Clock, Calendar, FileText, Activity, AlertTriangle
+  CheckCircle, XCircle, Clock, Calendar, FileText, Activity, AlertTriangle, Lock
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -367,7 +367,7 @@ export default function PatientsPage() {
               <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 600 }}>
                 <th style={{ padding: '12px 16px' }}>Patient</th>
                 <th style={{ padding: '12px 16px' }}>Contact</th>
-                <th style={{ padding: '12px 16px' }}>Clinical Profile</th>
+                <th style={{ padding: '12px 16px' }}>Medical Privacy & Security</th>
                 <th style={{ padding: '12px 16px' }}>Consultations</th>
                 <th style={{ padding: '12px 16px' }}>Status</th>
                 <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
@@ -414,24 +414,28 @@ export default function PatientsPage() {
                       <span style={{ fontSize: 11.5, color: '#64748b' }}>{patient.phone || 'No phone'}</span>
                     </td>
 
-                    {/* Clinical Demographics */}
+                    {/* Medical Privacy & Security Shield */}
                     <td style={{ padding: '14px 16px' }}>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {patient.age && (
-                          <span style={{ background: '#f1f5f9', color: '#334155', padding: '2px 7px', borderRadius: 6, fontSize: 11.5, fontWeight: 500 }}>
-                            {patient.age} yrs • {patient.gender}
-                          </span>
-                        )}
-                        {patient.bloodGroup && (
-                          <span style={{ background: '#fee2e2', color: '#dc2626', padding: '2px 7px', borderRadius: 6, fontSize: 11.5, fontWeight: 600 }}>
-                            {patient.bloodGroup}
-                          </span>
-                        )}
-                        {patient.genotype && (
-                          <span style={{ background: '#fef3c7', color: '#b45309', padding: '2px 7px', borderRadius: 6, fontSize: 11.5, fontWeight: 600 }}>
-                            {patient.genotype}
-                          </span>
-                        )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span style={{
+                          background: '#f8fafc',
+                          color: '#0f6e6e',
+                          border: '1px solid #ccfbf1',
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          width: 'fit-content'
+                        }}>
+                          <Lock size={11} />
+                          EHR Vault Shielded
+                        </span>
+                        <span style={{ fontSize: 11, color: '#64748b' }}>
+                          Medical records zero-knowledge to admin
+                        </span>
                       </div>
                     </td>
 
@@ -499,7 +503,7 @@ export default function PatientsPage() {
         <Modal
           isOpen={Boolean(selectedPatient)}
           onClose={() => setSelectedPatient(null)}
-          title="Patient Clinical Profile"
+          title="Patient Account Oversight (Platform Administration)"
           size="lg"
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -521,7 +525,7 @@ export default function PatientsPage() {
                   {selectedPatient.firstName} {selectedPatient.lastName}
                 </h3>
                 <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b' }}>
-                  Patient ID: {selectedPatient.id} • Registered {new Date(selectedPatient.createdAt).toLocaleDateString()}
+                  Patient Reference: {selectedPatient.id} • Registered {new Date(selectedPatient.createdAt).toLocaleDateString()}
                 </p>
               </div>
               <Badge variant={selectedPatient.isActive ? 'success' : 'error'}>
@@ -532,7 +536,7 @@ export default function PatientsPage() {
             {/* Profile Metrics Grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14 }}>
               <div style={{ padding: 14, background: '#ffffff', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>CONTACT INFORMATION</span>
+                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>ACCOUNT IDENTITY</span>
                 <p style={{ margin: '6px 0 2px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
                   Email: {selectedPatient.email}
                 </p>
@@ -542,28 +546,28 @@ export default function PatientsPage() {
               </div>
 
               <div style={{ padding: 14, background: '#ffffff', borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>MEDICAL BIOMETRICS</span>
-                <p style={{ margin: '6px 0 2px', fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
-                  Age: {selectedPatient.age} yrs • Gender: {selectedPatient.gender}
+                <span style={{ fontSize: 11.5, color: '#64748b', fontWeight: 600 }}>MEDICAL PRIVACY & ZERO-KNOWLEDGE VAULT</span>
+                <p style={{ margin: '6px 0 2px', fontSize: 13, color: '#0f6e6e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <Lock size={13} /> Clinical EHR & Biometrics Shielded
                 </p>
-                <p style={{ margin: 0, fontSize: 13, color: '#0f172a', fontWeight: 500 }}>
-                  Blood Group: <strong>{selectedPatient.bloodGroup || 'Unknown'}</strong> • Genotype: <strong>{selectedPatient.genotype || 'Unknown'}</strong>
+                <p style={{ margin: 0, fontSize: 12, color: '#64748b', lineHeight: 1.4 }}>
+                  Diagnoses, vitals, 3D body maps, and prescriptions are strictly confidential to attending doctors.
                 </p>
               </div>
             </div>
 
-            {/* Consultation Stats & NDPA Consent Notice */}
+            {/* NDPA Medical Privacy Shield Protocol */}
             <div style={{
-              padding: 14, background: '#f0fdf4', borderRadius: 10, border: '1px solid #dcfce7',
-              display: 'flex', alignItems: 'center', gap: 10
+              padding: 14, background: '#f8fafc', borderRadius: 10, border: '1.5px solid #e2e8f0',
+              display: 'flex', alignItems: 'flex-start', gap: 10
             }}>
-              <ShieldCheck size={20} style={{ color: '#16a34a', flexShrink: 0 }} />
+              <ShieldCheck size={20} style={{ color: '#0f6e6e', flexShrink: 0, marginTop: 1 }} />
               <div>
-                <p style={{ margin: 0, fontSize: 12.5, color: '#15803d', fontWeight: 600 }}>
-                  NDPA 2023 Consent Active
+                <p style={{ margin: 0, fontSize: 12.5, color: '#0f172a', fontWeight: 700 }}>
+                  NDPA 2023 & Medical Confidentiality Protocol Active
                 </p>
-                <p style={{ margin: '2px 0 0', fontSize: 11.5, color: '#166534' }}>
-                  Patient has consented to encrypted digital record exchange and e-prescription fulfillment.
+                <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#475569', lineHeight: 1.4 }}>
+                  Platform Administrators are restricted from viewing clinical histories, vital signs, 3D body maps, or prescriptions. Platform operations are limited to account authentication, lifecycle status, and fraud protection.
                 </p>
               </div>
             </div>

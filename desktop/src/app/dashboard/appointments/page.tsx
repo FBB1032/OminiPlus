@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Calendar, Video, Phone, MapPin, Clock, Search, Eye, Filter, Download, AlertCircle } from 'lucide-react';
+import { Calendar, Video, Phone, MapPin, Clock, Search, Eye, Filter, Download, AlertCircle, Building2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -105,13 +105,35 @@ export default function AppointmentsPage() {
     },
     {
       key: 'doctor',
-      label: 'Doctor',
-      render: (a) => (
-        <div>
-          <p style={{ fontWeight: 550, color: '#1e293b' }}>Dr. {a.doctor.lastName}</p>
-          <p style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>{a.doctor.specialization}</p>
-        </div>
-      )
+      label: 'Doctor & Hospital Affiliation',
+      render: (a) => {
+        const mockHospitals = ['Evercare Hospital Lekki', 'LUTH Surulere', 'Reddington Hospital', 'Independent Specialist'];
+        const charCode = a.id.charCodeAt(a.id.length - 1) || 0;
+        const hospitalName = mockHospitals[charCode % mockHospitals.length];
+        const isAffiliated = hospitalName !== 'Independent Specialist';
+        return (
+          <div>
+            <p style={{ fontWeight: 550, color: '#1e293b' }}>Dr. {a.doctor.lastName}</p>
+            <p style={{ fontSize: 11, color: '#64748b', marginTop: 1 }}>{a.doctor.specialization}</p>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              background: isAffiliated ? '#e6f4f4' : '#f1f5f9',
+              color: isAffiliated ? '#0f6e6e' : '#475569',
+              border: `1px solid ${isAffiliated ? '#b2dfdb' : '#e2e8f0'}`,
+              padding: '1px 6px',
+              borderRadius: 4,
+              fontSize: 10.5,
+              fontWeight: 600,
+              marginTop: 3
+            }}>
+              <Building2 size={10} />
+              <span>{hospitalName}</span>
+            </div>
+          </div>
+        );
+      }
     },
     {
       key: 'scheduledAt',
@@ -344,6 +366,22 @@ export default function AppointmentsPage() {
                 <p style={{ fontSize: 13.5, fontWeight: 700, color: '#1e293b', marginTop: 2 }}>
                   Dr. {selectedAppt.doctor.lastName} ({selectedAppt.doctor.specialization})
                 </p>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  background: '#e6f4f4',
+                  color: '#0f6e6e',
+                  border: '1px solid #b2dfdb',
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  marginTop: 6
+                }}>
+                  <Building2 size={12} />
+                  <span>Evercare Hospital Lekki (Cardiology Dept)</span>
+                </div>
               </div>
             </div>
 

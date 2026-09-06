@@ -19,6 +19,7 @@ import { bookAppointmentSchema } from '../../utils/validators';
 import {
   Avatar,
   Card,
+  HospitalBadge,
   StepIndicator,
   Input,
   Button,
@@ -344,6 +345,13 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
       <View style={styles.doctorInfo}>
         <Text style={styles.docName}>Dr. {item.firstName} {item.lastName}</Text>
         <Text style={styles.docSpec}>{item.specialization}</Text>
+        <View style={{ marginVertical: 2 }}>
+          <HospitalBadge
+            hospitalName={item.clinicName || item.hospital}
+            isIndependent={!item.clinicName && !item.hospital}
+            size="sm"
+          />
+        </View>
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={14} color="#F59E0B" />
           <Text style={styles.ratingText}>
@@ -652,6 +660,13 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.docName}>Dr. {selectedDoctor.firstName} {selectedDoctor.lastName}</Text>
                 <Text style={styles.docSpec}>{selectedDoctor.specialization}</Text>
+                <View style={{ marginTop: 2 }}>
+                  <HospitalBadge
+                    hospitalName={selectedDoctor.clinicName || selectedDoctor.hospital}
+                    isIndependent={!selectedDoctor.clinicName && !selectedDoctor.hospital}
+                    size="sm"
+                  />
+                </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary }}>

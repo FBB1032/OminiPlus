@@ -215,6 +215,12 @@ export interface HospitalAuditEntry {
   action: string;
   target: string;
   ipAddress?: string;
+  badgeId?: string;
+  department?: string;
+  category?: 'ehr' | 'pharmacy' | 'laboratory' | 'staff_access' | 'emergency' | 'billing';
+  severity?: 'critical' | 'warning' | 'info';
+  hashDigest?: string;
+  details?: string;
 }
 
 export interface Pharmacy {
