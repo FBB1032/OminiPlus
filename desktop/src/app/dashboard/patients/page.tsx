@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Pagination } from '@/components/ui/Pagination';
 import type { Patient } from '@/types';
 
 // Mock Patient Directory
@@ -149,6 +150,9 @@ export default function PatientsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [isSeeAll, setIsSeeAll] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     patientId: string;
@@ -172,6 +176,10 @@ export default function PatientsPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  const displayedPatients = isSeeAll
+    ? filteredPatients
+    : filteredPatients.slice((page - 1) * pageSize, page * pageSize);
 
   // KPI calculations
   const totalCount = patients.length;
@@ -302,7 +310,10 @@ export default function PatientsPage() {
               type="text"
               placeholder="Search by name, email, phone, or ID (e.g. pat-4901)..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{
                 width: '100%',
                 padding: '9px 12px 9px 36px',
@@ -321,7 +332,10 @@ export default function PatientsPage() {
             {(['all', 'active', 'suspended'] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => setStatusFilter(tab)}
+                onClick={() => {
+                  setStatusFilter(tab);
+                  setPage(1);
+                }}
                 style={{
                   padding: '6px 14px',
                   borderRadius: 7,
@@ -367,7 +381,7 @@ export default function PatientsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredPatients.map((patient) => (
+                displayedPatients.map((patient) => (
                   <tr
                     key={patient.id}
                     style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 120ms' }}
@@ -466,6 +480,18 @@ export default function PatientsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filteredPatients.length / pageSize)}
+          onPageChange={setPage}
+          total={filteredPatients.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* ── Patient Profile Detail Modal ────────────────────────────────────── */}

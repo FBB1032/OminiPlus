@@ -41,10 +41,10 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
         {/* Compliance Hero Card */}
-        <View style={[styles.heroCard, { backgroundColor: isDoctor ? '#F0FDF4' : '#EFF6FF', borderColor: isDoctor ? '#BBF7D0' : '#BFDBFE' }]}>
+        <View style={[styles.heroCard, { backgroundColor: isDoctor ? '#E6F4F4' : '#EFF6FF', borderColor: isDoctor ? '#99D4D4' : '#BFDBFE' }]}>
           <View style={styles.heroHeader}>
-            <Ionicons name="shield-checkmark" size={24} color={isDoctor ? '#059669' : '#2563EB'} />
-            <Text style={[styles.heroTitle, { color: isDoctor ? '#065F46' : '#1E40AF' }]}>
+            <Ionicons name="shield-checkmark" size={24} color={isDoctor ? '#0F6E6E' : '#2563EB'} />
+            <Text style={[styles.heroTitle, { color: isDoctor ? '#0F6E6E' : '#1E40AF' }]}>
               {isDoctor ? 'Medical Provider Credential & Payout Data Privacy' : 'End-to-End EHR Data Encryption'}
             </Text>
           </View>
@@ -77,14 +77,14 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
         {activeDoc.sections.map((sec, idx) => (
           <Card key={idx} style={styles.sectionCard}>
             <View style={styles.secTitleRow}>
-              <Ionicons name={sec.icon as any} size={18} color={isDoctor ? '#059669' : '#2563EB'} />
+              <Ionicons name={sec.icon as any} size={18} color={isDoctor ? '#0F6E6E' : '#2563EB'} />
               <Text style={styles.secTitle}>{sec.title}</Text>
             </View>
 
             <View style={styles.bulletsList}>
               {sec.content.map((point, pIdx) => (
                 <View key={pIdx} style={styles.bulletRow}>
-                  <View style={[styles.bulletDot, { backgroundColor: isDoctor ? '#059669' : '#2563EB' }]} />
+                  <View style={[styles.bulletDot, { backgroundColor: isDoctor ? '#0F6E6E' : '#2563EB' }]} />
                   <Text style={styles.bulletText}>{point}</Text>
                 </View>
               ))}

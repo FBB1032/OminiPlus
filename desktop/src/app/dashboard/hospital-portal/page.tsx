@@ -2347,7 +2347,19 @@ export default function HospitalPortalPage() {
                 <p style={{ margin: '8px 0 12px', fontSize: 13, color: '#475569' }}>{emg.details}</p>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: '#94a3b8' }}>
                   <span>Logged: {new Date(emg.createdAt).toLocaleTimeString()}</span>
-                  <Button variant="outline" size="sm">Manage Slots</Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (emg.title.toLowerCase().includes('blood')) {
+                        setCurrentTab('blood');
+                      } else {
+                        setCurrentTab('wards');
+                      }
+                    }}
+                  >
+                    Manage Slots
+                  </Button>
                 </div>
               </Card>
             ))}

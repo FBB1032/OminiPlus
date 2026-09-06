@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { useAuthStore } from '@/store/authStore';
 import { ROLE_LABELS, ROLE_COLORS } from '@/store/permissionStore';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { Admin, AdminRole } from '@/types';
 
 const INITIAL_EVENTS = [
@@ -97,7 +98,17 @@ export default function SecurityPage() {
           <p className="page-subtitle">Configure authorization constraints, oversee console logins, and verify admin roles.</p>
         </div>
 
-        <button className="btn btn-secondary">
+        <button
+          className="btn btn-secondary"
+          onClick={() => {
+            exportToCsv('security_audit_events.csv', events, [
+              { header: 'Event ID', key: 'id' },
+              { header: 'Severity Level', key: 'type' },
+              { header: 'Security Event Description', key: 'message' },
+              { header: 'Relative Time', key: 'time' },
+            ]);
+          }}
+        >
           <Download size={14} /> Audit Export
         </button>
       </div>

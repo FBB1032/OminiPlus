@@ -126,6 +126,100 @@ const PAGINATED_META = {
   hasPrevPage: false,
 };
 
+// ─── Stateful In-Memory Collections (Cross-Role & Cross-Screen) ─────────────
+export const ACTIVE_APPOINTMENTS: any[] = [
+  {
+    id: 'appt-1',
+    patient: MOCK_PATIENT_1,
+    doctor: MOCK_DOCTOR_1,
+    scheduledAt: new Date(Date.now() + 1 * 3600 * 1000).toISOString(),
+    duration: 30,
+    type: 'video',
+    status: 'pending',
+    fee: 15000,
+    reason: 'Regular diabetes follow-up consultation',
+    soapSummary: MOCK_SOAP_1,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'appt-2',
+    patient: MOCK_PATIENT_2,
+    doctor: MOCK_DOCTOR_1,
+    scheduledAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
+    duration: 45,
+    type: 'in_person',
+    status: 'scheduled',
+    fee: 10000,
+    reason: 'Post-surgery cardiovascular checkup',
+    soapSummary: MOCK_SOAP_2,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'appt-3',
+    patient: MOCK_PATIENT_1,
+    doctor: MOCK_DOCTOR_1,
+    scheduledAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+    duration: 30,
+    type: 'phone',
+    status: 'completed',
+    fee: 8000,
+    reason: 'Hypertension medication review and dosage adjustment',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'appt-4',
+    patient: MOCK_PATIENT_2,
+    doctor: MOCK_DOCTOR_1,
+    scheduledAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+    duration: 30,
+    type: 'chat',
+    status: 'pending',
+    fee: 8000,
+    reason: 'Follow-up on cholesterol management plan and lab results review',
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: 'appt-10',
+    patient: MOCK_PATIENT_1,
+    doctor: MOCK_DOCTOR_1,
+    scheduledAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+    duration: 30,
+    type: 'video',
+    status: 'approved',
+    reason: 'Symptom check and follow-up',
+    createdAt: new Date().toISOString(),
+  },
+];
+
+export const ACTIVE_PRESCRIPTIONS: any[] = [
+  {
+    id: 'pr-1',
+    patientId: 'p-1',
+    doctorId: 'd-1',
+    appointmentId: 'appt-1',
+    diagnosis: 'Type 2 Diabetes Mellitus & Mild Hypertension',
+    doctor: { firstName: 'Babajide', lastName: 'Alabi' },
+    medications: [
+      {
+        name: 'Metformin',
+        dosage: '500mg',
+        frequency: 'Twice daily',
+        duration: '90 days',
+        instructions: 'Take with meals',
+      },
+      {
+        name: 'Lisinopril',
+        dosage: '10mg',
+        frequency: 'Once daily',
+        duration: '30 days',
+        instructions: 'Take in the morning',
+      },
+    ],
+    notes: 'Monitor blood glucose and blood pressure twice weekly.',
+    issuedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+  },
+];
+
 // ─── Response Builder ─────────────────────────────────────────────────────────
 
 function buildResponse(config: InternalAxiosRequestConfig, data: unknown): AxiosResponse {
@@ -176,6 +270,22 @@ const routes: Array<{
           tokens: {
             accessToken: 'mock-access-token-doctor-verified',
             refreshToken: 'mock-refresh-token-doctor-verified',
+            expiresAt: Date.now() + 3600 * 1000,
+          },
+        };
+      }
+
+      // ── Seed: verified patient account (Chioma Egwu) ────────────────────────
+      if (email === 'patient@ominipulse.ai') {
+        return {
+          user: {
+            ...MOCK_PATIENT_1,
+            email: 'patient@ominipulse.ai',
+            role: 'patient',
+          },
+          tokens: {
+            accessToken: 'mock-access-token-patient-verified',
+            refreshToken: 'mock-refresh-token-patient-verified',
             expiresAt: Date.now() + 3600 * 1000,
           },
         };
@@ -372,62 +482,15 @@ const routes: Array<{
   {
     method: 'get',
     test: (p) => p === '/doctor/appointments',
-    handle: () => ({
-      data: [
-        {
-          id: 'appt-1',
-          patient: MOCK_PATIENT_1,
-          doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date(Date.now() + 1 * 3600 * 1000).toISOString(),
-          duration: 30,
-          type: 'video',
-          status: 'pending',
-          fee: 15000,
-          reason: 'Regular diabetes follow-up consultation',
-          soapSummary: MOCK_SOAP_1,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'appt-2',
-          patient: MOCK_PATIENT_2,
-          doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
-          duration: 45,
-          type: 'in_person',
-          status: 'scheduled',
-          fee: 10000,
-          reason: 'Post-surgery cardiovascular checkup',
-          soapSummary: MOCK_SOAP_2,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'appt-3',
-          patient: MOCK_PATIENT_1,
-          doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-          duration: 30,
-          type: 'phone',
-          status: 'completed',
-          fee: 8000,
-          reason: 'Hypertension medication review and dosage adjustment',
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'appt-4',
-          patient: MOCK_PATIENT_2,
-          doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-          duration: 30,
-          type: 'chat',
-          status: 'pending',
-          fee: 8000,
-          reason: 'Follow-up on cholesterol management plan and lab results review',
-          createdAt: new Date().toISOString(),
-        },
-      ],
-      ...PAGINATED_META,
-      total: 4,
-    }),
+    handle: (config) => {
+      const status = config?.params?.status;
+      const data = status ? ACTIVE_APPOINTMENTS.filter((a) => a.status === status) : ACTIVE_APPOINTMENTS;
+      return {
+        data,
+        ...PAGINATED_META,
+        total: data.length,
+      };
+    },
   },
   {
     method: 'patch',
@@ -435,7 +498,12 @@ const routes: Array<{
     handle: (config) => {
       const payload = parsePayload(config.data);
       const segments = (config.url ?? '').split('/');
-      return { id: segments[3] ?? 'appt-1', status: payload.status };
+      const apptId = segments[3] ?? 'appt-1';
+      const found = ACTIVE_APPOINTMENTS.find((a) => a.id === apptId);
+      if (found && payload.status) {
+        found.status = payload.status;
+      }
+      return { id: apptId, status: payload.status };
     },
   },
 
@@ -454,26 +522,7 @@ const routes: Array<{
     test: (p) => /^\/doctor\/patients\/[^/]+\/prescriptions$/.test(p),
     handle: (config) => {
       const pId = (config.url ?? '').split('/')[3] ?? 'p-1';
-      return [
-        {
-          id: 'pr-1',
-          patientId: pId,
-          doctorId: 'd-1',
-          appointmentId: 'appt-1',
-          diagnosis: 'Type 2 Diabetes Mellitus',
-          medications: [
-            {
-              name: 'Metformin',
-              dosage: '500mg',
-              frequency: 'Twice daily',
-              duration: '90 days',
-              instructions: 'Take with meals',
-            },
-          ],
-          notes: 'Monitor blood sugar levels twice daily.',
-          issuedAt: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-        },
-      ];
+      return ACTIVE_PRESCRIPTIONS.filter((p) => p.patientId === pId || !p.patientId);
     },
   },
   {
@@ -491,39 +540,29 @@ const routes: Array<{
     test: (p) => p === '/doctor/prescriptions',
     handle: (config) => {
       const payload = parsePayload(config.data);
-      return {
+      const newPrescription = {
         id: `pr-${Date.now()}`,
         patientId: payload.patientId || 'p-1',
         doctorId: 'd-1',
+        doctor: { firstName: 'Babajide', lastName: 'Alabi' },
         appointmentId: payload.appointmentId || 'appt-1',
-        diagnosis: payload.diagnosis || 'Diagnosis',
+        diagnosis: payload.diagnosis || 'Clinical Assessment',
         medications: payload.medications || [],
-        notes: payload.notes || '',
+        instructions: payload.instructions || '',
+        notes: payload.notes || payload.instructions || '',
         issuedAt: new Date().toISOString(),
       };
+      ACTIVE_PRESCRIPTIONS.unshift(newPrescription);
+      return newPrescription;
     },
   },
   {
     method: 'get',
     test: (p) => /^\/doctor\/prescriptions\/[^/]+$/.test(p),
-    handle: (config) => ({
-      id: (config.url ?? '').split('/').pop(),
-      patientId: 'p-1',
-      doctorId: 'd-1',
-      appointmentId: 'appt-1',
-      diagnosis: 'Hypertension',
-      medications: [
-        {
-          name: 'Amlodipine',
-          dosage: '5mg',
-          frequency: 'Once daily',
-          duration: '30 days',
-          instructions: 'Take in evening',
-        },
-      ],
-      notes: 'Follow up in 4 weeks',
-      issuedAt: new Date().toISOString(),
-    }),
+    handle: (config) => {
+      const prId = (config.url ?? '').split('/').pop();
+      return ACTIVE_PRESCRIPTIONS.find((p) => p.id === prId) || ACTIVE_PRESCRIPTIONS[0];
+    },
   },
 
   // ── Doctor Availability ─────────────────────────────────────────────────────
@@ -547,6 +586,17 @@ const routes: Array<{
     test: (p) => /^\/doctor\/appointments\/[^/]+\/soap$/.test(p),
     handle: (config) => {
       const payload = parsePayload(config.data);
+      const segments = (config.url ?? '').split('/');
+      const apptId = segments[3];
+      const found = ACTIVE_APPOINTMENTS.find((a) => a.id === apptId);
+      if (found) {
+        found.soapSummary = {
+          subjective: payload.subjective,
+          objective: payload.objective,
+          assessment: payload.assessment,
+          plan: payload.plan,
+        };
+      }
       return { ...payload, savedAt: new Date().toISOString() };
     },
   },
@@ -556,24 +606,9 @@ const routes: Array<{
     method: 'get',
     test: (p) => p === '/patient/home',
     handle: () => ({
-      upcomingAppointments: [
-        {
-          id: 'appt-10',
-          doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-          duration: 30,
-          type: 'video',
-          status: 'approved',
-          reason: 'Symptom check and follow-up',
-          soapSummary: {
-            subjective:
-              'Patient checking in for routine follow-up. Reports mild allergy symptoms over the last 3 days.',
-            objective: 'Height: 172 cm, Weight: 68.5 kg, BMI: 23.2 (Normal). Temperature is 36.6°C.',
-            assessment: 'Allergic rhinitis vs mild seasonal upper respiratory reaction.',
-            plan: '1. Review environmental allergy triggers.\n2. Advise symptom tracking.\n3. Review OTC antihistamine options.',
-          },
-        },
-      ],
+      upcomingAppointments: ACTIVE_APPOINTMENTS.filter(
+        (a) => a.status !== 'cancelled' && a.status !== 'rejected'
+      ).slice(0, 3),
       healthSummary: {
         bloodPressure: '120/80',
         heartRate: 72,
@@ -583,23 +618,7 @@ const routes: Array<{
         temperature: 36.6,
         lastUpdated: new Date().toISOString(),
       },
-      recentPrescriptions: [
-        {
-          id: 'pr-1',
-          diagnosis: 'Mild hypertension',
-          issuedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
-          doctor: { firstName: 'Babajide', lastName: 'Alabi' },
-          medications: [
-            {
-              name: 'Lisinopril',
-              dosage: '10mg',
-              frequency: 'Once daily',
-              duration: '30 days',
-              instructions: 'Take in the morning',
-            },
-          ],
-        },
-      ],
+      recentPrescriptions: ACTIVE_PRESCRIPTIONS.slice(0, 3),
       notifications: [
         {
           id: 'n-1',
@@ -617,47 +636,52 @@ const routes: Array<{
   {
     method: 'get',
     test: (p) => p === '/patient/appointments',
-    handle: () => ({
-      data: [
-        {
-          id: 'appt-10',
-          doctor: MOCK_DOCTOR_1,
-          scheduledAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-          duration: 30,
-          type: 'video',
-          status: 'approved',
-          reason: 'Symptom check and follow-up',
-          createdAt: new Date().toISOString(),
-        },
-      ],
-      ...PAGINATED_META,
-      total: 1,
-    }),
+    handle: (config) => {
+      const status = config?.params?.status;
+      const data = status ? ACTIVE_APPOINTMENTS.filter((a) => a.status === status) : ACTIVE_APPOINTMENTS;
+      return {
+        data,
+        ...PAGINATED_META,
+        total: data.length,
+      };
+    },
   },
   {
     method: 'post',
     test: (p) => p === '/patient/appointments',
     handle: (config) => {
       const payload = parsePayload(config.data);
-      return {
+      const chosenDoctor = payload.doctorId === 'd-2' ? MOCK_DOCTOR_2 : MOCK_DOCTOR_1;
+      const newAppt = {
         id: `appt-${Date.now()}`,
+        patient: MOCK_PATIENT_1,
+        doctor: { ...chosenDoctor, id: (payload.doctorId as string) || chosenDoctor.id },
         scheduledAt: payload.scheduledAt || new Date().toISOString(),
         duration: payload.duration || 30,
         type: payload.type || 'video',
         status: 'pending',
-        reason: payload.reason || '',
-        doctor: { ...MOCK_DOCTOR_1, id: (payload.doctorId as string) || MOCK_DOCTOR_1.id },
+        fee: payload.fee || (chosenDoctor.consultationFee ? chosenDoctor.consultationFee * 100 : 15000),
+        reason: payload.reason || 'General medical follow-up',
         createdAt: new Date().toISOString(),
       };
+      ACTIVE_APPOINTMENTS.unshift(newAppt);
+      return newAppt;
     },
   },
   {
     method: 'patch',
     test: (p) => /^\/patient\/appointments\/[^/]+\/cancel$/.test(p),
-    handle: (config) => ({
-      id: (config.url ?? '').split('/')[3] ?? 'appt-10',
-      status: 'cancelled',
-    }),
+    handle: (config) => {
+      const id = (config.url ?? '').split('/')[3] ?? 'appt-10';
+      const found = ACTIVE_APPOINTMENTS.find((a) => a.id === id);
+      if (found) {
+        found.status = 'cancelled';
+      }
+      return {
+        id,
+        status: 'cancelled',
+      };
+    },
   },
 
   // ── Patient Records ─────────────────────────────────────────────────────────
@@ -688,25 +712,9 @@ const routes: Array<{
     method: 'get',
     test: (p) => p === '/patient/prescriptions',
     handle: () => ({
-      data: [
-        {
-          id: 'pr-1',
-          diagnosis: 'Mild hypertension',
-          issuedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
-          doctor: { firstName: 'Babajide', lastName: 'Alabi' },
-          medications: [
-            {
-              name: 'Lisinopril',
-              dosage: '10mg',
-              frequency: 'Once daily',
-              duration: '30 days',
-              instructions: 'Take in the morning',
-            },
-          ],
-        },
-      ],
+      data: ACTIVE_PRESCRIPTIONS,
       ...PAGINATED_META,
-      total: 1,
+      total: ACTIVE_PRESCRIPTIONS.length,
     }),
   },
 

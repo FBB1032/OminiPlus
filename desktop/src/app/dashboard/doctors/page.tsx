@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { Doctor, VerificationStatus } from '@/types';
 
 // Mock comprehensive doctor registrations with all verification assets
@@ -154,7 +156,9 @@ export default function DoctorsPage() {
   const [selectedDoc, setSelectedDoc] = useState<Doctor | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewDocUrl, setPreviewDocUrl] = useState<{ title: string; url: string; type: 'image' | 'pdf' } | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
   
   // Dialog Actions State
   const [confirmAction, setConfirmAction] = useState<{
@@ -174,6 +178,10 @@ export default function DoctorsPage() {
     const matchesStatus = statusFilter === 'all' || doc.verificationStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const displayedDocs = isSeeAll
+    ? filteredDocs
+    : filteredDocs.slice((page - 1) * pageSize, page * pageSize);
 
   // KPI Calculations
   const totalCount = doctors.length;
@@ -242,7 +250,22 @@ export default function DoctorsPage() {
           <p className="page-subtitle">Verify doctor credentials, certificates, and review platform registration requests.</p>
         </div>
         
-        <button className="btn btn-secondary">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => exportToCsv('doctors_registry', filteredDocs.map(d => ({
+            id: d.id,
+            name: `Dr. ${d.firstName} ${d.lastName}`,
+            email: d.email,
+            phone: d.phone,
+            licenseNo: d.licenseNo,
+            specialization: d.specialization,
+            hospital: d.hospital || 'Independent Practice',
+            yearsExp: d.yearsExp,
+            verificationStatus: d.verificationStatus,
+            createdAt: d.createdAt
+          })))}
+        >
           <Download size={14} /> Export CSV
         </button>
       </div>
@@ -300,7 +323,10 @@ export default function DoctorsPage() {
               type="text"
               placeholder="Search by name, specialty, license..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{
                 background: 'transparent', border: 'none', outline: 'none',
                 fontSize: 13, color: '#334155', width: '100%', fontFamily: 'inherit',
@@ -319,7 +345,10 @@ export default function DoctorsPage() {
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
+                onClick={() => {
+                  setStatusFilter(tab.key);
+                  setPage(1);
+                }}
                 className={`tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
               >
                 {tab.label}
@@ -353,7 +382,7 @@ export default function DoctorsPage() {
                   </td>
                 </tr>
               ) : (
-                (showAll ? filteredDocs : filteredDocs.slice(0, 10)).map((doc) => {
+                displayedDocs.map((doc) => {
                   const initial = doc.firstName[0] + doc.lastName[0];
                   
                   return (
@@ -416,13 +445,13 @@ export default function DoctorsPage() {
                           doc.verificationStatus === 'pending' ? 'warning' :
                           doc.verificationStatus === 'rejected' ? 'error' : 'admin'
                         }>
-                          <span style={{
-                            width: 5, height: 5, borderRadius: '50%', 
-                            background: doc.verificationStatus === 'approved' ? '#22c55e' : 
-                                        doc.verificationStatus === 'pending' ? '#f59e0b' : 
-                                        doc.verificationStatus === 'rejected' ? '#ef4444' : '#a855f7', 
-                            display: 'inline-block' 
-                          }} />
+                          {doc.verificationStatus === 'approved' ? (
+                            <CheckCircle size={12} style={{ marginRight: 4 }} />
+                          ) : doc.verificationStatus === 'pending' ? (
+                            <Clock size={12} style={{ marginRight: 4 }} />
+                          ) : (
+                            <XCircle size={12} style={{ marginRight: 4 }} />
+                          )}
                           {doc.verificationStatus.charAt(0).toUpperCase() + doc.verificationStatus.slice(1)}
                         </Badge>
                       </td>
@@ -449,7 +478,7 @@ export default function DoctorsPage() {
                               />
                               <Button 
                                 variant="danger" 
-                                size="sm"
+                                size="sm" 
                                 leftIcon={<XCircle size={12} />}
                                 onClick={() => openConfirmDialog('reject', doc.id)}
                               />
@@ -465,27 +494,17 @@ export default function DoctorsPage() {
           </table>
         </div>
 
-        {filteredDocs.length > 10 && (
-          <div style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #f1f5f9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#fafafa',
-          }}>
-            <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-              Showing {showAll ? filteredDocs.length : Math.min(10, filteredDocs.length)} of {filteredDocs.length} doctor registrations
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? 'Show First 10' : `See All (${filteredDocs.length})`}
-            </Button>
-          </div>
-        )}
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filteredDocs.length / pageSize)}
+          onPageChange={setPage}
+          total={filteredDocs.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* Verification Details Modal */}

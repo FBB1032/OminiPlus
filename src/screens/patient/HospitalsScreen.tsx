@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,21 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
-import { Card } from '../../components';
 import { useToast } from '../../hooks/useAuth';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const MAP_WIDTH = SCREEN_WIDTH - 32;
+const MAP_HEIGHT = 260;
 
 interface HospitalItem {
   id: string;
   name: string;
+  shortName: string;
   address: string;
   city: string;
   type: 'Public Teaching' | 'Private Specialist' | 'Tertiary Hospital';
@@ -29,12 +35,16 @@ interface HospitalItem {
   driveTimeMins: number;
   emergencyPhone: string;
   acceptedHMOs: string[];
+  // Relative position on the map placeholder (0–1)
+  mapX: number;
+  mapY: number;
 }
 
 const MOCK_HOSPITALS: HospitalItem[] = [
   {
     id: 'hosp-1',
     name: 'Lagos University Teaching Hospital (LUTH)',
+    shortName: 'LUTH',
     address: 'Ishaga Road, Idi-Araba, Surulere',
     city: 'Lagos',
     type: 'Public Teaching',
@@ -45,10 +55,13 @@ const MOCK_HOSPITALS: HospitalItem[] = [
     driveTimeMins: 5,
     emergencyPhone: '+234 803 999 1122',
     acceptedHMOs: ['NHIA', 'Hygeia', 'AXA Mansard', 'Reliance'],
+    mapX: 0.58,
+    mapY: 0.22,
   },
   {
     id: 'hosp-2',
     name: 'Evercare Hospital Lekki',
+    shortName: 'Evercare',
     address: 'Bisola Durosinmi Etti Drive, Lekki Phase 1',
     city: 'Lagos',
     type: 'Tertiary Hospital',
@@ -59,10 +72,13 @@ const MOCK_HOSPITALS: HospitalItem[] = [
     driveTimeMins: 8,
     emergencyPhone: '+234 800 383 72273',
     acceptedHMOs: ['Hygeia', 'AXA Mansard', 'Redcare', 'Leadway'],
+    mapX: 0.82,
+    mapY: 0.55,
   },
   {
     id: 'hosp-3',
     name: 'Reddington Hospital Victoria Island',
+    shortName: 'Reddington',
     address: '39 Idowu Martins Street, Victoria Island',
     city: 'Lagos',
     type: 'Private Specialist',
@@ -73,10 +89,13 @@ const MOCK_HOSPITALS: HospitalItem[] = [
     driveTimeMins: 11,
     emergencyPhone: '+234 802 123 9900',
     acceptedHMOs: ['AXA Mansard', 'Reliance HMO', 'Anchor HMO'],
+    mapX: 0.22,
+    mapY: 0.42,
   },
   {
     id: 'hosp-4',
     name: 'St. Nicholas Hospital',
+    shortName: 'St. Nicholas',
     address: '57 Campbell Street, Lagos Island',
     city: 'Lagos',
     type: 'Private Specialist',
@@ -87,15 +106,50 @@ const MOCK_HOSPITALS: HospitalItem[] = [
     driveTimeMins: 14,
     emergencyPhone: '+234 801 888 4433',
     acceptedHMOs: ['Hygeia', 'Clearline HMO', 'Metrohealth'],
+    mapX: 0.35,
+    mapY: 0.72,
   },
 ];
 
 const CATEGORY_FILTERS = [
   { id: 'all', label: 'All Centers', icon: 'grid-outline' },
-  { id: 'er', label: '24/7 Emergency ER', icon: 'alert-circle-outline' },
-  { id: 'teaching', label: 'Teaching Hospitals', icon: 'school-outline' },
-  { id: 'icu', label: 'ICU Available', icon: 'heart-outline' },
-  { id: 'blood', label: 'Blood Bank On-Site', icon: 'water-outline' },
+  { id: 'er', label: '24/7 ER', icon: 'alert-circle-outline' },
+  { id: 'teaching', label: 'Teaching', icon: 'school-outline' },
+  { id: 'icu', label: 'ICU', icon: 'heart-outline' },
+  { id: 'blood', label: 'Blood Bank', icon: 'water-outline' },
+];
+
+const TYPE_COLORS: Record<string, string> = {
+  'Public Teaching': '#0F6E6E',
+  'Private Specialist': '#7C3AED',
+  'Tertiary Hospital': '#D97706',
+};
+
+// Simulated street/road layout for the map placeholder
+const H_ROADS = [0.18, 0.35, 0.5, 0.65, 0.82];
+const V_ROADS = [0.15, 0.3, 0.45, 0.6, 0.75, 0.9];
+// City blocks (rectangles)
+const BLOCKS = [
+  { x: 0.16, y: 0.16, w: 0.12, h: 0.16 },
+  { x: 0.31, y: 0.16, w: 0.12, h: 0.16 },
+  { x: 0.46, y: 0.16, w: 0.12, h: 0.16 },
+  { x: 0.62, y: 0.16, w: 0.1, h: 0.16 },
+  { x: 0.76, y: 0.16, w: 0.12, h: 0.16 },
+  { x: 0.16, y: 0.37, w: 0.12, h: 0.12 },
+  { x: 0.31, y: 0.37, w: 0.12, h: 0.12 },
+  { x: 0.46, y: 0.37, w: 0.12, h: 0.12 },
+  { x: 0.62, y: 0.37, w: 0.1, h: 0.12 },
+  { x: 0.76, y: 0.37, w: 0.12, h: 0.12 },
+  { x: 0.16, y: 0.52, w: 0.12, h: 0.11 },
+  { x: 0.31, y: 0.52, w: 0.12, h: 0.11 },
+  { x: 0.46, y: 0.52, w: 0.12, h: 0.11 },
+  { x: 0.62, y: 0.52, w: 0.1, h: 0.11 },
+  { x: 0.76, y: 0.52, w: 0.12, h: 0.11 },
+  { x: 0.16, y: 0.67, w: 0.12, h: 0.12 },
+  { x: 0.31, y: 0.67, w: 0.12, h: 0.12 },
+  { x: 0.46, y: 0.67, w: 0.12, h: 0.12 },
+  { x: 0.62, y: 0.67, w: 0.1, h: 0.12 },
+  { x: 0.76, y: 0.67, w: 0.12, h: 0.12 },
 ];
 
 export default function HospitalsScreen({ navigation }: any) {
@@ -106,260 +160,354 @@ export default function HospitalsScreen({ navigation }: any) {
   const [isRefreshingGPS, setIsRefreshingGPS] = useState(false);
   const [selectedHospitalId, setSelectedHospitalId] = useState<string>('hosp-1');
 
-  // Refresh GPS Simulation
+  // User location pulse animation
+  const locationPulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const locPulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(locationPulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
+        Animated.timing(locationPulse, { toValue: 0, duration: 1100, useNativeDriver: true }),
+      ])
+    );
+    locPulse.start();
+    return () => locPulse.stop();
+  }, []);
+
+  const locationPulseScale = locationPulse.interpolate({ inputRange: [0, 1], outputRange: [1, 2.2] });
+  const locationPulseOpacity = locationPulse.interpolate({ inputRange: [0, 1], outputRange: [0.45, 0] });
+
   const handleRefreshGPS = () => {
     setIsRefreshingGPS(true);
     setTimeout(() => {
       setIsRefreshingGPS(false);
-      toastSuccess('GPS Calibrated', 'Hospital radar synced with current position.');
-    }, 800);
+      toastSuccess('GPS Calibrated', 'Map synced with your current position.');
+    }, 1200);
   };
 
-  // Filter Hospitals
   const filteredHospitals = useMemo(() => {
     return MOCK_HOSPITALS.filter((h) => {
       const matchQuery =
         h.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         h.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
         h.type.toLowerCase().includes(searchQuery.toLowerCase());
-
       let matchCat = true;
       if (activeCategory === 'er') matchCat = h.hasEmergencyER;
       if (activeCategory === 'teaching') matchCat = h.type === 'Public Teaching';
       if (activeCategory === 'icu') matchCat = h.hasICU;
       if (activeCategory === 'blood') matchCat = h.hasBloodBank;
-
       return matchQuery && matchCat;
     });
   }, [searchQuery, activeCategory]);
 
-  const activeHospital = useMemo(() => {
-    return MOCK_HOSPITALS.find((h) => h.id === selectedHospitalId) || MOCK_HOSPITALS[0];
-  }, [selectedHospitalId]);
+  const activeHospital = useMemo(
+    () => MOCK_HOSPITALS.find((h) => h.id === selectedHospitalId) || MOCK_HOSPITALS[0],
+    [selectedHospitalId]
+  );
 
   const handleCallEmergency = (phone: string, name: string) => {
-    Alert.alert(
-      `Call Emergency Ward`,
-      `Dial emergency hotline ${phone} for ${name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Dial Hotline',
-          onPress: () => {
-            const url = `tel:${phone.replace(/\s+/g, '')}`;
-            Linking.canOpenURL(url)
-              .then((supported) => {
-                if (supported) Linking.openURL(url);
-                else toastSuccess('Dialing ER', `Calling ${phone}...`);
-              })
-              .catch(() => toastSuccess('Dialing ER', `Calling ${phone}...`));
-          },
+    Alert.alert('Call Emergency Ward', `Dial emergency hotline ${phone} for ${name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Dial Hotline',
+        onPress: () => {
+          const url = `tel:${phone.replace(/\s+/g, '')}`;
+          Linking.canOpenURL(url)
+            .then((supported) => {
+              if (supported) Linking.openURL(url);
+              else toastSuccess('Dialing ER', `Calling ${phone}...`);
+            })
+            .catch(() => toastSuccess('Dialing ER', `Calling ${phone}...`));
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleGetDirections = (name: string, address: string) => {
     const query = encodeURIComponent(`${name}, ${address}`);
     const url = `https://www.google.com/maps/search/?api=1&query=${query}`;
-    Linking.openURL(url).catch(() => {
-      toastSuccess('GPS Directions', `Opening route to ${name}...`);
-    });
+    Linking.openURL(url).catch(() => toastSuccess('GPS Directions', `Opening route to ${name}...`));
   };
 
   const handleCallNationalEmergency = () => {
-    Alert.alert(
-      'National Emergency Dialers',
-      'Choose emergency service hotline:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'National Emergency (112)',
-          onPress: () => Linking.openURL('tel:112'),
-        },
-        {
-          text: 'Lagos Emergency (767 / 112)',
-          onPress: () => Linking.openURL('tel:767'),
-        },
-      ]
-    );
+    Alert.alert('National Emergency Dialers', 'Choose emergency service hotline:', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'National Emergency (112)', onPress: () => Linking.openURL('tel:112') },
+      { text: 'Lagos Emergency (767)', onPress: () => Linking.openURL('tel:767') },
+    ]);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* ── Top Header ────────────────────────────────────────────────────── */}
+      {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={22} color={Colors.text.primary} />
+          <Ionicons name="arrow-back" size={20} color="#0F172A" />
         </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
+        <View style={styles.headerTitleGroup}>
           <Text style={styles.headerTitle}>GPS Hospital Radar</Text>
-          <Text style={styles.headerSubtitle}>24/7 Emergency Rooms & Centers</Text>
+          <Text style={styles.headerSubtitle}>Live tracking — 4 centers mapped</Text>
         </View>
+        <TouchableOpacity style={styles.gpsBtn} onPress={handleRefreshGPS} disabled={isRefreshingGPS}>
+          {isRefreshingGPS ? (
+            <ActivityIndicator size="small" color="#0F6E6E" />
+          ) : (
+            <Ionicons name="navigate" size={16} color="#0F6E6E" />
+          )}
+        </TouchableOpacity>
+      </View>
 
-        {/* View Mode Toggle */}
-        <View style={styles.toggleContainer}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('map')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="map-outline" size={14} color={viewMode === 'map' ? '#FFFFFF' : '#64748B'} />
-            <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>Map</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-            onPress={() => setViewMode('list')}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="list-outline" size={14} color={viewMode === 'list' ? '#FFFFFF' : '#64748B'} />
-            <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>List</Text>
-          </TouchableOpacity>
-        </View>
+      {/* ── View Toggle ── */}
+      <View style={styles.viewToggleBar}>
+        <TouchableOpacity
+          style={[styles.toggleTab, viewMode === 'map' && styles.toggleTabActive]}
+          onPress={() => setViewMode('map')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="map-outline" size={14} color={viewMode === 'map' ? '#FFFFFF' : '#64748B'} />
+          <Text style={[styles.toggleTabText, viewMode === 'map' && styles.toggleTabTextActive]}>Map View</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleTab, viewMode === 'list' && styles.toggleTabActive]}
+          onPress={() => setViewMode('list')}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="list-outline" size={14} color={viewMode === 'list' ? '#FFFFFF' : '#64748B'} />
+          <Text style={[styles.toggleTabText, viewMode === 'list' && styles.toggleTabTextActive]}>List View</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollBody} showsVerticalScrollIndicator={false}>
-        {/* ── 24/7 Emergency SOS Action Card ───────────────────────────────── */}
-        <View style={styles.emergencyCard}>
-          <View style={styles.emergencyHeaderRow}>
-            <View style={styles.sosBadge}>
-              <Ionicons name="alert-circle" size={14} color="#DC2626" />
-              <Text style={styles.sosBadgeText}>24/7 EMERGENCY RESPONSE</Text>
+
+        {/* ── Emergency SOS Card ── */}
+        <View style={styles.sosCard}>
+          <View style={styles.sosCardLeft}>
+            <View style={styles.sosPulseDot}>
+              <Ionicons name="alert-circle" size={18} color="#FFFFFF" />
             </View>
-            <TouchableOpacity style={styles.gpsRefreshChip} onPress={handleRefreshGPS} disabled={isRefreshingGPS}>
-              {isRefreshingGPS ? (
-                <ActivityIndicator size="small" color="#DC2626" />
-              ) : (
-                <>
-                  <Ionicons name="navigate" size={12} color="#DC2626" />
-                  <Text style={styles.gpsRefreshChipText}>Refresh GPS</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.sosTitle}>Life-Threatening Emergency?</Text>
+              <Text style={styles.sosSub}>Dial 112 or 767 for immediate national response</Text>
+            </View>
           </View>
-
-          <Text style={styles.emergencyTitle}>Life-Threatening Emergency?</Text>
-          <Text style={styles.emergencySub}>
-            In case of severe hemorrhage, cardiac arrest, or acute distress, call national emergency response (112 / 767) or navigate to the nearest ER below immediately.
-          </Text>
-
-          <TouchableOpacity style={styles.emergencyCallBtn} onPress={handleCallNationalEmergency} activeOpacity={0.85}>
-            <Ionicons name="call" size={16} color="#FFFFFF" />
-            <Text style={styles.emergencyCallText}>Dial Emergency Hotlines (112 / 767)</Text>
+          <TouchableOpacity style={styles.sosCallBtn} onPress={handleCallNationalEmergency} activeOpacity={0.85}>
+            <Ionicons name="call" size={15} color="#FFFFFF" />
+            <Text style={styles.sosCallText}>Call 112</Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── VISUAL GPS RADAR MAP BOX (Map View Mode) ────────────────────────── */}
+        {/* ── MAP VIEW ── */}
         {viewMode === 'map' && (
-          <View style={styles.mapVisualContainer}>
-            <View style={styles.mapHeaderRow}>
-              <View style={styles.mapTitleGroup}>
-                <Ionicons name="location" size={16} color="#DC2626" />
-                <Text style={styles.mapTitleText}>GPS Medical Radar</Text>
-              </View>
-              <Text style={styles.mapSubText}>4 Hospitals Mapped Nearby</Text>
-            </View>
+          <View style={styles.mapSection}>
+            {/* Map Container — replace contents with <MapView> when integrating react-native-maps */}
+            <View style={[styles.mapContainer, { width: MAP_WIDTH, height: MAP_HEIGHT }]}>
+              {/* MAP PLACEHOLDER — swap this View for <MapView> from react-native-maps */}
+              <View style={StyleSheet.absoluteFill}>
 
-            {/* Simulated Radar Map View Box */}
-            <View style={styles.mapRadarBox}>
-              <View style={styles.mapGridLineH1} />
-              <View style={styles.mapGridLineH2} />
-              <View style={styles.mapGridLineV1} />
-              <View style={styles.mapGridLineV2} />
+                {/* Base map background */}
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: '#E2E8F0' }]} />
 
-              <View style={styles.routeLine} />
+                {/* Horizontal roads */}
+                {H_ROADS.map((y, i) => (
+                  <View
+                    key={`h-${i}`}
+                    style={[
+                      styles.roadH,
+                      { top: MAP_HEIGHT * y, width: MAP_WIDTH },
+                      i === 2 && styles.roadHMajor,
+                    ]}
+                  />
+                ))}
 
-              {/* User Current Location Dot */}
-              <View style={styles.userLocationPulseRing}>
-                <View style={styles.userLocationDot}>
-                  <Ionicons name="person" size={10} color="#FFFFFF" />
+                {/* Vertical roads */}
+                {V_ROADS.map((x, i) => (
+                  <View
+                    key={`v-${i}`}
+                    style={[
+                      styles.roadV,
+                      { left: MAP_WIDTH * x, height: MAP_HEIGHT },
+                      i === 2 && styles.roadVMajor,
+                    ]}
+                  />
+                ))}
+
+                {/* City blocks */}
+                {BLOCKS.map((b, i) => (
+                  <View
+                    key={`b-${i}`}
+                    style={[
+                      styles.cityBlock,
+                      {
+                        left: MAP_WIDTH * b.x,
+                        top: MAP_HEIGHT * b.y,
+                        width: MAP_WIDTH * b.w,
+                        height: MAP_HEIGHT * b.h,
+                      },
+                    ]}
+                  />
+                ))}
+
+                {/* Route line from user to selected hospital */}
+                <View
+                  style={[
+                    styles.routeDashedLine,
+                    {
+                      left: MAP_WIDTH * 0.48,
+                      top: MAP_HEIGHT * 0.56,
+                      width: MAP_WIDTH * (activeHospital.mapX - 0.48),
+                      height: 2.5,
+                      transform: [
+                        {
+                          rotate: `${Math.atan2(
+                            MAP_HEIGHT * (activeHospital.mapY - 0.58),
+                            MAP_WIDTH * (activeHospital.mapX - 0.48)
+                          ) * (180 / Math.PI)}deg`,
+                        },
+                      ],
+                    },
+                  ]}
+                />
+
+                {/* Hospital map pins */}
+                {MOCK_HOSPITALS.map((hosp) => {
+                  const isSelected = selectedHospitalId === hosp.id;
+                  const typeColor = TYPE_COLORS[hosp.type] || '#0F6E6E';
+                  const pinLeft = MAP_WIDTH * hosp.mapX - 14;
+                  const pinTop = MAP_HEIGHT * hosp.mapY - 36;
+                  return (
+                    <TouchableOpacity
+                      key={hosp.id}
+                      style={[styles.pinWrapper, { left: pinLeft, top: pinTop }]}
+                      onPress={() => setSelectedHospitalId(hosp.id)}
+                      activeOpacity={0.85}
+                    >
+                      {/* Pin bubble */}
+                      <View
+                        style={[
+                          styles.pinBubble,
+                          { backgroundColor: isSelected ? typeColor : '#FFFFFF' },
+                          isSelected && { shadowColor: typeColor },
+                        ]}
+                      >
+                        <Ionicons
+                          name="business"
+                          size={12}
+                          color={isSelected ? '#FFFFFF' : typeColor}
+                        />
+                        {isSelected && (
+                          <Text style={styles.pinLabel}>{hosp.shortName}</Text>
+                        )}
+                      </View>
+                      {/* Pin needle */}
+                      <View
+                        style={[
+                          styles.pinNeedle,
+                          { borderTopColor: isSelected ? typeColor : '#FFFFFF' },
+                        ]}
+                      />
+                    </TouchableOpacity>
+                  );
+                })}
+
+                {/* User location marker */}
+                <View style={[styles.userMarker, { left: MAP_WIDTH * 0.48 - 14, top: MAP_HEIGHT * 0.56 - 14 }]}>
+                  <Animated.View
+                    style={[
+                      styles.userPulseRing,
+                      {
+                        transform: [{ scale: locationPulseScale }],
+                        opacity: locationPulseOpacity,
+                      },
+                    ]}
+                  />
+                  <View style={styles.userDot}>
+                    <Ionicons name="person" size={9} color="#FFFFFF" />
+                  </View>
+                </View>
+
+                {/* Map attribution label */}
+                <View style={styles.mapAttribBadge}>
+                  <Ionicons name="map" size={9} color="#64748B" />
+                  <Text style={styles.mapAttribText}>Map integration ready — react-native-maps</Text>
+                </View>
+
+                {/* Scale bar */}
+                <View style={styles.scaleBar}>
+                  <View style={styles.scaleBarLine} />
+                  <Text style={styles.scaleBarText}>500m</Text>
+                </View>
+
+                {/* Zoom controls */}
+                <View style={styles.zoomControls}>
+                  <TouchableOpacity style={styles.zoomBtn} activeOpacity={0.8}>
+                    <Ionicons name="add" size={16} color="#1E293B" />
+                  </TouchableOpacity>
+                  <View style={styles.zoomDivider} />
+                  <TouchableOpacity style={styles.zoomBtn} activeOpacity={0.8}>
+                    <Ionicons name="remove" size={16} color="#1E293B" />
+                  </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.userLocationLabelBox}>
-                <Text style={styles.userLocationLabelText}>You (Ikeja)</Text>
-              </View>
+              {/* END MAP PLACEHOLDER */}
+            </View>
 
-              {/* Hospital GPS Pins */}
-              {MOCK_HOSPITALS.map((hosp, idx) => {
-                const isSelected = selectedHospitalId === hosp.id;
-                const positions = [
-                  { top: 20, right: 30 },
-                  { top: 85, right: 80 },
-                  { top: 125, left: 35 },
-                  { top: 45, left: 65 },
-                ];
-                const pos = positions[idx % positions.length];
+            {/* Selected hospital bottom card */}
+            {activeHospital && (
+              <View style={styles.selectedCard}>
+                <View style={styles.selectedCardTopRow}>
+                  <View style={[styles.selectedTypeTag, { backgroundColor: TYPE_COLORS[activeHospital.type] + '18' }]}>
+                    <Text style={[styles.selectedTypeText, { color: TYPE_COLORS[activeHospital.type] }]}>
+                      {activeHospital.type}
+                    </Text>
+                  </View>
+                  <View style={styles.selectedEtaChip}>
+                    <Ionicons name="car-outline" size={12} color="#0F6E6E" />
+                    <Text style={styles.selectedEtaText}>{activeHospital.driveTimeMins} min</Text>
+                    <Text style={styles.selectedDistText}> — {activeHospital.distanceKm} km</Text>
+                  </View>
+                </View>
 
-                return (
+                <Text style={styles.selectedName}>{activeHospital.name}</Text>
+                <Text style={styles.selectedAddress}>{activeHospital.address}</Text>
+
+                <View style={styles.selectedCapsBadges}>
+                  {activeHospital.hasEmergencyER && (
+                    <View style={styles.capsBadge}>
+                      <Ionicons name="alert-circle" size={11} color="#DC2626" />
+                      <Text style={styles.capsBadgeText}>24/7 ER</Text>
+                    </View>
+                  )}
+                  {activeHospital.hasICU && (
+                    <View style={[styles.capsBadge, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}>
+                      <Text style={[styles.capsBadgeText, { color: '#1D4ED8' }]}>ICU</Text>
+                    </View>
+                  )}
+                  {activeHospital.hasBloodBank && (
+                    <View style={[styles.capsBadge, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
+                      <Text style={[styles.capsBadgeText, { color: '#6D28D9' }]}>Blood Bank</Text>
+                    </View>
+                  )}
+                </View>
+
+                <Text style={styles.hmoLabel}>Accepted HMOs:</Text>
+                <Text style={styles.hmoList}>{activeHospital.acceptedHMOs.join(' — ')}</Text>
+
+                <View style={styles.selectedActions}>
                   <TouchableOpacity
-                    key={hosp.id}
-                    style={[
-                      styles.mapPinContainer,
-                      pos as any,
-                      isSelected && styles.mapPinContainerSelected,
-                    ]}
-                    onPress={() => setSelectedHospitalId(hosp.id)}
+                    style={styles.navBtn}
+                    onPress={() => handleGetDirections(activeHospital.name, activeHospital.address)}
                     activeOpacity={0.85}
                   >
-                    <View style={[styles.mapPinBubble, isSelected && styles.mapPinBubbleSelected]}>
-                      <Ionicons
-                        name="business"
-                        size={12}
-                        color={isSelected ? '#FFFFFF' : '#DC2626'}
-                      />
-                      <Text style={[styles.mapPinText, isSelected && styles.mapPinTextSelected]}>
-                        {hosp.name.split(' ')[0]} ({hosp.distanceKm}km)
-                      </Text>
-                    </View>
-                    <View style={[styles.mapPinNeedle, isSelected && styles.mapPinNeedleSelected]} />
+                    <Ionicons name="navigate" size={14} color="#FFFFFF" />
+                    <Text style={styles.navBtnText}>GPS Directions</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Selected Pin Details Overlay Card */}
-            {activeHospital && (
-              <View style={styles.selectedOverlayCard}>
-                <View style={styles.selectedCardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.selectedCardName}>{activeHospital.name}</Text>
-                    <Text style={styles.selectedCardAddress}>{activeHospital.address}</Text>
-
-                    <View style={styles.badgeChipsRow}>
-                      <View style={styles.typeBadge}>
-                        <Text style={styles.typeBadgeText}>{activeHospital.type}</Text>
-                      </View>
-                      {activeHospital.hasEmergencyER && (
-                        <View style={styles.erBadge}>
-                          <Ionicons name="alert-circle" size={10} color="#DC2626" />
-                          <Text style={styles.erBadgeText}>24/7 ER Available</Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.closestEtaBadge}>
-                    <Text style={styles.closestEtaText}>{activeHospital.driveTimeMins} min drive</Text>
-                    <Text style={styles.closestDistText}>{activeHospital.distanceKm} km</Text>
-                  </View>
-                </View>
-
-                <View style={styles.selectedActionsRow}>
                   <TouchableOpacity
-                    style={styles.selectedNavBtn}
-                    onPress={() => handleGetDirections(activeHospital.name, activeHospital.address)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="navigate" size={15} color="#FFFFFF" />
-                    <Text style={styles.selectedNavText}>Get GPS Directions</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.selectedCallBtn}
+                    style={styles.callErBtn}
                     onPress={() => handleCallEmergency(activeHospital.emergencyPhone, activeHospital.name)}
-                    activeOpacity={0.8}
+                    activeOpacity={0.85}
                   >
                     <Ionicons name="call" size={14} color="#DC2626" />
-                    <Text style={styles.selectedCallText}>Call ER Desk</Text>
+                    <Text style={styles.callErBtnText}>Call ER Desk</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -367,39 +515,33 @@ export default function HospitalsScreen({ navigation }: any) {
           </View>
         )}
 
-        {/* ── Search Bar & Category Filters ──────────────────────────────── */}
+        {/* ── Search & Filters ── */}
         <View style={styles.searchSection}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#94A3B8" />
+            <Ionicons name="search" size={16} color="#64748B" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search hospital by name, HMO or street..."
+              placeholder="Search hospital, HMO or street..."
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor="#94A3B8"
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                <Ionicons name="close-circle" size={16} color="#94A3B8" />
               </TouchableOpacity>
             )}
           </View>
-
-          {/* Category Filters */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
             {CATEGORY_FILTERS.map((cat) => (
               <TouchableOpacity
                 key={cat.id}
-                style={[styles.categoryPill, activeCategory === cat.id && styles.categoryPillActive]}
+                style={[styles.filterPill, activeCategory === cat.id && styles.filterPillActive]}
                 onPress={() => setActiveCategory(cat.id)}
                 activeOpacity={0.8}
               >
-                <Ionicons
-                  name={cat.icon as any}
-                  size={13}
-                  color={activeCategory === cat.id ? '#FFFFFF' : Colors.text.secondary}
-                />
-                <Text style={[styles.categoryPillText, activeCategory === cat.id && styles.categoryPillTextActive]}>
+                <Ionicons name={cat.icon as any} size={12} color={activeCategory === cat.id ? '#FFFFFF' : '#64748B'} />
+                <Text style={[styles.filterPillText, activeCategory === cat.id && styles.filterPillTextActive]}>
                   {cat.label}
                 </Text>
               </TouchableOpacity>
@@ -407,91 +549,86 @@ export default function HospitalsScreen({ navigation }: any) {
           </ScrollView>
         </View>
 
-        {/* ── Hospitals Directory List ───────────────────────────────────── */}
+        {/* ── Hospital List ── */}
         <View style={styles.listSection}>
-          <Text style={styles.sectionTitle}>
-            Nearby Hospitals & Medical Centers ({filteredHospitals.length})
-          </Text>
+          <View style={styles.listHeader}>
+            <Text style={styles.listTitle}>Nearby Medical Centers</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeText}>{filteredHospitals.length}</Text>
+            </View>
+          </View>
 
           {filteredHospitals.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="business-outline" size={42} color="#CBD5E1" />
+            <View style={styles.emptyState}>
+              <Ionicons name="business-outline" size={40} color="#94A3B8" />
               <Text style={styles.emptyTitle}>No Hospitals Found</Text>
-              <Text style={styles.emptySub}>
-                No medical centers match your search filter. Try clearing filters.
-              </Text>
+              <Text style={styles.emptySub}>Try clearing your search or filter.</Text>
             </View>
           ) : (
-            filteredHospitals.map((hospital) => {
+            filteredHospitals.map((hospital, idx) => {
               const isSelected = selectedHospitalId === hospital.id;
+              const typeColor = TYPE_COLORS[hospital.type] || '#0F6E6E';
               return (
-                <Card
+                <TouchableOpacity
                   key={hospital.id}
                   style={[styles.hospitalCard, isSelected && styles.hospitalCardSelected]}
+                  onPress={() => setSelectedHospitalId(hospital.id)}
+                  activeOpacity={0.88}
                 >
-                  <TouchableOpacity
-                    onPress={() => setSelectedHospitalId(hospital.id)}
-                    activeOpacity={0.9}
-                  >
-                    <View style={styles.cardMainRow}>
-                      <View style={styles.hospitalIconBox}>
-                        <Ionicons name="business" size={20} color={Colors.primary[600]} />
-                      </View>
-
+                  <View style={[styles.rankBadge, { backgroundColor: isSelected ? '#0F6E6E' : '#F1F5F9' }]}>
+                    <Text style={[styles.rankText, { color: isSelected ? '#FFFFFF' : '#64748B' }]}>{idx + 1}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <View style={styles.cardTopRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.hospitalName}>{hospital.name}</Text>
-                        <Text style={styles.hospitalAddress}>{hospital.address}</Text>
-
-                        {/* Badges Row */}
-                        <View style={styles.badgeRow}>
-                          <View style={styles.typeBadge}>
-                            <Text style={styles.typeBadgeText}>{hospital.type}</Text>
-                          </View>
-                          {hospital.hasEmergencyER && (
-                            <View style={styles.erBadge}>
-                              <Ionicons name="alert-circle" size={10} color="#DC2626" />
-                              <Text style={styles.erBadgeText}>24/7 ER</Text>
-                            </View>
-                          )}
-                          {hospital.hasICU && (
-                            <View style={styles.icuBadge}>
-                              <Text style={styles.icuBadgeText}>ICU</Text>
-                            </View>
-                          )}
-                        </View>
-
-                        <View style={styles.metaRow}>
-                          <Ionicons name="navigate-outline" size={12} color={Colors.text.secondary} />
-                          <Text style={styles.metaText}>{hospital.distanceKm} km away</Text>
-                          <Text style={styles.metaDot}>•</Text>
-                          <Ionicons name="car-outline" size={12} color={Colors.primary[600]} />
-                          <Text style={styles.metaText}>{hospital.driveTimeMins} min drive</Text>
-                        </View>
+                        <Text style={styles.cardHospName}>{hospital.name}</Text>
+                        <Text style={styles.cardHospAddr}>{hospital.address}</Text>
+                      </View>
+                      <View style={styles.cardDistBlock}>
+                        <Text style={styles.cardDistKm}>{hospital.distanceKm} km</Text>
+                        <Text style={styles.cardDistTime}>{hospital.driveTimeMins} min</Text>
                       </View>
                     </View>
-                  </TouchableOpacity>
 
-                  {/* Card Actions */}
-                  <View style={styles.cardActionsRow}>
-                    <TouchableOpacity
-                      style={styles.cardNavBtn}
-                      onPress={() => handleGetDirections(hospital.name, hospital.address)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="navigate" size={14} color={Colors.primary[600]} />
-                      <Text style={styles.cardNavText}>GPS Directions</Text>
-                    </TouchableOpacity>
+                    <View style={styles.cardBadgesRow}>
+                      <View style={[styles.cardTypeBadge, { backgroundColor: typeColor + '15' }]}>
+                        <Text style={[styles.cardTypeText, { color: typeColor }]}>{hospital.type}</Text>
+                      </View>
+                      {hospital.hasEmergencyER && (
+                        <View style={styles.erChip}><Text style={styles.erChipText}>24/7 ER</Text></View>
+                      )}
+                      {hospital.hasICU && (
+                        <View style={styles.icuChip}><Text style={styles.icuChipText}>ICU</Text></View>
+                      )}
+                      {hospital.hasBloodBank && (
+                        <View style={styles.bloodChip}><Text style={styles.bloodChipText}>Blood Bank</Text></View>
+                      )}
+                    </View>
 
-                    <TouchableOpacity
-                      style={styles.cardCallBtn}
-                      onPress={() => handleCallEmergency(hospital.emergencyPhone, hospital.name)}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="call-outline" size={14} color="#DC2626" />
-                      <Text style={styles.cardCallText}>Call ER</Text>
-                    </TouchableOpacity>
+                    <View style={styles.cardActionsRow}>
+                      <TouchableOpacity
+                        style={styles.cardNavBtn}
+                        onPress={() => handleGetDirections(hospital.name, hospital.address)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="navigate" size={12} color="#0F6E6E" />
+                        <Text style={styles.cardNavText}>Directions</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.cardCallBtn}
+                        onPress={() => handleCallEmergency(hospital.emergencyPhone, hospital.name)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="call-outline" size={12} color="#DC2626" />
+                        <Text style={styles.cardCallText}>Call ER</Text>
+                      </TouchableOpacity>
+                      <View style={styles.cardPhoneLabel}>
+                        <Ionicons name="phone-portrait-outline" size={11} color="#64748B" />
+                        <Text style={styles.cardPhoneText}>{hospital.emergencyPhone}</Text>
+                      </View>
+                    </View>
                   </View>
-                </Card>
+                </TouchableOpacity>
               );
             })
           )}
@@ -502,575 +639,487 @@ export default function HospitalsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[3],
-    backgroundColor: Colors.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    gap: 10,
+    borderBottomColor: '#E2E8F0',
+    gap: 12,
   },
   backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  headerTitleGroup: { flex: 1, justifyContent: 'center' },
+  headerTitle: { fontSize: 16, fontWeight: '700' as any, color: '#0F172A', letterSpacing: -0.2 },
+  headerSubtitle: { fontSize: 12, color: '#64748B', marginTop: 1 },
+  gpsBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E6F4F4',
+    borderWidth: 1,
+    borderColor: '#0F6E6E',
+  },
+
+  // View toggle
+  viewToggleBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  toggleTab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  toggleTabActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
+  toggleTabText: { fontSize: 12, fontWeight: '600' as any, color: '#64748B' },
+  toggleTabTextActive: { color: '#FFFFFF' },
+
+  scrollBody: { padding: 16, gap: 16 },
+
+  // SOS Card
+  sosCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    padding: 12,
+    gap: 10,
+  },
+  sosCardLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sosPulseDot: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: FontSize.md,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
-  headerSubtitle: {
-    fontSize: FontSize.xs,
-    color: Colors.text.secondary,
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.background,
-    padding: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  toggleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  toggleBtnActive: {
-    backgroundColor: Colors.primary[600],
-  },
-  toggleText: {
-    fontSize: 11,
-    fontWeight: FontWeight.semiBold,
-    color: Colors.text.secondary,
-  },
-  toggleTextActive: {
-    color: '#FFFFFF',
-    fontWeight: FontWeight.bold,
-  },
-  scrollBody: {
-    padding: Spacing[4],
-    gap: Spacing[4],
-  },
-  emergencyCard: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-    padding: Spacing[4],
-    gap: 8,
-    ...Shadows.xs,
-  },
-  emergencyHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sosBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  sosBadgeText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
-    letterSpacing: 0.5,
-  },
-  gpsRefreshChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
-  },
-  gpsRefreshChipText: {
-    fontSize: 10.5,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
-  },
-  emergencyTitle: {
-    fontSize: 15.5,
-    fontWeight: FontWeight.bold,
-    color: '#991B1B',
-  },
-  emergencySub: {
-    fontSize: 12,
-    color: '#B91C1C',
-    lineHeight: 17,
-  },
-  emergencyCallBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
     backgroundColor: '#DC2626',
-    paddingVertical: 11,
-    borderRadius: 10,
-    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  emergencyCallText: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
+  sosTitle: { fontSize: 13, fontWeight: '700' as any, color: '#991B1B' },
+  sosSub: { fontSize: 11, color: '#DC2626', marginTop: 2 },
+  sosCallBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#DC2626',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sosCallText: { fontSize: 12, fontWeight: '700' as any, color: '#FFFFFF' },
+
+  // Map section
+  mapSection: { gap: 12 },
+  mapContainer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    position: 'relative',
+    backgroundColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
-  // Map Visual Radar Container
-  mapVisualContainer: {
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing[3],
-    gap: 10,
-    ...Shadows.sm,
-  },
-  mapHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  mapTitleGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  mapTitleText: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
-  mapSubText: {
-    fontSize: 11,
-    color: Colors.text.secondary,
-  },
-  mapRadarBox: {
-    height: 180,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  mapGridLineH1: {
+  // Map roads
+  roadH: {
     position: 'absolute',
-    top: 60,
     left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    height: 5,
+    backgroundColor: '#CBD5E1',
+    marginTop: -2.5,
   },
-  mapGridLineH2: {
-    position: 'absolute',
-    top: 120,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+  roadHMajor: {
+    height: 9,
+    backgroundColor: '#94A3B8',
+    marginTop: -4.5,
   },
-  mapGridLineV1: {
+  roadV: {
     position: 'absolute',
-    left: '33%',
     top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    width: 5,
+    backgroundColor: '#CBD5E1',
+    marginLeft: -2.5,
   },
-  mapGridLineV2: {
-    position: 'absolute',
-    left: '66%',
-    top: 0,
-    bottom: 0,
-    width: 1,
-    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+  roadVMajor: {
+    width: 9,
+    backgroundColor: '#94A3B8',
+    marginLeft: -4.5,
   },
-  routeLine: {
+
+  // City blocks
+  cityBlock: {
     position: 'absolute',
-    top: 45,
-    left: 80,
-    width: 110,
-    height: 2,
-    backgroundColor: '#DC2626',
-    transform: [{ rotate: '25deg' }],
+    backgroundColor: '#F8FAFC',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  userLocationPulseRing: {
+
+  // Route line
+  routeDashedLine: {
     position: 'absolute',
-    bottom: 35,
-    left: 45,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(37, 99, 235, 0.25)',
+    backgroundColor: '#0F6E6E',
+    opacity: 0.85,
+    transformOrigin: 'left center',
+  },
+
+  // Hospital pins
+  pinWrapper: {
+    position: 'absolute',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  pinBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  pinLabel: {
+    fontSize: 9,
+    fontWeight: '700' as any,
+    color: '#FFFFFF',
+    maxWidth: 70,
+  },
+  pinNeedle: {
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -1,
+  },
+
+  // User marker
+  userMarker: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 30,
   },
-  userLocationDot: {
+  userPulseRing: {
+    position: 'absolute',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: '#0F6E6E',
+    backgroundColor: 'transparent',
+  },
+  userDot: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0F6E6E',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#0F6E6E',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 4,
+    elevation: 4,
   },
-  userLocationLabelBox: {
+
+  // Map UI chrome
+  mapAttribBadge: {
     position: 'absolute',
-    bottom: 12,
-    left: 30,
-    backgroundColor: '#1E40AF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  userLocationLabelText: {
-    fontSize: 9,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-  mapPinContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-  },
-  mapPinContainerSelected: {
-    zIndex: 10,
-  },
-  mapPinBubble: {
+    bottom: 6,
+    left: 8,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#FCA5A5',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     paddingHorizontal: 6,
+    paddingVertical: 2.5,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  mapAttribText: { fontSize: 8.5, color: '#475569', fontWeight: '500' as any },
+  scaleBar: {
+    position: 'absolute',
+    bottom: 6,
+    right: 56,
+    alignItems: 'center',
+    gap: 1,
+  },
+  scaleBarLine: {
+    width: 40,
+    height: 2,
+    backgroundColor: '#64748B',
+    borderRadius: 1,
+  },
+  scaleBarText: { fontSize: 8.5, color: '#64748B', fontWeight: '600' as any },
+  zoomControls: {
+    position: 'absolute',
+    right: 10,
+    bottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  zoomBtn: {
+    width: 32,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  zoomDivider: { height: 1, backgroundColor: '#E2E8F0' },
+
+  // Selected hospital card
+  selectedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 14,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  selectedCardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  selectedTypeTag: {
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    ...Shadows.xs,
   },
-  mapPinBubbleSelected: {
-    backgroundColor: '#DC2626',
-    borderColor: '#991B1B',
-  },
-  mapPinText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#991B1B',
-  },
-  mapPinTextSelected: {
-    color: '#FFFFFF',
-  },
-  mapPinNeedle: {
-    width: 2,
-    height: 8,
-    backgroundColor: '#DC2626',
-  },
-  mapPinNeedleSelected: {
-    backgroundColor: '#991B1B',
-    width: 3,
-  },
-
-  // Selected Overlay Card
-  selectedOverlayCard: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
+  selectedTypeText: { fontSize: 10.5, fontWeight: '700' as any },
+  selectedEtaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E6F4F4',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    padding: Spacing[3],
-    gap: 10,
+    borderColor: '#99D4D4',
   },
-  selectedCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  selectedCardName: {
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: '#991B1B',
-  },
-  selectedCardAddress: {
-    fontSize: 11.5,
-    color: '#B91C1C',
-    marginTop: 1,
-  },
-  badgeChipsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
-  },
-  typeBadge: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.secondary,
-  },
-  erBadge: {
+  selectedEtaText: { fontSize: 11, fontWeight: '700' as any, color: '#0F6E6E' },
+  selectedDistText: { fontSize: 10.5, color: '#64748B' },
+  selectedName: { fontSize: 15, fontWeight: '700' as any, color: '#0F172A', letterSpacing: -0.2 },
+  selectedAddress: { fontSize: 12, color: '#64748B', marginTop: -4 },
+  selectedCapsBadges: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  capsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  erBadgeText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
-  },
-  icuBadge: {
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  icuBadgeText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#2563EB',
-  },
-  closestEtaBadge: {
-    backgroundColor: '#FEE2E2',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignItems: 'flex-end',
-  },
-  closestEtaText: {
-    fontSize: 11,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
-  },
-  closestDistText: {
-    fontSize: 10,
-    color: '#991B1B',
-  },
-  selectedActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  selectedNavBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: Colors.primary[600],
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  selectedNavText: {
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-  selectedCallBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    paddingVertical: 9,
-    borderRadius: 8,
+    borderColor: '#FECACA',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
   },
-  selectedCallText: {
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
+  capsBadgeText: { fontSize: 10, fontWeight: '700' as any, color: '#DC2626' },
+  hmoLabel: { fontSize: 10.5, fontWeight: '600' as any, color: '#475569', marginTop: 2 },
+  hmoList: { fontSize: 11, color: '#64748B', marginTop: -4 },
+  selectedActions: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  navBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#0F6E6E',
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: '#0F6E6E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
+  navBtnText: { fontSize: 12.5, fontWeight: '700' as any, color: '#FFFFFF' },
+  callErBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  callErBtnText: { fontSize: 12.5, fontWeight: '700' as any, color: '#DC2626' },
 
-  // Search Section
-  searchSection: {
-    gap: 8,
-  },
+  // Search
+  searchSection: { gap: 8 },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: Colors.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 44,
   },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: Colors.text.primary,
-  },
-  categoryPill: {
+  searchInput: { flex: 1, fontSize: 13, color: '#0F172A' },
+  filterPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
-    backgroundColor: Colors.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#E2E8F0',
   },
-  categoryPillActive: {
-    backgroundColor: Colors.primary[600],
-    borderColor: Colors.primary[600],
-  },
-  categoryPillText: {
-    fontSize: 11.5,
-    fontWeight: FontWeight.medium,
-    color: Colors.text.secondary,
-  },
-  categoryPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: FontWeight.bold,
-  },
+  filterPillActive: { backgroundColor: '#0F6E6E', borderColor: '#0F6E6E' },
+  filterPillText: { fontSize: 11.5, fontWeight: '600' as any, color: '#64748B' },
+  filterPillTextActive: { color: '#FFFFFF' },
 
-  // List Section
-  listSection: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
+  // List
+  listSection: { gap: 10 },
+  listHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  listTitle: { fontSize: 12.5, fontWeight: '700' as any, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8 },
+  countBadge: { backgroundColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  countBadgeText: { fontSize: 11, fontWeight: '700' as any, color: '#0F6E6E' },
   hospitalCard: {
-    padding: Spacing[3],
-    gap: 10,
-  },
-  hospitalCardSelected: {
-    borderColor: Colors.primary[600],
-    borderWidth: 1.5,
-  },
-  cardMainRow: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 12,
     flexDirection: 'row',
     gap: 10,
     alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  hospitalIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: Colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
+  hospitalCardSelected: {
+    borderColor: '#0F6E6E',
+    backgroundColor: '#F0F9F9',
+    shadowColor: '#0F6E6E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  hospitalName: {
-    fontSize: 13.5,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
+  rankBadge: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  rankText: { fontSize: 11, fontWeight: '700' as any },
+  cardTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  cardHospName: { fontSize: 13.5, fontWeight: '700' as any, color: '#0F172A' },
+  cardHospAddr: { fontSize: 11.5, color: '#64748B', marginTop: 2 },
+  cardDistBlock: { alignItems: 'flex-end' },
+  cardDistKm: { fontSize: 13, fontWeight: '700' as any, color: '#0F6E6E' },
+  cardDistTime: { fontSize: 10.5, color: '#64748B', marginTop: 1 },
+  cardBadgesRow: { flexDirection: 'row', gap: 5, marginTop: 6, flexWrap: 'wrap' },
+  cardTypeBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 4,
   },
-  hospitalAddress: {
-    fontSize: 11.5,
-    color: Colors.text.secondary,
-    marginTop: 2,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 4,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-  },
-  metaText: {
-    fontSize: 11,
-    color: Colors.text.secondary,
-  },
-  metaDot: {
-    color: '#CBD5E1',
-    fontSize: 10,
-  },
-  cardActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-  },
+  cardTypeText: { fontSize: 10, fontWeight: '700' as any },
+  erChip: { backgroundColor: '#FEF2F2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#FECACA' },
+  erChipText: { fontSize: 9.5, fontWeight: '700' as any, color: '#DC2626' },
+  icuChip: { backgroundColor: '#EFF6FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#BFDBFE' },
+  icuChipText: { fontSize: 9.5, fontWeight: '700' as any, color: '#1D4ED8' },
+  bloodChip: { backgroundColor: '#F5F3FF', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#DDD6FE' },
+  bloodChipText: { fontSize: 9.5, fontWeight: '700' as any, color: '#6D28D9' },
+  cardActionsRow: { flexDirection: 'row', gap: 6, marginTop: 8, alignItems: 'center' },
   cardNavBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 4,
-    backgroundColor: Colors.primary[50],
+    backgroundColor: '#E6F4F4',
     borderWidth: 1,
-    borderColor: Colors.primary[100] ?? '#BFDBFE',
-    paddingVertical: 7,
+    borderColor: '#99D4D4',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 6,
   },
-  cardNavText: {
-    fontSize: 11.5,
-    fontWeight: FontWeight.bold,
-    color: Colors.primary[600],
-  },
+  cardNavText: { fontSize: 11, fontWeight: '700' as any, color: '#0F6E6E' },
   cardCallBtn: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 4,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: Colors.border,
-    paddingVertical: 7,
+    borderColor: '#FECACA',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 6,
   },
-  cardCallText: {
-    fontSize: 11.5,
-    fontWeight: FontWeight.bold,
-    color: '#DC2626',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    gap: 6,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.secondary,
-  },
-  emptySub: {
-    fontSize: 11.5,
-    color: Colors.text.disabled,
-    textAlign: 'center',
-    paddingHorizontal: 24,
-  },
+  cardCallText: { fontSize: 11, fontWeight: '700' as any, color: '#DC2626' },
+  cardPhoneLabel: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 3, justifyContent: 'flex-end' },
+  cardPhoneText: { fontSize: 10.5, color: '#64748B' },
+  emptyState: { alignItems: 'center', paddingVertical: 36, gap: 8 },
+  emptyTitle: { fontSize: 14, fontWeight: '700' as any, color: '#0F172A' },
+  emptySub: { fontSize: 12, color: '#64748B', textAlign: 'center' },
 });

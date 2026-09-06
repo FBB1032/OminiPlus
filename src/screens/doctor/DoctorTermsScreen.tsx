@@ -118,7 +118,7 @@ export default function DoctorTermsScreen({ navigation, route }: any) {
 
       <View style={styles.footer}>
         <Button
-          label={isAccepted ? 'Terms Accepted ✓' : 'I Agree & Accept Terms'}
+          label={isAccepted ? 'Terms Accepted' : 'I Agree & Accept Terms'}
           onPress={handleConfirmAccept}
           variant={isAccepted ? 'secondary' : 'primary'}
         />

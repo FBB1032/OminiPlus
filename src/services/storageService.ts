@@ -35,12 +35,42 @@ export const storageService = {
     }
   },
 
+  async getItem<T = any>(key: string): Promise<T | null> {
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw) as T;
+      } catch {
+        return raw as unknown as T;
+      }
+    } catch {
+      return null;
+    }
+  },
+
+  async setItem<T = any>(key: string, value: T): Promise<void> {
+    try {
+      if (typeof value === 'string') {
+        await AsyncStorage.setItem(key, value);
+      } else {
+        await AsyncStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch {
+      // silently fail
+    }
+  },
+
   async remove(key: string): Promise<void> {
     try {
       await AsyncStorage.removeItem(key);
     } catch {
       // silently fail
     }
+  },
+
+  async removeItem(key: string): Promise<void> {
+    return this.remove(key);
   },
 
   async multiRemove(keys: string[]): Promise<void> {

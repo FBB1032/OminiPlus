@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Table, Column } from '@/components/ui/Table';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { AIFlag } from '@/types';
 
 const INITIAL_FLAGS: AIFlag[] = Array.from({ length: 15 }, (_, i) => ({
@@ -50,7 +52,9 @@ export default function AIMonitoringPage() {
   const [flags, setFlags] = useState<AIFlag[]>(INITIAL_FLAGS);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'reviewed' | 'dismissed'>('all');
   const [selectedFlag, setSelectedFlag] = useState<AIFlag | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
 
   const handleUpdateStatus = (flagId: string, nextStatus: 'reviewed' | 'dismissed') => {
     setFlags(prev =>
@@ -62,6 +66,10 @@ export default function AIMonitoringPage() {
   const filtered = flags.filter(f =>
     statusFilter === 'all' || f.status === statusFilter
   );
+
+  const displayedFlags = isSeeAll
+    ? filtered
+    : filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const stats = {
     total: flags.length,
@@ -142,7 +150,20 @@ export default function AIMonitoringPage() {
           <p className="page-subtitle">Inspect flagged interactions and prompt overrides in doctor & patient messaging chats.</p>
         </div>
 
-        <button className="btn btn-secondary">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => exportToCsv('ai_moderation_flags', filtered.map(f => ({
+            id: f.id,
+            userId: f.userId,
+            userRole: f.userRole,
+            prompt: f.prompt,
+            reason: f.reason,
+            severity: f.severity,
+            status: f.status,
+            createdAt: f.createdAt
+          })))}
+        >
           <Download size={14} /> Export CSV
         </button>
       </div>
@@ -201,7 +222,10 @@ export default function AIMonitoringPage() {
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
+                onClick={() => {
+                  setStatusFilter(tab.key);
+                  setPage(1);
+                }}
                 className={`tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
               >
                 {tab.label}
@@ -210,29 +234,19 @@ export default function AIMonitoringPage() {
           </div>
         </div>
 
-        <Table columns={columns} data={showAll ? filtered : filtered.slice(0, 10)} keyExtractor={f => f.id} />
+        <Table columns={columns} data={displayedFlags} keyExtractor={f => f.id} />
 
-        {filtered.length > 10 && (
-          <div style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #f1f5f9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#fafafa',
-          }}>
-            <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-              Showing {showAll ? filtered.length : Math.min(10, filtered.length)} of {filtered.length} flagged queries
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? 'Show First 10' : `See All (${filtered.length})`}
-            </Button>
-          </div>
-        )}
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filtered.length / pageSize)}
+          onPageChange={setPage}
+          total={filtered.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* Query Detail & Verification Modal */}

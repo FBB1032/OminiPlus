@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Pagination } from '@/components/ui/Pagination';
 import type { PaymentTransaction, PaymentStatus } from '@/types';
 
 const INITIAL_TRANSACTIONS: PaymentTransaction[] = [
@@ -152,6 +153,9 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PaymentStatus>('all');
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+  const [isSeeAll, setIsSeeAll] = useState(false);
 
   // Dialog actions state
   const [actionDialog, setActionDialog] = useState<{
@@ -174,6 +178,10 @@ export default function PaymentsPage() {
     const matchesStatus = statusFilter === 'all' || tx.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const displayedTransactions = isSeeAll
+    ? filteredTransactions
+    : filteredTransactions.slice((page - 1) * pageSize, page * pageSize);
 
   // KPI calculations
   const totalVolume = transactions.reduce((acc, tx) => acc + (tx.status !== 'refunded' ? tx.amount : 0), 0);
@@ -316,7 +324,10 @@ export default function PaymentsPage() {
               type="text"
               placeholder="Search reference, patient, doctor, or appointment ID..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{
                 width: '100%',
                 padding: '9px 12px 9px 36px',
@@ -335,7 +346,10 @@ export default function PaymentsPage() {
             {(['all', 'escrowed', 'completed', 'refunded'] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => setStatusFilter(tab)}
+                onClick={() => {
+                  setStatusFilter(tab);
+                  setPage(1);
+                }}
                 style={{
                   padding: '6px 14px',
                   borderRadius: 7,
@@ -379,7 +393,7 @@ export default function PaymentsPage() {
                   </td>
                 </tr>
               ) : (
-                filteredTransactions.map((tx) => (
+                displayedTransactions.map((tx) => (
                   <tr
                     key={tx.id}
                     style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 120ms' }}
@@ -493,6 +507,18 @@ export default function PaymentsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filteredTransactions.length / pageSize)}
+          onPageChange={setPage}
+          total={filteredTransactions.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* ── Transaction Detail Modal ────────────────────────────────────────── */}

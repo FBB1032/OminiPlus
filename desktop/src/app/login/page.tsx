@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Mail, Lock, Shield, Server, Activity, Users2, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Shield, Server, Activity, Users2, ShieldCheck, Smartphone, RefreshCw, KeyRound } from 'lucide-react';
 import { useAuthStore, MOCK_ADMINS } from '@/store/authStore';
 import { ROLE_LABELS, ROLE_COLORS } from '@/store/permissionStore';
 import { Button } from '@/components/ui/Button';
@@ -315,17 +315,55 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 isLoading={isSubmitting}
-                style={{ width: '100%', height: 42, fontSize: 14, fontWeight: 650, marginTop: 8 }}
+                style={{ width: '100%', height: 44, fontSize: 14, fontWeight: 650, marginTop: 8 }}
               >
                 Sign In as {ROLE_LABELS[selectedRole]}
               </Button>
             </form>
 
+            {/* Active Credentials Hint */}
             <div style={{
               background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12,
               marginTop: 16, fontSize: 12, color: '#64748b', textAlign: 'center'
             }}>
-              Demo Details: <strong style={{ color: '#1e293b' }}>admin@ominipulse.ai</strong> password: <strong style={{ color: '#1e293b' }}>admin123</strong>
+              Active Role Credentials: <strong style={{ color: '#0f172a' }}>{ROLE_CREDENTIALS[selectedRole].email}</strong> · password: <strong style={{ color: '#0f172a' }}>{ROLE_CREDENTIALS[selectedRole].pass}</strong>
+            </div>
+
+            {/* Phone & Desktop Sync / Mobile-Only Registration Notice */}
+            <div style={{
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+              border: '1px solid #a7f3d0',
+              borderRadius: 12,
+              padding: 14,
+              marginTop: 14,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <Smartphone size={16} style={{ color: '#059669', flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: '#065f46', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Mobile-Only Account Creation
+                </span>
+              </div>
+              <p style={{ fontSize: 11.5, color: '#047857', lineHeight: 1.5, margin: 0 }}>
+                Patient and Doctor account registration is conducted strictly via the <strong>OminiPulse Mobile App</strong> with real-time biometric and MDCN credential verification. Desktop is reserved for credentialed clinical and administrative operations.
+              </p>
+              <div style={{
+                marginTop: 8,
+                paddingTop: 8,
+                borderTop: '1px solid #d1fae5',
+                fontSize: 11.5,
+                color: '#065f46',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <RefreshCw size={13} style={{ color: '#059669', flexShrink: 0 }} />
+                  <strong>Unified Doctor Login:</strong>
+                </span>
+                <code style={{ background: '#dcfce7', padding: '2px 6px', borderRadius: 4, fontWeight: 600, color: '#166534' }}>
+                  doctor@ominipulse.ai / admin123
+                </code>
+              </div>
             </div>
 
           </div>

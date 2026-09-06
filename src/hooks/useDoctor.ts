@@ -61,6 +61,8 @@ export const useCreatePrescription = () => {
       queryClient.invalidateQueries({
         queryKey: QUERY_KEYS.patientPrescriptions(variables.patientId),
       });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patientPrescriptionHistory() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patientHome });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctorDashboard });
     },
   });
@@ -73,6 +75,8 @@ export const useUpdateAppointmentStatus = () => {
       doctorApi.updateAppointmentStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctorAppointments() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patientAppointments() });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patientHome });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctorDashboard });
     },
   });

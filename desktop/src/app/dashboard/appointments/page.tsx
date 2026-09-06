@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Table, Column } from '@/components/ui/Table';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { Appointment, AppointmentStatus } from '@/types';
 
 // Helper to format patient identity into initials + masked ID
@@ -56,7 +58,9 @@ export default function AppointmentsPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | AppointmentStatus>('all');
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
 
   const filtered = appointments.filter((a) => {
     // Privacy-aware search (only search Doctor's name or Patient Initials/ID representation)
@@ -70,6 +74,10 @@ export default function AppointmentsPage() {
     const matchesStatus = statusFilter === 'all' || a.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const displayedAppointments = isSeeAll
+    ? filtered
+    : filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const handleCancelAppointment = (apptId: string) => {
     setAppointments(prev => 
@@ -174,7 +182,20 @@ export default function AppointmentsPage() {
             </div>
           </div>
 
-          <Button variant="secondary" size="sm" leftIcon={<Download size={14} />}>
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<Download size={14} />}
+            onClick={() => exportToCsv('appointments_registry', filtered.map(a => ({
+              id: a.id,
+              doctor: `Dr. ${a.doctor.firstName} ${a.doctor.lastName}`,
+              specialization: a.doctor.specialization,
+              scheduledAt: a.scheduledAt,
+              type: a.type,
+              status: a.status,
+              fee: a.consultationFee ?? 0
+            })))}
+          >
             Export CSV
           </Button>
         </div>
@@ -228,7 +249,10 @@ export default function AppointmentsPage() {
                 type="text"
                 placeholder="Search by doctor or patient reference ID"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 style={{
                   background: 'transparent', border: 'none', outline: 'none',
                   fontSize: 13.5, color: '#334155', width: '100%', fontFamily: 'inherit',
@@ -238,7 +262,10 @@ export default function AppointmentsPage() {
 
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as any);
+                setPage(1);
+              }}
               className="select"
               style={{
                 width: 184,
@@ -258,32 +285,20 @@ export default function AppointmentsPage() {
         </div>
 
         <div style={{ padding: '10px 8px 8px' }}>
-          <Table columns={columns} data={showAll ? filtered : filtered.slice(0, 10)} keyExtractor={(a) => a.id} />
+          <Table columns={columns} data={displayedAppointments} keyExtractor={(a) => a.id} />
         </div>
 
-        {filtered.length > 10 && (
-          <div style={{
-            padding: '16px 24px 22px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            flexWrap: 'wrap',
-            borderTop: '1px solid #f1f5f9',
-            background: '#ffffff',
-          }}>
-            <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-              Showing {showAll ? filtered.length : Math.min(10, filtered.length)} of {filtered.length} appointments
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? 'Show First 10' : `See All (${filtered.length})`}
-            </Button>
-          </div>
-        )}
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filtered.length / pageSize)}
+          onPageChange={setPage}
+          total={filtered.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* Appointment Audit Details Modal */}

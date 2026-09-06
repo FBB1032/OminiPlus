@@ -33,6 +33,7 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   const {
     control,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -41,6 +42,18 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
       password: '',
     },
   });
+
+  const handleApplyDemoDoctor = () => {
+    setValue('email', 'doctor@ominipulse.ai');
+    setValue('password', 'admin123');
+    showToastSuccess('Doctor Credentials Applied', 'Dr. Folake Ademola (Cardiologist, MDCN verified)');
+  };
+
+  const handleApplyDemoPatient = () => {
+    setValue('email', 'patient@ominipulse.ai');
+    setValue('password', 'admin123');
+    showToastSuccess('Patient Credentials Applied', 'Chioma Egwu (Health records active)');
+  };
 
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
@@ -116,6 +129,35 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
                   <Text style={styles.forgotText}>Forgot password?</Text>
                 </TouchableOpacity>
 
+                {/* 1-Tap Quick Demo Credentials */}
+                <View style={styles.demoCard}>
+                  <View style={styles.demoHeaderRow}>
+                    <Ionicons name="flash-outline" size={13} color="#0D9488" />
+                    <Text style={styles.demoCardTitle}>COMPETITION QUICK-FILL</Text>
+                  </View>
+                  <View style={styles.demoButtonsRow}>
+                    <TouchableOpacity
+                      style={styles.demoDoctorBtn}
+                      onPress={handleApplyDemoDoctor}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="medkit" size={13} color="#065F46" />
+                      <Text style={styles.demoDoctorText}>Doctor (Dr. Folake)</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.demoPatientBtn}
+                      onPress={handleApplyDemoPatient}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="person" size={13} color="#1E40AF" />
+                      <Text style={styles.demoPatientText}>Patient (Chioma)</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.demoSubtitle}>
+                    Doctor login is identical on Phone & Desktop · doctor@ominipulse.ai
+                  </Text>
+                </View>
+
                 <TouchableOpacity
                   style={styles.submitBtn}
                   onPress={handleSubmit(onSubmit)}
@@ -127,6 +169,14 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
                 {/* Social Login Options */}
                 <SocialLoginButtons variant="login" />
+
+                {/* Mobile-Only Account Creation Reminder */}
+                <View style={styles.registerNoticeCard}>
+                  <Ionicons name="phone-portrait-outline" size={14} color="#0D9488" style={{ marginRight: 6 }} />
+                  <Text style={styles.registerNoticeText}>
+                    Account creation for Doctors & Patients is conducted exclusively on mobile.
+                  </Text>
+                </View>
 
                 {/* Switch to Register */}
                 <View style={styles.footerRow}>
@@ -144,13 +194,6 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
                   >
                     <Text style={styles.registerLink}>Sign up instead</Text>
                   </TouchableOpacity>
-                </View>
-
-                {/* Dots indicator */}
-                <View style={styles.dotsContainer}>
-                  <View style={styles.dotInactive} />
-                  <View style={styles.dotActive} />
-                  <View style={styles.dotInactive} />
                 </View>
               </View>
             </View>
@@ -269,23 +312,87 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.bold,
     textDecorationLine: 'underline',
   },
-  dotsContainer: {
+  demoCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    padding: 10,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  demoHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 8,
+  },
+  demoCardTitle: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#047857',
+    letterSpacing: 0.5,
+  },
+  demoButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  demoDoctorBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    marginTop: Spacing[3],
+    gap: 5,
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 10,
+    paddingVertical: 7,
   },
-  dotActive: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#2CB48E',
+  demoDoctorText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065F46',
   },
-  dotInactive: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: '#D1ECE3',
+  demoPatientBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    paddingVertical: 7,
+  },
+  demoPatientText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E40AF',
+  },
+  demoSubtitle: {
+    fontSize: 10,
+    color: '#059669',
+    textAlign: 'center',
+    marginTop: 6,
+  },
+  registerNoticeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    padding: 10,
+    marginTop: 6,
+  },
+  registerNoticeText: {
+    fontSize: 11,
+    color: '#475569',
+    textAlign: 'left',
+    lineHeight: 15,
+    flex: 1,
   },
 });

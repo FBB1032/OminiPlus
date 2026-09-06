@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Building2, Search, Download, Eye, CheckCircle, XCircle, 
@@ -12,6 +13,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { Hospital, PartnerStatus } from '@/types';
 
 interface VerificationHospital extends Hospital {
@@ -141,13 +144,16 @@ const STATUS_VARIANTS: Record<PartnerStatus, 'success' | 'warning' | 'neutral' |
 };
 
 export default function HospitalsPage() {
+  const router = useRouter();
   const [hospitals, setHospitals] = useState<VerificationHospital[]>(INITIAL_HOSPITALS);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PartnerStatus>('all');
   const [selectedHospital, setSelectedHospital] = useState<VerificationHospital | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewDocUrl, setPreviewDocUrl] = useState<{ title: string; url: string } | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
   
   // Onboard Modal states
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -192,6 +198,10 @@ export default function HospitalsPage() {
     const matchesStatus = statusFilter === 'all' || h.partnerStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const displayedHospitals = isSeeAll
+    ? filteredHospitals
+    : filteredHospitals.slice((page - 1) * pageSize, page * pageSize);
 
   // KPI Calculations
   const totalCount = hospitals.length;
@@ -300,7 +310,23 @@ export default function HospitalsPage() {
         </div>
         
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => exportToCsv('hospitals_network_registry', hospitals.map(h => ({
+              id: h.id,
+              name: h.name,
+              city: h.city,
+              country: h.country,
+              phone: h.phone,
+              email: h.email,
+              partnerStatus: h.partnerStatus,
+              doctorCount: h.doctorCount,
+              facilityType: h.facilityType,
+              adminName: h.adminName,
+              createdAt: h.createdAt
+            })))}
+          >
             <Download size={14} /> Export CSV
           </button>
           <Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setIsNewModalOpen(true)}>
@@ -362,7 +388,10 @@ export default function HospitalsPage() {
               type="text"
               placeholder="Search by name, city..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{
                 background: 'transparent', border: 'none', outline: 'none',
                 fontSize: 13, color: '#334155', width: '100%', fontFamily: 'inherit',
@@ -381,7 +410,10 @@ export default function HospitalsPage() {
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
+                onClick={() => {
+                  setStatusFilter(tab.key);
+                  setPage(1);
+                }}
                 className={`tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
               >
                 {tab.label}
@@ -415,7 +447,7 @@ export default function HospitalsPage() {
                   </td>
                 </tr>
               ) : (
-                (showAll ? filteredHospitals : filteredHospitals.slice(0, 10)).map((hosp) => {
+                displayedHospitals.map((hosp) => {
                   return (
                     <tr key={hosp.id}>
                       {/* Name & Contact */}
@@ -436,76 +468,61 @@ export default function HospitalsPage() {
                         </div>
                       </td>
 
-                      {/* Doctor Count */}
+                      {/* Doctors */}
                       <td>
-                        <p style={{ fontSize: 13, color: '#334155', fontWeight: 650 }}>{hosp.doctorCount || 0} Doctors</p>
+                        <span style={{
+                          background: '#f8fafc', border: '1px solid #e2e8f0',
+                          fontSize: 12, fontWeight: 600, color: '#475569',
+                          padding: '4px 10px', borderRadius: 8, display: 'inline-block'
+                        }}>
+                          {hosp.doctorCount} Doctors
+                        </span>
                       </td>
 
                       {/* Location */}
                       <td>
                         <div>
-                          <p style={{ fontWeight: 500, color: '#334155', fontSize: 13 }}>{hosp.address}</p>
-                          <p style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{hosp.city}, {hosp.country}</p>
+                          <p style={{ fontSize: 12.5, fontWeight: 500, color: '#334155' }}>{hosp.city}, {hosp.country}</p>
+                          <p style={{ fontSize: 11.5, color: '#94a3b8', marginTop: 1 }}>{hosp.address}</p>
                         </div>
                       </td>
 
-                      {/* Accreditation Files */}
+                      {/* Documents / Verification */}
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <Badge variant="teal" size="sm">
-                            <FileText size={10} /> {hosp.documentsCount}/2 Files
+                            <FileText size={10} /> {hosp.documentsCount} Permits
                           </Badge>
+                          <span style={{ fontSize: 11, color: '#94a3b8' }}>
+                            {hosp.verificationSubmittedAt ? new Date(hosp.verificationSubmittedAt).toLocaleDateString() : 'N/A'}
+                          </span>
                         </div>
                       </td>
 
                       {/* Onboard Date */}
                       <td>
-                        <span style={{ fontSize: 12.5, color: '#475569' }}>
+                        <span style={{ fontSize: 12, color: '#475569' }}>
                           {new Date(hosp.createdAt).toLocaleDateString()}
                         </span>
                       </td>
 
-                      {/* Status */}
+                      {/* Partner Status */}
                       <td>
                         <Badge variant={STATUS_VARIANTS[hosp.partnerStatus]}>
-                          <span style={{
-                            width: 5, height: 5, borderRadius: '50%', 
-                            background: hosp.partnerStatus === 'active' ? '#22c55e' : 
-                                        hosp.partnerStatus === 'pending' ? '#f59e0b' : 
-                                        hosp.partnerStatus === 'rejected' ? '#ef4444' : '#a855f7', 
-                            display: 'inline-block' 
-                          }} />
+                          {hosp.partnerStatus === 'active' ? (
+                            <CheckCircle size={12} style={{ marginRight: 4 }} />
+                          ) : hosp.partnerStatus === 'pending' ? (
+                            <Clock size={12} style={{ marginRight: 4 }} />
+                          ) : (
+                            <XCircle size={12} style={{ marginRight: 4 }} />
+                          )}
                           {hosp.partnerStatus.charAt(0).toUpperCase() + hosp.partnerStatus.slice(1)}
                         </Badge>
                       </td>
 
                       {/* Actions */}
                       <td>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6, flexWrap: 'nowrap' }}>
-                          {/* Admin Login Credentials Slip */}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            leftIcon={<Key size={12} />}
-                            onClick={() => setCredentialsHospital(hosp)}
-                            title="View / Copy Hospital Admin Login Credentials"
-                          >
-                            Admin Login
-                          </Button>
-
-                          {/* Direct Portal Link */}
-                          <Link href={`/dashboard/hospital-portal?facilityId=${hosp.id}`} style={{ textDecoration: 'none' }}>
-                            <Button 
-                              variant="secondary" 
-                              size="sm"
-                              leftIcon={<ExternalLink size={12} />}
-                              title={`Open ${hosp.name} Portal Dashboard`}
-                            >
-                              Portal
-                            </Button>
-                          </Link>
-
-                          {/* Review Accreditations */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
                           <Button 
                             variant="secondary" 
                             size="sm"
@@ -514,6 +531,18 @@ export default function HospitalsPage() {
                           >
                             Review
                           </Button>
+
+                          {/* Quick Hospital Portal Access */}
+                          <Link href={`/dashboard/hospital-portal?hospitalId=${hosp.id}`} style={{ textDecoration: 'none' }}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={<ExternalLink size={12} />}
+                              title="Enter Clinical Hospital Portal as Staff/Director"
+                            >
+                              Open Portal
+                            </Button>
+                          </Link>
                           
                           {hosp.partnerStatus === 'pending' && (
                             <>
@@ -522,14 +551,12 @@ export default function HospitalsPage() {
                                 size="sm" 
                                 leftIcon={<CheckCircle size={12} />}
                                 onClick={() => openConfirmDialog('approve', hosp.id)}
-                                title="Approve Facility"
                               />
                               <Button 
                                 variant="danger" 
                                 size="sm" 
                                 leftIcon={<XCircle size={12} />}
                                 onClick={() => openConfirmDialog('reject', hosp.id)}
-                                title="Reject Facility"
                               />
                             </>
                           )}
@@ -554,27 +581,17 @@ export default function HospitalsPage() {
           </table>
         </div>
 
-        {filteredHospitals.length > 10 && (
-          <div style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #f1f5f9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#fafafa',
-          }}>
-            <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-              Showing {showAll ? filteredHospitals.length : Math.min(10, filteredHospitals.length)} of {filteredHospitals.length} partner hospitals
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? 'Show First 10' : `See All (${filteredHospitals.length})`}
-            </Button>
-          </div>
-        )}
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filteredHospitals.length / pageSize)}
+          onPageChange={setPage}
+          total={filteredHospitals.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* Onboard New Hospital Modal */}
@@ -1305,11 +1322,13 @@ export default function HospitalsPage() {
               </Button>
 
               <div style={{ display: 'flex', gap: 8 }}>
-                <Link href={`/dashboard/hospital-portal?facilityId=${credentialsHospital.id}`} style={{ textDecoration: 'none' }}>
-                  <Button variant="secondary" size="sm">
-                    <ExternalLink size={14} style={{ marginRight: 6 }} /> Open Hospital Portal
-                  </Button>
-                </Link>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => router.push(`/dashboard/hospital-portal?facilityId=${credentialsHospital.id}`)}
+                >
+                  <ExternalLink size={14} style={{ marginRight: 6 }} /> Open Hospital Portal
+                </Button>
                 <Button variant="primary" size="sm" onClick={() => setCredentialsHospital(null)}>
                   Done
                 </Button>

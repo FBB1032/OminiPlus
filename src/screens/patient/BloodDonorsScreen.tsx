@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Shadows } from '../../theme';
 import { useToast } from '../../hooks/useAuth';
 import { HeartbeatLoader, HeartbeatRefreshControl, HeartbeatRefreshHeader } from '../../components';
+import { useBloodDonorsStore } from '../../store/bloodDonorsStore';
 
 export interface HospitalBloodBank {
   id: string;
@@ -132,6 +133,18 @@ export default function BloodDonorsScreen({ navigation, route }: any) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const {
+    donors,
+    emergencyRequests,
+    loadData,
+    registerDonor,
+    submitEmergencyRequest,
+  } = useBloodDonorsStore();
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
   // Active Request Pipeline (Stage 1 to 8)
   const [activePipeline, setActivePipeline] = useState<BloodRequestPipeline | null>({
     id: 'REQ-8821',
@@ -151,6 +164,12 @@ export default function BloodDonorsScreen({ navigation, route }: any) {
     screenedAtFacility: false,
     donationCompleted: false,
   });
+
+  useEffect(() => {
+    if (emergencyRequests.length > 0) {
+      setActivePipeline(emergencyRequests[0] as any);
+    }
+  }, [emergencyRequests]);
 
   // Modals
   const [isCreateRequestModalOpen, setIsCreateRequestModalOpen] = useState(false);
@@ -201,8 +220,7 @@ export default function BloodDonorsScreen({ navigation, route }: any) {
       return;
     }
 
-    const newRequest: BloodRequestPipeline = {
-      id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+    submitEmergencyRequest({
       patientName: reqPatient.trim(),
       relativeName: reqRelative.trim(),
       relationship: reqRelationship,
@@ -212,15 +230,10 @@ export default function BloodDonorsScreen({ navigation, route }: any) {
       hospitalName: reqHospital,
       hospitalWard: reqWard.trim(),
       attendingDoctor: reqDoctor.trim() || 'Attending Physician',
-      timestamp: 'Just now',
-      stage: 3, // Immediately moves through Stage 1 -> 2 -> 3 (OminiPulse auto-verifies license)
-      matchedDonorsCount: 4,
-      respondedDonorsCount: 0,
-      screenedAtFacility: false,
-      donationCompleted: false,
-    };
+    }).then((created) => {
+      setActivePipeline(created as any);
+    });
 
-    setActivePipeline(newRequest);
     setIsCreateRequestModalOpen(false);
 
     Alert.alert(
@@ -240,7 +253,7 @@ export default function BloodDonorsScreen({ navigation, route }: any) {
   const handleDonorRespond = (hospitalName: string, bloodGroupNeeded: string) => {
     Alert.alert(
       'Confirm Donation at Approved Facility',
-      `You are volunteering to donate ${bloodGroupNeeded} blood for a verified medical request at:\n\n🏥 ${hospitalName}\n\n• You will NOT be contacted by strangers or asked to message anyone.\n• You will report directly to the hospital laboratory for your pre-donation screening (hemoglobin & vitals check).\n• Proceed to accept?`,
+      `You are volunteering to donate ${bloodGroupNeeded} blood for a verified medical request at:\n\nFacility: ${hospitalName}\n\n• You will NOT be contacted by strangers or asked to message anyone.\n• You will report directly to the hospital laboratory for your pre-donation screening (hemoglobin & vitals check).\n• Proceed to accept?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -904,10 +917,22 @@ export default function BloodDonorsScreen({ navigation, route }: any) {
               </Text>
               <TouchableOpacity
                 style={styles.submitRequestBtn}
-                onPress={() => {
+                onPress={async () => {
+                  await registerDonor({
+                    name: 'Chioma Egwu (Volunteer)',
+                    bloodGroup: 'O+',
+                    genotype: 'AA',
+                    city: 'Lagos (Ikeja)',
+                    latitude: 6.6018,
+                    longitude: 3.3515,
+                    phone: '+234 803 555 1234',
+                    availabilityStatus: 'Available Anytime',
+                    lastDonationDate: new Date().toISOString().split('T')[0],
+                    gender: 'Female',
+                  });
                   setMyDonorStatus({
                     registered: true,
-                    name: 'Registered Donor',
+                    name: 'Chioma Egwu (Volunteer)',
                     bloodGroup: 'O+',
                     genotype: 'AA',
                     lastDonationDate: 'Pending first donation',
@@ -1155,7 +1180,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   timelineDotPassed: {
-    backgroundColor: '#10B981',
+    backgroundColor: '#0F6E6E',
   },
   timelineDotCurrent: {
     backgroundColor: '#DC2626',

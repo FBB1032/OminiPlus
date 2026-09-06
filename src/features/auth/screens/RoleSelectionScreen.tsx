@@ -120,13 +120,6 @@ export const RoleSelectionScreen = ({ navigation }: AuthScreenProps<'RoleSelecti
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Pagination / Dots indicator */}
-            <View style={styles.dotsContainer}>
-              <View style={styles.dotInactive} />
-              <View style={styles.dotInactive} />
-              <View style={styles.dotActive} />
-            </View>
           </View>
 
           {/* Underneath Card: Already have an account? Login */}
@@ -223,26 +216,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#249C76',
     letterSpacing: -0.2,
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 24,
-    marginBottom: 4,
-  },
-  dotActive: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: '#2CB48E',
-  },
-  dotInactive: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#D1ECE3',
   },
   loginFooter: {
     flexDirection: 'row',

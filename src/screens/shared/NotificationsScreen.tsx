@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -111,15 +111,33 @@ export default function NotificationsScreen({ navigation }: any) {
   const { user } = useAuth();
   const isDoctor = user?.role === 'doctor';
 
-  const notifications = useMemo(() => {
+  const initial = useMemo(() => {
     return isDoctor ? MOCK_DOCTOR_NOTIFICATIONS : MOCK_PATIENT_NOTIFICATIONS;
   }, [isDoctor]);
+
+  const [notifications, setNotifications] = useState(initial);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const markAsRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  }, []);
+
+  const markAllAsRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  }, []);
 
   const renderItem = ({ item }: { item: any }) => {
     const config = typeConfigs[item.type as NotificationType] || typeConfigs.general;
 
     return (
-      <View style={[styles.notificationCard, !item.isRead && styles.unreadCard]}>
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => markAsRead(item.id)}
+        style={[styles.notificationCard, !item.isRead && styles.unreadCard]}
+      >
         <View style={[styles.iconContainer, { backgroundColor: config.bgColor }]}>
           <Ionicons name={config.icon} size={20} color={config.color} />
         </View>
@@ -141,7 +159,7 @@ export default function NotificationsScreen({ navigation }: any) {
             })}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -164,29 +182,15 @@ export default function NotificationsScreen({ navigation }: any) {
             {isDoctor ? 'Appointments, Payouts & MDCN Verification' : 'Consultations, E-Prescriptions & Vitals Alerts'}
           </Text>
         </View>
-        <View
-          style={[
-            styles.roleChip,
-            {
-              backgroundColor: isDoctor ? '#F0FDF4' : '#EFF6FF',
-              borderColor: isDoctor ? '#BBF7D0' : '#BFDBFE',
-            },
-          ]}
-        >
-          <Ionicons
-            name={isDoctor ? 'medkit' : 'person'}
-            size={11}
-            color={isDoctor ? '#059669' : '#2563EB'}
-          />
-          <Text
-            style={[
-              styles.roleChipText,
-              { color: isDoctor ? '#059669' : '#2563EB' },
-            ]}
+        {unreadCount > 0 && (
+          <TouchableOpacity
+            onPress={markAllAsRead}
+            style={styles.readAllBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            {isDoctor ? 'Doctor' : 'Patient'}
-          </Text>
-        </View>
+            <Text style={styles.readAllText}>Read All</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {!notifications || notifications.length === 0 ? (
@@ -247,6 +251,19 @@ const styles = StyleSheet.create({
   roleChipText: {
     fontSize: 10,
     fontWeight: FontWeight.bold,
+  },
+  readAllBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: Colors.primary[50],
+    borderWidth: 1,
+    borderColor: Colors.primary[200],
+  },
+  readAllText: {
+    fontSize: 12,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.primary[700],
   },
   listContainer: {
     padding: Spacing[4],

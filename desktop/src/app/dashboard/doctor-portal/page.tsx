@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Stethoscope, Calendar, Clock, Users, FileText, Pill,
@@ -8,13 +8,17 @@ import {
   Send, Eye, Edit3, Award, MapPin, DollarSign, UserCheck, Shield, Star, MessageSquare,
   Smartphone, Download, Video, Phone, Radio, Activity, Fingerprint, Lock, ExternalLink,
   Droplet, Sparkles, Bot, Mic, MicOff, VideoOff, PhoneOff, Settings, RefreshCw,
-  ChevronRight, ArrowRight, ShieldCheck, Heart, Info, Check, X, AlertTriangle
+  ChevronRight, ArrowRight, ShieldCheck, Heart, Info, Check, X, AlertTriangle, Camera,
+  Maximize2, Minimize2, ArrowLeftRight, Expand, Shrink, Copy
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Pagination } from '@/components/ui/Pagination';
 import { useAuthStore } from '@/store/authStore';
+import { ThreeBodyMap } from '@/components/clinical/ThreeBodyMap';
+import { DoctorPatientChat } from '@/components/clinical/DoctorPatientChat';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -89,6 +93,27 @@ const INITIAL_PATIENT_REVIEWS: PatientReview[] = [
 ];
 
 const TODAY_CONSULTATIONS: Consultation[] = [
+  {
+    id: 'c-100',
+    patientName: 'Chioma Egwu',
+    patientAge: 32,
+    patientGender: 'Female',
+    bloodGroup: 'O+',
+    genotype: 'AA',
+    time: '11:15 AM',
+    type: 'video',
+    status: 'waiting',
+    reason: 'Regular diabetes follow-up consultation & visual blurriness check',
+    vitals: { bp: '120/78 mmHg', hr: '72 bpm', temp: '36.5 °C', weight: '55 kg', spo2: '99%' },
+    history: 'Type 2 Diabetes Mellitus under review. Regular glucose tracking active.',
+    allergies: ['None recorded'],
+    painRegion: {
+      region: 'Head',
+      severity: 3,
+      color: 'yellow',
+      notes: 'Occasional mild tension headache during screen use.',
+    },
+  },
   {
     id: 'c-101',
     patientName: 'Mariam Oladosu',
@@ -177,6 +202,17 @@ const TODAY_CONSULTATIONS: Consultation[] = [
 
 const INITIAL_PRESCRIPTIONS: IssuedPrescription[] = [
   {
+    id: 'RX-9085',
+    patientName: 'Chioma Egwu (32y · Female)',
+    drugName: 'Metformin Hydrochloride 500mg',
+    dosage: '1 Tablet with evening meal',
+    frequency: 'Once daily (QD)',
+    duration: '30 days',
+    pharmacy: 'OminiPulse Central E-Pharmacy',
+    date: 'Today, 11:30 AM',
+    status: 'Received by Patient App',
+  },
+  {
     id: 'RX-9081',
     patientName: 'Tunde Afolabi (48y · Male)',
     drugName: 'Amlodipine Besylate 5mg',
@@ -221,149 +257,28 @@ interface BodyMapProps {
 }
 
 function AnatomicalBodyMap({ activeRegion, onSelectRegion, severity, onSelectSeverity }: BodyMapProps) {
-  const regions = [
-    { id: 'Head', label: 'Head & Brain', top: '10%', left: '46%', defaultColor: '#3b82f6' },
-    { id: 'Chest', label: 'Chest & Heart', top: '26%', left: '44%', defaultColor: '#ef4444' },
-    { id: 'Abdomen', label: 'Abdomen & GI', top: '38%', left: '45%', defaultColor: '#f97316' },
-    { id: 'Pelvis', label: 'Pelvis & Groin', top: '48%', left: '46%', defaultColor: '#8b5cf6' },
-    { id: 'Spine', label: 'Back & Spine', top: '34%', left: '56%', defaultColor: '#0ea5e9' },
-    { id: 'Upper Limbs', label: 'Arms & Shoulders', top: '30%', left: '26%', defaultColor: '#10b981' },
-    { id: 'Lower Limbs', label: 'Legs & Knees', top: '68%', left: '45%', defaultColor: '#f59e0b' },
-  ];
-
-  const getSeverityBadgeColor = (val: number) => {
-    if (val <= 3) return { bg: '#fef9c3', text: '#854d0e', label: 'Mild Pain (1-3)' };
-    if (val <= 6) return { bg: '#ffedd5', text: '#9a3412', label: 'Moderate Pain (4-6)' };
-    return { bg: '#fee2e2', text: '#991b1b', label: 'Severe Pain (7-10)' };
-  };
-
-  const badgeInfo = getSeverityBadgeColor(severity);
-
   return (
-    <div style={{
-      background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 100%)',
-      borderRadius: 16,
-      padding: '24px 20px',
-      color: '#ffffff',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 16,
-      boxShadow: '0 8px 30px rgba(0,0,0,0.25)',
-      border: '1px solid #334155'
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-            <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0, letterSpacing: '-0.01em', color: '#f8fafc' }}>
-              3D Anatomical Body Map & Pain Zones
-            </h4>
-          </div>
-          <p style={{ fontSize: 11.5, color: '#94a3b8', margin: '3px 0 0' }}>
-            Interactive clinical diagnostic mannequin · Select region & inspect intensity
-          </p>
-        </div>
-
-        <div style={{
-          background: badgeInfo.bg,
-          color: badgeInfo.text,
-          padding: '4px 10px',
-          borderRadius: 8,
-          fontSize: 11.5,
-          fontWeight: 700
-        }}>
-          Intensity: {severity}/10 · {badgeInfo.label}
-        </div>
-      </div>
-
-      {/* Anatomical Canvas */}
-      <div style={{
-        position: 'relative',
-        height: 280,
-        background: 'radial-gradient(circle at center, rgba(15,110,110,0.18) 0%, rgba(15,23,42,0.6) 70%)',
-        borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.08)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden'
-      }}>
-        {/* Silhouette Vector Mannequin */}
-        <svg width="180" height="260" viewBox="0 0 180 260" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ opacity: 0.85 }}>
-          {/* Head */}
-          <circle cx="90" cy="30" r="18" fill="#334155" stroke="#64748b" strokeWidth="1.5" />
-          {/* Neck */}
-          <rect x="85" y="48" width="10" height="8" rx="2" fill="#334155" />
-          {/* Torso */}
-          <path d="M60 56C60 56 75 54 90 54C105 54 120 56 120 56L126 125C126 125 110 135 90 135C70 135 54 125 54 125L60 56Z" fill="#334155" stroke="#64748b" strokeWidth="1.5" />
-          {/* Left Arm */}
-          <path d="M54 60L28 120L34 124L58 72" fill="#1e293b" stroke="#64748b" strokeWidth="1" />
-          {/* Right Arm */}
-          <path d="M126 60L152 120L146 124L122 72" fill="#1e293b" stroke="#64748b" strokeWidth="1" />
-          {/* Pelvis & Legs */}
-          <path d="M64 135L66 230L80 230L82 150L90 148L98 150L100 230L114 230L116 135" fill="#334155" stroke="#64748b" strokeWidth="1.5" />
-        </svg>
-
-        {/* Interactive Hotspots */}
-        {regions.map((reg) => {
-          const isSelected = activeRegion === reg.id;
-          let pinColor = '#3b82f6';
-          if (severity <= 3) pinColor = '#eab308';
-          else if (severity <= 6) pinColor = '#f97316';
-          else pinColor = '#ef4444';
-
-          return (
-            <button
-              key={reg.id}
-              type="button"
-              onClick={() => onSelectRegion(reg.id)}
-              style={{
-                position: 'absolute',
-                top: reg.top,
-                left: reg.left,
-                transform: 'translate(-50%, -50%)',
-                background: isSelected ? pinColor : 'rgba(30, 41, 59, 0.85)',
-                color: isSelected ? '#ffffff' : '#94a3b8',
-                border: isSelected ? `2px solid #ffffff` : '1px solid #475569',
-                borderRadius: 20,
-                padding: '4px 9px',
-                fontSize: 10.5,
-                fontWeight: isSelected ? 800 : 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                boxShadow: isSelected ? `0 0 16px ${pinColor}` : '0 2px 8px rgba(0,0,0,0.3)',
-                transition: 'all 200ms ease'
-              }}
-            >
-              <span style={{
-                width: 6,
-                height: 6,
-                borderRadius: '50%',
-                background: isSelected ? '#ffffff' : pinColor,
-              }} />
-              {reg.label.split(' ')[0]}
-              {isSelected && <span style={{ background: 'rgba(0,0,0,0.25)', padding: '1px 5px', borderRadius: 999, fontSize: 9 }}>{severity}</span>}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Pain Severity Scale (1 - 10) */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>
-          <span>1 Mild (Yellow)</span>
-          <span>5 Moderate (Orange)</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <ThreeBodyMap
+        activeRegion={activeRegion}
+        onSelectRegion={onSelectRegion}
+        severity={severity}
+        onSelectSeverity={onSelectSeverity}
+        height={340}
+      />
+      
+      {/* 1 - 10 Pain Severity Rating Buttons */}
+      <div style={{ background: '#0f172a', padding: 14, borderRadius: 12, border: '1px solid #334155' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 8, fontWeight: 700 }}>
+          <span>1 Mild (Green)</span>
+          <span>5 Moderate (Amber)</span>
           <span>10 Severe (Red)</span>
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6 }}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
             const isCur = severity === num;
-            let btnBg = '#1e293b';
-            let activeBg = '#eab308';
-            if (num > 3 && num <= 6) activeBg = '#f97316';
+            let activeBg = '#10b981';
+            if (num > 3 && num <= 6) activeBg = '#f59e0b';
             if (num > 6) activeBg = '#ef4444';
 
             return (
@@ -375,7 +290,7 @@ function AnatomicalBodyMap({ activeRegion, onSelectRegion, severity, onSelectSev
                   height: 32,
                   borderRadius: 6,
                   border: isCur ? '2px solid #ffffff' : '1px solid #334155',
-                  background: isCur ? activeBg : btnBg,
+                  background: isCur ? activeBg : '#1e293b',
                   color: isCur ? '#ffffff' : '#cbd5e1',
                   fontWeight: isCur ? 800 : 600,
                   fontSize: 12,
@@ -429,6 +344,318 @@ function DoctorPortalContent() {
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isVideoDisabled, setIsVideoDisabled] = useState(false);
 
+  // Active Consultation Chat Patient
+  const [activeChatPatientId, setActiveChatPatientId] = useState<string>('c-100');
+
+  // ── Tiered Consultation Fees (Doctor Set) — Exactly matches Mobile Phone ──
+  const MIN_CONSULTATION_FEE = 2000;
+  const PLATFORM_FEE_PERCENT = 10;
+  const [tierFees, setTierFees] = useState({ chat: 8000, audio: 10000, video: 15000 });
+  const [isFeeModalOpen, setIsFeeModalOpen] = useState(false);
+  const [feeInputChat, setFeeInputChat] = useState('8000');
+  const [feeInputAudio, setFeeInputAudio] = useState('10000');
+  const [feeInputVideo, setFeeInputVideo] = useState('15000');
+  const [feeValidationErr, setFeeValidationErr] = useState<string | null>(null);
+
+  // Load persisted doctor tiered fees from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ominipulse_doctor_tiered_fees');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.chat && parsed.audio && parsed.video) {
+          setTierFees(parsed);
+          setFeeInputChat(String(parsed.chat));
+          setFeeInputAudio(String(parsed.audio));
+          setFeeInputVideo(String(parsed.video));
+        }
+      }
+    } catch {}
+  }, []);
+
+  const handleOpenFeeModal = () => {
+    setFeeInputChat(String(tierFees.chat));
+    setFeeInputAudio(String(tierFees.audio));
+    setFeeInputVideo(String(tierFees.video));
+    setFeeValidationErr(null);
+    setIsFeeModalOpen(true);
+  };
+
+  const handleSaveTieredFees = () => {
+    const c = parseFloat(String(feeInputChat).replace(/,/g, '')) || 0;
+    const a = parseFloat(String(feeInputAudio).replace(/,/g, '')) || 0;
+    const v = parseFloat(String(feeInputVideo).replace(/,/g, '')) || 0;
+
+    if (c < MIN_CONSULTATION_FEE || a < MIN_CONSULTATION_FEE || v < MIN_CONSULTATION_FEE) {
+      setFeeValidationErr(`Every consultation fee must be at least ₦${MIN_CONSULTATION_FEE.toLocaleString()}.`);
+      return;
+    }
+    if (c >= a) {
+      setFeeValidationErr('Chat Consultation fee must be lower than Audio Call fee.');
+      return;
+    }
+    if (a >= v) {
+      setFeeValidationErr('Audio Call fee must be lower than Video Call fee.');
+      return;
+    }
+
+    const newFees = { chat: c, audio: a, video: v };
+    setTierFees(newFees);
+    try {
+      localStorage.setItem('ominipulse_doctor_tiered_fees', JSON.stringify(newFees));
+    } catch {}
+    setIsFeeModalOpen(false);
+    setFeeValidationErr(null);
+    triggerFeedback(`Tiered consultation fees successfully updated: Chat ₦${c.toLocaleString()} · Audio ₦${a.toLocaleString()} · Video ₦${v.toLocaleString()}`);
+  };
+
+
+  // Fullscreen & Resizing Telehealth Call Studio States
+  const [callSizeMode, setCallSizeMode] = useState<'standard' | 'expanded' | 'fullscreen'>('standard');
+  const [callSplitMode, setCallSplitMode] = useState<'split' | 'video_focus'>('split');
+  const [primaryVideoFeed, setPrimaryVideoFeed] = useState<'doctor_camera' | 'patient_feed'>('doctor_camera');
+  const [cameraDeviceLabel, setCameraDeviceLabel] = useState('Integrated HD Clinical Camera (1080p)');
+  const [callDurationSeconds, setCallDurationSeconds] = useState(0);
+
+  // Real Desktop Camera & Microphone Stream refs & state
+  const mainVideoRef = useRef<HTMLVideoElement | null>(null);
+  const pipVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [micVolume, setMicVolume] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const callTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Toggle Fullscreen mode (both CSS overlay and native Electron window)
+  const handleToggleFullScreen = async () => {
+    if (callSizeMode === 'fullscreen') {
+      setCallSizeMode('standard');
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.setFullScreen) {
+        await (window as any).electronAPI.setFullScreen(false).catch(() => {});
+      }
+    } else {
+      setCallSizeMode('fullscreen');
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.setFullScreen) {
+        await (window as any).electronAPI.setFullScreen(true).catch(() => {});
+      }
+    }
+  };
+
+  // Switch between Doctor Camera on Main Stage vs Patient Feed on Main Stage
+  const handleSwapFeeds = () => {
+    setPrimaryVideoFeed((prev) => (prev === 'doctor_camera' ? 'patient_feed' : 'doctor_camera'));
+  };
+
+  // Robust Camera Stream Acquisition
+  const requestMediaStream = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setCameraError('Webcam device API not available in this environment.');
+      return;
+    }
+
+    setCameraError(null);
+    let stream: MediaStream | null = null;
+
+    try {
+      // First attempt: HD webcam + microphone
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          facingMode: 'user',
+        },
+        audio: true,
+      });
+    } catch (e1) {
+      console.warn('[DoctorPortal] Dual video+audio failed, trying video only:', e1);
+      try {
+        // Second attempt: video only (if microphone device is restricted or unavailable)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+      } catch (e2: any) {
+        console.warn('[DoctorPortal] Camera hardware unavailable:', e2);
+        const isDenied = e2?.name === 'NotAllowedError' || e2?.name === 'PermissionDeniedError';
+        setCameraError(
+          isDenied
+            ? 'Camera access permission denied. Please allow camera access in your system/browser settings.'
+            : 'No physical camera detected or device is in use by another program.'
+        );
+        setIsCameraActive(false);
+        return;
+      }
+    }
+
+    if (stream) {
+      setCameraStream(stream);
+      setIsCameraActive(true);
+      setCameraError(null);
+
+      // Detect hardware device label
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInput = devices.find((d) => d.kind === 'videoinput');
+        if (videoInput?.label) {
+          setCameraDeviceLabel(videoInput.label);
+        } else {
+          setCameraDeviceLabel('HD Clinical Webcam (1080p Live)');
+        }
+      } catch {
+        setCameraDeviceLabel('HD Clinical Webcam (1080p Live)');
+      }
+
+      // Web Audio API VU meter
+      if (stream.getAudioTracks().length > 0) {
+        try {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (AudioCtx) {
+            const ctx = new AudioCtx();
+            audioContextRef.current = ctx;
+            const src = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+            analyser.fftSize = 64;
+            src.connect(analyser);
+
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            const updateVolume = () => {
+              analyser.getByteFrequencyData(data);
+              let sum = 0;
+              for (let i = 0; i < data.length; i++) sum += data[i];
+              const avg = sum / data.length;
+              setMicVolume(Math.min(100, Math.round((avg / 128) * 100)));
+              animFrameRef.current = requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
+          }
+        } catch {}
+      }
+    }
+  }, []);
+
+  // Callback ref for Main Stage video
+  const setMainVideoNode = useCallback(
+    (node: HTMLVideoElement | null) => {
+      mainVideoRef.current = node;
+      if (node && cameraStream && primaryVideoFeed === 'doctor_camera') {
+        if (node.srcObject !== cameraStream) {
+          node.srcObject = cameraStream;
+        }
+        node.play().catch(() => {});
+      }
+    },
+    [cameraStream, primaryVideoFeed]
+  );
+
+  // Callback ref for PiP video
+  const setPipVideoNode = useCallback(
+    (node: HTMLVideoElement | null) => {
+      pipVideoRef.current = node;
+      if (node && cameraStream && primaryVideoFeed === 'patient_feed') {
+        if (node.srcObject !== cameraStream) {
+          node.srcObject = cameraStream;
+        }
+        node.play().catch(() => {});
+      }
+    },
+    [cameraStream, primaryVideoFeed]
+  );
+
+  // Synchronize stream to video elements on state updates
+  useEffect(() => {
+    if (!cameraStream) return;
+
+    if (primaryVideoFeed === 'doctor_camera' && mainVideoRef.current) {
+      if (mainVideoRef.current.srcObject !== cameraStream) {
+        mainVideoRef.current.srcObject = cameraStream;
+      }
+      mainVideoRef.current.play().catch(() => {});
+    } else if (primaryVideoFeed === 'patient_feed' && pipVideoRef.current) {
+      if (pipVideoRef.current.srcObject !== cameraStream) {
+        pipVideoRef.current.srcObject = cameraStream;
+      }
+      pipVideoRef.current.play().catch(() => {});
+    }
+  }, [cameraStream, primaryVideoFeed, isVideoDisabled, callSizeMode, callSplitMode]);
+
+  // Consultation lifecycle management
+  useEffect(() => {
+    if (activeVideoConsult) {
+      setCallDurationSeconds(0);
+      callTimerRef.current = setInterval(() => {
+        setCallDurationSeconds((prev) => prev + 1);
+      }, 1000);
+
+      requestMediaStream();
+    } else {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+        callTimerRef.current = null;
+      }
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        setCameraStream(null);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      if (callSizeMode === 'fullscreen' && typeof window !== 'undefined' && (window as any).electronAPI?.setFullScreen) {
+        (window as any).electronAPI.setFullScreen(false).catch(() => {});
+      }
+      setIsCameraActive(false);
+      setMicVolume(0);
+      setCameraError(null);
+      setCallSizeMode('standard');
+      setCallSplitMode('split');
+      setPrimaryVideoFeed('doctor_camera');
+    }
+
+    return () => {
+      if (callTimerRef.current) {
+        clearInterval(callTimerRef.current);
+      }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+    };
+  }, [activeVideoConsult, requestMediaStream]);
+
+  const handleToggleMic = () => {
+    setIsMicMuted((prev) => {
+      const next = !prev;
+      if (cameraStream) {
+        cameraStream.getAudioTracks().forEach((t) => {
+          t.enabled = !next;
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleToggleVideo = () => {
+    setIsVideoDisabled((prev) => {
+      const next = !prev;
+      if (cameraStream) {
+        cameraStream.getVideoTracks().forEach((t) => {
+          t.enabled = !next;
+        });
+      }
+      return next;
+    });
+  };
+
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60).toString().padStart(2, '0');
+    const secs = (totalSec % 60).toString().padStart(2, '0');
+    return `${mins}:${secs}`;
+  };
+
   // Selected Patient Chart & Body Map Modal
   const [activeChartPatient, setActiveChartPatient] = useState<Consultation | null>(null);
   const [selectedBodyRegion, setSelectedBodyRegion] = useState('Chest');
@@ -444,23 +671,148 @@ function DoctorPortalContent() {
   const [rxPharmacy, setRxPharmacy] = useState('Pharmacare Pharmacy Ikeja');
   const [issuedPrescriptions, setIssuedPrescriptions] = useState<IssuedPrescription[]>(INITIAL_PRESCRIPTIONS);
 
-  // Working Hours & Availability State
-  const [scheduleSlots, setScheduleSlots] = useState([
+  // Working Hours & Availability State (Doctor Editable Shifts)
+  const DEFAULT_SCHEDULE = [
     { day: 'Monday', active: true, start: '08:00 AM', end: '05:00 PM', slots: 18 },
     { day: 'Tuesday', active: true, start: '08:00 AM', end: '05:00 PM', slots: 18 },
     { day: 'Wednesday', active: true, start: '08:00 AM', end: '02:00 PM', slots: 12 },
     { day: 'Thursday', active: true, start: '08:00 AM', end: '05:00 PM', slots: 18 },
     { day: 'Friday', active: true, start: '08:00 AM', end: '04:00 PM', slots: 16 },
     { day: 'Saturday', active: false, start: '10:00 AM', end: '02:00 PM', slots: 8 },
-    { day: 'Sunday', active: false, start: 'Off Duty', end: 'Off Duty', slots: 0 },
-  ]);
+    { day: 'Sunday', active: false, start: '09:00 AM', end: '01:00 PM', slots: 0 },
+  ];
+  const [scheduleSlots, setScheduleSlots] = useState(DEFAULT_SCHEDULE);
   const [slotDuration, setSlotDuration] = useState('30 mins');
 
-  // Tiered Consultation Fees
-  const [feeChat, setFeeChat] = useState(8000);
-  const [feeVoice, setFeeVoice] = useState(10000);
-  const [feeVideo, setFeeVideo] = useState(15000);
-  const [isEditingFees, setIsEditingFees] = useState(false);
+  // Time conversion and slot calculation utilities
+  const parseTimeToMins = (tStr: string): number => {
+    if (!tStr || tStr === 'Off Duty') return 0;
+    const match = tStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+    if (!match) return 0;
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const meridiem = match[3]?.toUpperCase();
+    if (meridiem === 'PM' && hours < 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  };
+
+  const to24Hour = (tStr: string): string => {
+    if (!tStr || tStr === 'Off Duty') return '08:00';
+    const totalMins = parseTimeToMins(tStr);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  };
+
+  const from24Hour = (val24: string): string => {
+    if (!val24) return '08:00 AM';
+    const [hStr, mStr] = val24.split(':');
+    let h = parseInt(hStr || '0', 10);
+    const m = parseInt(mStr || '0', 10);
+    const meridiem = h >= 12 ? 'PM' : 'AM';
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    return `${String(displayH).padStart(2, '0')}:${String(m).padStart(2, '0')} ${meridiem}`;
+  };
+
+  const calcSlots = (startStr: string, endStr: string, durStr: string): number => {
+    const startMins = parseTimeToMins(startStr);
+    const endMins = parseTimeToMins(endStr);
+    if (endMins <= startMins) return 0;
+    const durMins = parseInt(durStr, 10) || 30;
+    return Math.floor((endMins - startMins) / durMins);
+  };
+
+  // Load persisted schedule on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('ominipulse_doctor_schedule_slots');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setScheduleSlots(parsed);
+        }
+      }
+      const savedDur = localStorage.getItem('ominipulse_doctor_slot_duration');
+      if (savedDur) {
+        setSlotDuration(savedDur);
+      }
+    } catch {}
+  }, []);
+
+  const handleUpdateTime = (dayIdx: number, field: 'start' | 'end', val24: string) => {
+    const newTime = from24Hour(val24);
+    const updated = [...scheduleSlots];
+    const item = { ...updated[dayIdx], [field]: newTime };
+    const startVal = field === 'start' ? newTime : item.start;
+    const endVal = field === 'end' ? newTime : item.end;
+    item.slots = item.active ? calcSlots(startVal, endVal, slotDuration) : 0;
+    updated[dayIdx] = item;
+    setScheduleSlots(updated);
+    try {
+      localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handleQuickShift = (dayIdx: number, startStr: string, endStr: string) => {
+    const updated = [...scheduleSlots];
+    updated[dayIdx] = {
+      ...updated[dayIdx],
+      active: true,
+      start: startStr,
+      end: endStr,
+      slots: calcSlots(startStr, endStr, slotDuration)
+    };
+    setScheduleSlots(updated);
+    try {
+      localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(updated));
+    } catch {}
+    triggerFeedback(`Applied shift (${startStr} - ${endStr}) to ${updated[dayIdx].day}.`);
+  };
+
+  const handleCopyMondayToWeekdays = () => {
+    const mon = scheduleSlots[0];
+    const updated = scheduleSlots.map((s, idx) => {
+      if (idx >= 1 && idx <= 4) {
+        return {
+          ...s,
+          active: mon.active,
+          start: mon.start,
+          end: mon.end,
+          slots: mon.active ? calcSlots(mon.start, mon.end, slotDuration) : 0,
+        };
+      }
+      return s;
+    });
+    setScheduleSlots(updated);
+    try {
+      localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(updated));
+    } catch {}
+    triggerFeedback(`Copied Monday shift (${mon.start} - ${mon.end}) to Tuesday through Friday.`);
+  };
+
+  const handleSlotDurationChange = (newDur: string) => {
+    setSlotDuration(newDur);
+    const updated = scheduleSlots.map((s) => ({
+      ...s,
+      slots: s.active ? calcSlots(s.start, s.end, newDur) : 0,
+    }));
+    setScheduleSlots(updated);
+    try {
+      localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(updated));
+      localStorage.setItem('ominipulse_doctor_slot_duration', newDur);
+    } catch {}
+    triggerFeedback(`Slot duration updated to ${newDur}. Available consultation slots recalculated.`);
+  };
+
+  const handleSaveSchedule = () => {
+    try {
+      localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(scheduleSlots));
+      localStorage.setItem('ominipulse_doctor_slot_duration', slotDuration);
+    } catch {}
+    triggerFeedback('Weekly clinical schedule & consultation slots successfully saved!');
+  };
+
 
   // Patient Reviews & Doctor Replies
   const [patientReviews, setPatientReviews] = useState<PatientReview[]>(INITIAL_PATIENT_REVIEWS);
@@ -497,6 +849,46 @@ function DoctorPortalContent() {
     setIsPrescriptionModalOpen(false);
     triggerFeedback(`Official E-Prescription ${newRx.id} generated and signed with MDCN cryptographic stamp.`);
   };
+
+  // Tab Pagination & See All states
+  const [apptPage, setApptPage] = useState(1);
+  const [apptPageSize, setApptPageSize] = useState(5);
+  const [apptIsSeeAll, setApptIsSeeAll] = useState(false);
+
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientPage, setPatientPage] = useState(1);
+  const [patientPageSize, setPatientPageSize] = useState(5);
+  const [patientIsSeeAll, setPatientIsSeeAll] = useState(false);
+
+  const [rxPage, setRxPage] = useState(1);
+  const [rxPageSize, setRxPageSize] = useState(5);
+  const [rxIsSeeAll, setRxIsSeeAll] = useState(false);
+
+  const [reviewPage, setReviewPage] = useState(1);
+  const [reviewPageSize, setReviewPageSize] = useState(5);
+  const [reviewIsSeeAll, setReviewIsSeeAll] = useState(false);
+
+  const filteredPatients = TODAY_CONSULTATIONS.filter(pt =>
+    !patientSearch ||
+    pt.patientName.toLowerCase().includes(patientSearch.toLowerCase()) ||
+    pt.id.toLowerCase().includes(patientSearch.toLowerCase()) ||
+    pt.bloodGroup.toLowerCase().includes(patientSearch.toLowerCase())
+  );
+  const displayedPatients = patientIsSeeAll
+    ? filteredPatients
+    : filteredPatients.slice((patientPage - 1) * patientPageSize, patientPage * patientPageSize);
+
+  const displayedAppts = apptIsSeeAll
+    ? TODAY_CONSULTATIONS
+    : TODAY_CONSULTATIONS.slice((apptPage - 1) * apptPageSize, apptPage * apptPageSize);
+
+  const displayedRx = rxIsSeeAll
+    ? issuedPrescriptions
+    : issuedPrescriptions.slice((rxPage - 1) * rxPageSize, rxPage * rxPageSize);
+
+  const displayedReviews = reviewIsSeeAll
+    ? patientReviews
+    : patientReviews.slice((reviewPage - 1) * reviewPageSize, reviewPage * reviewPageSize);
 
   // Up Next Appointment in Schedule
   const nextAppt = TODAY_CONSULTATIONS.find(c => c.status === 'in_progress' || c.status === 'waiting') || TODAY_CONSULTATIONS[0];
@@ -605,15 +997,19 @@ function DoctorPortalContent() {
               transition: 'all 150ms'
             }}
           >
-            <span style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: isDoctorOnline ? '#10b981' : '#94a3b8',
-              boxShadow: isDoctorOnline ? '0 0 8px #10b981' : 'none'
-            }} />
+            <Radio size={14} style={{ color: isDoctorOnline ? '#10b981' : '#94a3b8' }} />
             {isDoctorOnline ? 'Online for Telehealth' : 'Offline / Away'}
           </button>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            leftIcon={<DollarSign size={14} />}
+            onClick={handleOpenFeeModal}
+            title="Configure Tiered Consultation Fees (Chat, Audio, Video)"
+          >
+            Fees: ₦{tierFees.chat.toLocaleString()} - ₦{tierFees.video.toLocaleString()}
+          </Button>
 
           <Button
             variant="secondary"
@@ -646,6 +1042,7 @@ function DoctorPortalContent() {
         {[
           { key: 'dashboard', label: 'Clinical Dashboard', icon: Activity },
           { key: 'appointments', label: 'Appointments Queue', icon: Calendar },
+          { key: 'chat', label: 'Consultation Chat', icon: MessageSquare },
           { key: 'patients', label: 'Patients & Body Map', icon: Users },
           { key: 'prescriptions', label: 'Digital Prescriptions', icon: Pill },
           { key: 'schedule', label: 'Duty Shifts & Hours', icon: Clock },
@@ -835,6 +1232,31 @@ function DoctorPortalContent() {
                     <Activity size={16} />
                     Chart & Body Map
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveChatPatientId(nextAppt.id);
+                      handleTabChange('chat');
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: '#f0fdfa',
+                      color: '#0f6e6e',
+                      border: '1.5px solid #0f6e6e',
+                      borderRadius: 10,
+                      padding: '9px 16px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 120ms'
+                    }}
+                  >
+                    <MessageSquare size={16} />
+                    Chat Patient
+                  </button>
                 </div>
               </div>
             ) : (
@@ -852,6 +1274,119 @@ function DoctorPortalContent() {
                 </p>
               </div>
             )}
+          </div>
+
+          {/* ── Tiered Consultation Fees (Doctor Set) Live Calculator Banner ── */}
+          <div style={{
+            background: '#ffffff',
+            border: '1.5px solid #e2e8f0',
+            borderRadius: 16,
+            padding: '20px 24px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.03)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <DollarSign size={18} style={{ color: '#0f6e6e' }} />
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Tiered Consultation Fees (Doctor Set)
+                  </h3>
+                  <span style={{
+                    background: '#ecfdf5',
+                    color: '#059669',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    border: '1px solid #a7f3d0'
+                  }}>
+                    Live Calculation Active
+                  </span>
+                </div>
+                <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 0' }}>
+                  Platform minimum ₦{MIN_CONSULTATION_FEE.toLocaleString()} / session. 10% platform service fee deducted automatically; you receive 90% net take-home earnings.
+                </p>
+              </div>
+
+              <Button
+                variant="teal"
+                size="sm"
+                leftIcon={<Edit3 size={14} />}
+                onClick={handleOpenFeeModal}
+              >
+                Adjust Tiered Fees
+              </Button>
+            </div>
+
+            {/* 3 Live Tier Cards */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              gap: 12
+            }}>
+              {[
+                { label: 'Chat Consultation', icon: MessageSquare, raw: tierFees.chat, color: '#7c3aed', bg: '#f5f3ff', border: '#ddd6fe' },
+                { label: 'Audio Call Session', icon: Phone, raw: tierFees.audio, color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' },
+                { label: 'HD Video Consultation', icon: Video, raw: tierFees.video, color: '#0f6e6e', bg: '#f0fdfa', border: '#99f6e4' },
+              ].map((tier, idx) => {
+                const Icon = tier.icon;
+                const gross = tier.raw;
+                const fee = +(gross * 0.10).toFixed(2);
+                const net = +(gross * 0.90).toFixed(2);
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      background: tier.bg,
+                      border: `1.5px solid ${tier.border}`,
+                      borderRadius: 14,
+                      padding: '16px 18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 10
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                        <Icon size={16} style={{ color: tier.color }} />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>{tier.label}</span>
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: tier.color, background: '#ffffff', padding: '2px 8px', borderRadius: 6 }}>
+                        Tier {idx + 1}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: '#ffffff', padding: '10px 12px', borderRadius: 10 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
+                        <span>Patient Pays:</span>
+                        <strong style={{ color: '#0f172a', fontWeight: 800 }}>₦{gross.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#dc2626' }}>
+                        <span>Platform Fee (10%):</span>
+                        <span>−₦{fee.toLocaleString()}</span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        color: '#059669',
+                        fontWeight: 800,
+                        borderTop: '1px dashed #e2e8f0',
+                        paddingTop: 6,
+                        marginTop: 2
+                      }}>
+                        <span>Your Take-Home:</span>
+                        <span>₦{net.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
           {/* ── Quick Clinical Action Bar ──────────────────────────────────── */}
@@ -936,10 +1471,7 @@ function DoctorPortalContent() {
 
             <button
               type="button"
-              onClick={() => {
-                handleTabChange('schedule');
-                setIsEditingFees(true);
-              }}
+              onClick={handleOpenFeeModal}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -969,7 +1501,9 @@ function DoctorPortalContent() {
               </div>
               <div style={{ flex: 1 }}>
                 <p style={{ fontSize: 13.5, fontWeight: 700, color: '#0f172a', margin: 0 }}>Tiered Consultation Rates</p>
-                <p style={{ fontSize: 12, color: '#059669', margin: '2px 0 0', fontWeight: 600 }}>Chat ₦8k · Voice ₦10k · Video ₦15k</p>
+                <p style={{ fontSize: 12, color: '#059669', margin: '2px 0 0', fontWeight: 600 }}>
+                  Chat ₦{tierFees.chat.toLocaleString()} · Audio ₦{tierFees.audio.toLocaleString()} · Video ₦{tierFees.video.toLocaleString()}
+                </p>
               </div>
               <ChevronRight size={16} color="#94a3b8" />
             </button>
@@ -1376,7 +1910,7 @@ function DoctorPortalContent() {
 
           {/* Appointments Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 16 }}>
-            {TODAY_CONSULTATIONS.map((c) => (
+            {displayedAppts.map((c) => (
               <Card key={c.id} style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -1415,12 +1949,12 @@ function DoctorPortalContent() {
                   <span>Type: <strong style={{ textTransform: 'capitalize' }}>{c.type} Call</strong></span>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 4 }}>
                   <Button
                     variant="teal"
                     size="sm"
                     style={{ width: '100%' }}
-                    leftIcon={<Video size={14} />}
+                    leftIcon={<Video size={13} />}
                     onClick={() => setActiveVideoConsult(c)}
                   >
                     Start Consult
@@ -1429,7 +1963,19 @@ function DoctorPortalContent() {
                     variant="secondary"
                     size="sm"
                     style={{ width: '100%' }}
-                    leftIcon={<Activity size={14} />}
+                    leftIcon={<MessageSquare size={13} />}
+                    onClick={() => {
+                      setActiveChatPatientId(c.id);
+                      handleTabChange('chat');
+                    }}
+                  >
+                    Chat
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    style={{ width: '100%' }}
+                    leftIcon={<Activity size={13} />}
                     onClick={() => {
                       setActiveChartPatient(c);
                       if (c.painRegion) {
@@ -1438,13 +1984,49 @@ function DoctorPortalContent() {
                       }
                     }}
                   >
-                    Body Map & Vitals
+                    Body Map
                   </Button>
                 </div>
               </Card>
             ))}
           </div>
+
+          {/* Pagination & See All Bar for Appointments */}
+          <Pagination
+            page={apptPage}
+            totalPages={Math.ceil(TODAY_CONSULTATIONS.length / apptPageSize)}
+            onPageChange={setApptPage}
+            total={TODAY_CONSULTATIONS.length}
+            pageSize={apptPageSize}
+            onPageSizeChange={(newSize) => { setApptPageSize(newSize); setApptPage(1); }}
+            isSeeAll={apptIsSeeAll}
+            onToggleSeeAll={() => setApptIsSeeAll(!apptIsSeeAll)}
+          />
         </div>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* TAB: CONSULTATION CHAT (Real-time Clinical Doctor-Patient Messaging) */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'chat' && (
+        <DoctorPatientChat
+          consultations={TODAY_CONSULTATIONS as any}
+          activePatientId={activeChatPatientId}
+          onSelectPatientId={(id) => setActiveChatPatientId(id)}
+          onStartVideoConsult={(p) => setActiveVideoConsult(p as any)}
+          onOpenChart={(p) => {
+            setActiveChartPatient(p as any);
+            if (p.painRegion) {
+              setSelectedBodyRegion(p.painRegion.region);
+              setPainIntensity(p.painRegion.severity);
+            }
+          }}
+          onOpenPrescription={(name) => {
+            setRxPatientName(name);
+            setIsPrescriptionModalOpen(true);
+          }}
+          onTriggerFeedback={triggerFeedback}
+        />
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
@@ -1476,6 +2058,11 @@ function DoctorPortalContent() {
                 <input
                   type="text"
                   placeholder="Search patient name, MRN, phone..."
+                  value={patientSearch}
+                  onChange={(e) => {
+                    setPatientSearch(e.target.value);
+                    setPatientPage(1);
+                  }}
                   style={{
                     width: '100%',
                     padding: '9px 12px 9px 36px',
@@ -1489,59 +2076,77 @@ function DoctorPortalContent() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {TODAY_CONSULTATIONS.map((pt) => {
-                const isSelected = activeChartPatient?.id === pt.id;
-                return (
-                  <div
-                    key={pt.id}
-                    onClick={() => {
-                      setActiveChartPatient(pt);
-                      if (pt.painRegion) {
-                        setSelectedBodyRegion(pt.painRegion.region);
-                        setPainIntensity(pt.painRegion.severity);
-                      }
-                    }}
-                    style={{
-                      background: isSelected ? '#f0fdfa' : '#ffffff',
-                      border: `1.5px solid ${isSelected ? '#0f6e6e' : '#e2e8f0'}`,
-                      borderRadius: 14,
-                      padding: '16px 18px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      boxShadow: isSelected ? '0 4px 14px rgba(15,110,110,0.1)' : '0 1px 3px rgba(0,0,0,0.02)',
-                      transition: 'all 150ms'
-                    }}
-                  >
-                    <div style={{
-                      width: 44,
-                      height: 44,
-                      borderRadius: '50%',
-                      background: isSelected ? '#0f6e6e' : '#e2e8f0',
-                      color: isSelected ? '#ffffff' : '#334155',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 800,
-                      flexShrink: 0
-                    }}>
-                      {pt.patientName.split(' ').map(n => n[0]).join('')}
-                    </div>
-
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h4 style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', margin: 0 }}>{pt.patientName}</h4>
-                        <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e' }}>{pt.bloodGroup} ({pt.genotype})</span>
+              {displayedPatients.length === 0 ? (
+                <div style={{ padding: '24px 16px', textAlign: 'center', color: '#94a3b8', background: '#ffffff', borderRadius: 12 }}>
+                  No patients match "{patientSearch}"
+                </div>
+              ) : (
+                displayedPatients.map((pt) => {
+                  const isSelected = activeChartPatient?.id === pt.id;
+                  return (
+                    <div
+                      key={pt.id}
+                      onClick={() => {
+                        setActiveChartPatient(pt);
+                        if (pt.painRegion) {
+                          setSelectedBodyRegion(pt.painRegion.region);
+                          setPainIntensity(pt.painRegion.severity);
+                        }
+                      }}
+                      style={{
+                        background: isSelected ? '#f0fdfa' : '#ffffff',
+                        border: `1.5px solid ${isSelected ? '#0f6e6e' : '#e2e8f0'}`,
+                        borderRadius: 14,
+                        padding: '16px 18px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        boxShadow: isSelected ? '0 4px 14px rgba(15,110,110,0.1)' : '0 1px 3px rgba(0,0,0,0.02)',
+                        transition: 'all 150ms'
+                      }}
+                    >
+                      <div style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '50%',
+                        background: isSelected ? '#0f6e6e' : '#e2e8f0',
+                        color: isSelected ? '#ffffff' : '#334155',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        flexShrink: 0
+                      }}>
+                        {pt.patientName.split(' ').map(n => n[0]).join('')}
                       </div>
-                      <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
-                        {pt.patientAge}y · {pt.patientGender} · Last Visit: {pt.time}
-                      </p>
+
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <h4 style={{ fontSize: 14, fontWeight: 800, color: '#1e293b', margin: 0 }}>{pt.patientName}</h4>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e' }}>{pt.bloodGroup} ({pt.genotype})</span>
+                        </div>
+                        <p style={{ fontSize: 12, color: '#64748b', margin: '2px 0 0' }}>
+                          {pt.patientAge}y · {pt.patientGender} · Last Visit: {pt.time}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
+
+            {/* Pagination & See All Bar for Patients Directory */}
+            <Pagination
+              page={patientPage}
+              totalPages={Math.ceil(filteredPatients.length / patientPageSize)}
+              onPageChange={setPatientPage}
+              total={filteredPatients.length}
+              pageSize={patientPageSize}
+              onPageSizeChange={(newSize) => { setPatientPageSize(newSize); setPatientPage(1); }}
+              isSeeAll={patientIsSeeAll}
+              onToggleSeeAll={() => setPatientIsSeeAll(!patientIsSeeAll)}
+            />
           </div>
 
           {/* Patient Details & 3D Anatomical Body Map Inspector */}
@@ -1744,7 +2349,7 @@ function DoctorPortalContent() {
                 </tr>
               </thead>
               <tbody>
-                {issuedPrescriptions.map((rx) => (
+                {displayedRx.map((rx) => (
                   <tr key={rx.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '14px 20px', fontWeight: 700, color: '#0f6e6e', fontFamily: 'monospace' }}>
                       {rx.id}
@@ -1774,17 +2379,29 @@ function DoctorPortalContent() {
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination & See All Bar for Prescriptions */}
+            <Pagination
+              page={rxPage}
+              totalPages={Math.ceil(issuedPrescriptions.length / rxPageSize)}
+              onPageChange={setRxPage}
+              total={issuedPrescriptions.length}
+              pageSize={rxPageSize}
+              onPageSizeChange={(newSize) => { setRxPageSize(newSize); setRxPage(1); }}
+              isSeeAll={rxIsSeeAll}
+              onToggleSeeAll={() => setRxIsSeeAll(!rxIsSeeAll)}
+            />
           </div>
         </div>
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* TAB 5: DUTY SHIFTS & HOURS (Matches DoctorAvailabilityScreen.tsx)   */}
+      {/* TAB 5: DUTY SHIFTS & HOURS (Doctor Editable Times & Consultation Slots) */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'schedule' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: 24 }}>
 
-          {/* Weekly Schedule Days */}
+          {/* Weekly Schedule Days with Interactive Time Editors */}
           <div style={{
             background: '#ffffff',
             borderRadius: 16,
@@ -1792,60 +2409,249 @@ function DoctorPortalContent() {
             border: '1px solid #e2e8f0',
             display: 'flex',
             flexDirection: 'column',
-            gap: 18
+            gap: 18,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
           }}>
-            <div>
-              <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Weekly Clinical Availability & Consultation Slots
-              </h3>
-              <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
-                Configure working shifts for digital teleconsultations and physical appointments
-              </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ fontSize: 17, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Weekly Clinical Availability & Consultation Slots
+                </h3>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+                  Edit your daily shift start and end times. Consultation slots recalculate automatically based on slot duration.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<Copy size={13} />}
+                  onClick={handleCopyMondayToWeekdays}
+                  title="Apply Monday hours to Tuesday through Friday"
+                >
+                  Copy Mon to Mon-Fri
+                </Button>
+                <Button
+                  variant="teal"
+                  size="sm"
+                  leftIcon={<CheckCircle2 size={13} />}
+                  onClick={handleSaveSchedule}
+                >
+                  Save Schedule
+                </Button>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {scheduleSlots.map((slot, idx) => (
                 <div
                   key={slot.day}
                   style={{
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
+                    flexDirection: 'column',
                     padding: '14px 18px',
-                    borderRadius: 12,
+                    borderRadius: 14,
                     background: slot.active ? '#ffffff' : '#f8fafc',
-                    border: `1px solid ${slot.active ? '#ccfbf1' : '#e2e8f0'}`,
-                    gap: 14
+                    border: `1.5px solid ${slot.active ? '#ccfbf1' : '#e2e8f0'}`,
+                    gap: 12,
+                    transition: 'all 120ms'
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <input
-                      type="checkbox"
-                      checked={slot.active}
-                      onChange={() => {
-                        const updated = [...scheduleSlots];
-                        updated[idx].active = !updated[idx].active;
-                        setScheduleSlots(updated);
-                        triggerFeedback(`Updated availability for ${slot.day}.`);
-                      }}
-                      style={{ width: 18, height: 18, accentColor: '#0f6e6e', cursor: 'pointer' }}
-                    />
-                    <div>
-                      <h4 style={{ fontSize: 14, fontWeight: 700, color: slot.active ? '#0f172a' : '#94a3b8', margin: 0 }}>
-                        {slot.day}
-                      </h4>
-                      <span style={{ fontSize: 12, color: slot.active ? '#059669' : '#94a3b8', fontWeight: 600 }}>
-                        {slot.active ? `${slot.start} - ${slot.end} (${slot.slots} slots)` : 'Off Duty'}
-                      </span>
+                  {/* Top row: Day Checkbox, Status & Calculated Slots */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={slot.active}
+                        onChange={() => {
+                          const updated = [...scheduleSlots];
+                          const newActive = !updated[idx].active;
+                          updated[idx].active = newActive;
+                          updated[idx].slots = newActive ? calcSlots(updated[idx].start, updated[idx].end, slotDuration) : 0;
+                          setScheduleSlots(updated);
+                          try {
+                            localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(updated));
+                          } catch {}
+                          triggerFeedback(`${slot.day} set to ${newActive ? 'Active Shift' : 'Off Duty'}.`);
+                        }}
+                        style={{ width: 18, height: 18, accentColor: '#0f6e6e', cursor: 'pointer' }}
+                      />
+                      <div>
+                        <h4 style={{ fontSize: 14, fontWeight: 800, color: slot.active ? '#0f172a' : '#64748b', margin: 0 }}>
+                          {slot.day}
+                        </h4>
+                        <span style={{ fontSize: 11.5, color: slot.active ? '#059669' : '#94a3b8', fontWeight: 600 }}>
+                          {slot.active ? 'On Duty · Accepting Consultations' : 'Off Duty'}
+                        </span>
+                      </div>
                     </div>
+
+                    {slot.active ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{
+                          background: '#e6f4f4',
+                          color: '#0f6e6e',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          padding: '4px 10px',
+                          borderRadius: 8
+                        }}>
+                          {slot.slots} Slots ({slotDuration})
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...scheduleSlots];
+                          updated[idx].active = true;
+                          updated[idx].slots = calcSlots(updated[idx].start, updated[idx].end, slotDuration);
+                          setScheduleSlots(updated);
+                          try {
+                            localStorage.setItem('ominipulse_doctor_schedule_slots', JSON.stringify(updated));
+                          } catch {}
+                        }}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: '#0f6e6e',
+                          background: '#ffffff',
+                          border: '1px solid #cbd5e1',
+                          padding: '4px 10px',
+                          borderRadius: 6,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Set On Duty
+                      </button>
+                    )}
                   </div>
 
+                  {/* Bottom row: Editable Start & End Time Inputs + Quick Shifts */}
                   {slot.active && (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, color: '#64748b' }}>Shift:</span>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: '#0f6e6e', background: '#e6f4f4', padding: '4px 8px', borderRadius: 6 }}>
-                        {slot.start} - {slot.end}
-                      </span>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 12,
+                      background: '#f8fafc',
+                      padding: '10px 14px',
+                      borderRadius: 10,
+                      border: '1px solid #e2e8f0'
+                    }}>
+                      {/* Interactive Time Pickers */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b' }}>START TIME</span>
+                          <input
+                            type="time"
+                            value={to24Hour(slot.start)}
+                            onChange={(e) => handleUpdateTime(idx, 'start', e.target.value)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              border: '1px solid #cbd5e1',
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: '#0f172a',
+                              background: '#ffffff'
+                            }}
+                          />
+                        </div>
+
+                        <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 700, marginTop: 14 }}>to</span>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#64748b' }}>END TIME</span>
+                          <input
+                            type="time"
+                            value={to24Hour(slot.end)}
+                            onChange={(e) => handleUpdateTime(idx, 'end', e.target.value)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: 6,
+                              border: '1px solid #cbd5e1',
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: '#0f172a',
+                              background: '#ffffff'
+                            }}
+                          />
+                        </div>
+
+                        <div style={{ marginTop: 14, marginLeft: 4 }}>
+                          <span style={{
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            color: '#0f6e6e',
+                            background: '#f0fdfa',
+                            border: '1px solid #ccfbf1',
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {slot.start} – {slot.end}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Quick Shift Presets */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Presets:</span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickShift(idx, '08:00 AM', '05:00 PM')}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '3px 7px',
+                            borderRadius: 5,
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#334155',
+                            cursor: 'pointer'
+                          }}
+                          title="8:00 AM to 5:00 PM"
+                        >
+                          Full Day
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickShift(idx, '08:00 AM', '02:00 PM')}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '3px 7px',
+                            borderRadius: 5,
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#334155',
+                            cursor: 'pointer'
+                          }}
+                          title="8:00 AM to 2:00 PM"
+                        >
+                          Morning
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickShift(idx, '02:00 PM', '08:00 PM')}
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '3px 7px',
+                            borderRadius: 5,
+                            border: '1px solid #cbd5e1',
+                            background: '#ffffff',
+                            color: '#334155',
+                            cursor: 'pointer'
+                          }}
+                          title="2:00 PM to 8:00 PM"
+                        >
+                          Evening
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1853,10 +2659,10 @@ function DoctorPortalContent() {
             </div>
           </div>
 
-          {/* Slot Duration & Tiered Fees Settings */}
+          {/* Right Column: Slot Duration & Weekly Clinical Capacity Summary */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-            {/* Consultation Duration */}
+            {/* Consultation Duration Selector */}
             <div style={{
               background: '#ffffff',
               borderRadius: 16,
@@ -1864,20 +2670,24 @@ function DoctorPortalContent() {
               border: '1px solid #e2e8f0',
               display: 'flex',
               flexDirection: 'column',
-              gap: 14
+              gap: 14,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
             }}>
-              <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Default Slot Duration
-              </h4>
+              <div>
+                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  Consultation Slot Duration
+                </h4>
+                <p style={{ fontSize: 12.5, color: '#64748b', margin: '4px 0 0' }}>
+                  Time allocated per patient. Automatically recalculates available slots.
+                </p>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                 {['15 mins', '30 mins', '45 mins', '60 mins'].map((dur) => (
                   <button
                     key={dur}
                     type="button"
-                    onClick={() => {
-                      setSlotDuration(dur);
-                      triggerFeedback(`Consultation duration set to ${dur}.`);
-                    }}
+                    onClick={() => handleSlotDurationChange(dur)}
                     style={{
                       padding: '10px 0',
                       borderRadius: 8,
@@ -1886,7 +2696,8 @@ function DoctorPortalContent() {
                       color: slotDuration === dur ? '#0f6e6e' : '#475569',
                       fontWeight: 700,
                       fontSize: 12.5,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
+                      transition: 'all 120ms'
                     }}
                   >
                     {dur}
@@ -1895,7 +2706,7 @@ function DoctorPortalContent() {
               </div>
             </div>
 
-            {/* Tiered Consultation Fees */}
+            {/* Weekly Capacity & Hours Metrics */}
             <div style={{
               background: '#ffffff',
               borderRadius: 16,
@@ -1903,59 +2714,79 @@ function DoctorPortalContent() {
               border: '1px solid #e2e8f0',
               display: 'flex',
               flexDirection: 'column',
-              gap: 16
+              gap: 16,
+              boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
+            }}>
+              <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                Weekly Availability Overview
+              </h4>
+
+              {(() => {
+                const activeDays = scheduleSlots.filter(s => s.active);
+                const totalSlots = activeDays.reduce((acc, s) => acc + s.slots, 0);
+                const totalHours = activeDays.reduce((acc, s) => {
+                  const startMins = parseTimeToMins(s.start);
+                  const endMins = parseTimeToMins(s.end);
+                  return acc + Math.max(0, (endMins - startMins) / 60);
+                }, 0);
+
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f8fafc', borderRadius: 8, fontSize: 13 }}>
+                      <span style={{ color: '#64748b' }}>Active Working Days:</span>
+                      <strong style={{ color: '#0f172a' }}>{activeDays.length} of 7 days</strong>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f8fafc', borderRadius: 8, fontSize: 13 }}>
+                      <span style={{ color: '#64748b' }}>Total Clinical Hours / Week:</span>
+                      <strong style={{ color: '#0f172a' }}>{totalHours.toFixed(1)} hrs</strong>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 12px', background: '#f0fdfa', border: '1px solid #ccfbf1', borderRadius: 8, fontSize: 13 }}>
+                      <span style={{ color: '#0f6e6e', fontWeight: 700 }}>Total Available Slots:</span>
+                      <strong style={{ color: '#0f6e6e', fontSize: 15 }}>{totalSlots} slots / wk</strong>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Quick Link to Tiered Consultation Fees */}
+            <div style={{
+              background: '#f8fafc',
+              borderRadius: 16,
+              padding: '20px 22px',
+              border: '1px solid #e2e8f0',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ fontSize: 15, fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  Tiered Consultation Fees (Doctor Set)
-                </h4>
-                <Badge variant="teal" size="sm">90% Payout</Badge>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>
+                  Current Tiered Fees
+                </span>
+                <button
+                  type="button"
+                  onClick={handleOpenFeeModal}
+                  style={{
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    color: '#0f6e6e',
+                    background: '#ffffff',
+                    border: '1px solid #99f6e4',
+                    padding: '3px 8px',
+                    borderRadius: 6,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Edit Fees
+                </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                    Chat Consultation Rate (₦)
-                  </label>
-                  <input
-                    type="number"
-                    value={feeChat}
-                    onChange={(e) => setFeeChat(Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13 }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                    Voice Call Rate (₦)
-                  </label>
-                  <input
-                    type="number"
-                    value={feeVoice}
-                    onChange={(e) => setFeeVoice(Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13 }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                    HD Video Telehealth Rate (₦)
-                  </label>
-                  <input
-                    type="number"
-                    value={feeVideo}
-                    onChange={(e) => setFeeVideo(Number(e.target.value))}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13 }}
-                  />
-                </div>
-
-                <Button
-                  variant="teal"
-                  style={{ width: '100%' }}
-                  onClick={() => triggerFeedback('Updated tiered consultation fees. Patients will now see these rates.')}
-                >
-                  Save Fee Schedule
-                </Button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
+                <span>Chat: <strong>₦{tierFees.chat.toLocaleString()}</strong></span>
+                <span>Audio: <strong>₦{tierFees.audio.toLocaleString()}</strong></span>
+                <span>Video: <strong>₦{tierFees.video.toLocaleString()}</strong></span>
               </div>
             </div>
 
@@ -1991,7 +2822,7 @@ function DoctorPortalContent() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {patientReviews.map((rev) => (
+            {displayedReviews.map((rev) => (
               <Card key={rev.id} style={{ padding: '22px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
@@ -2065,6 +2896,18 @@ function DoctorPortalContent() {
               </Card>
             ))}
           </div>
+
+          {/* Pagination & See All Bar for Patient Reviews */}
+          <Pagination
+            page={reviewPage}
+            totalPages={Math.ceil(patientReviews.length / reviewPageSize)}
+            onPageChange={setReviewPage}
+            total={patientReviews.length}
+            pageSize={reviewPageSize}
+            onPageSizeChange={(newSize) => { setReviewPageSize(newSize); setReviewPage(1); }}
+            isSeeAll={reviewIsSeeAll}
+            onToggleSeeAll={() => setReviewIsSeeAll(!reviewIsSeeAll)}
+          />
         </div>
       )}
 
@@ -2231,187 +3074,1068 @@ function DoctorPortalContent() {
             </div>
           </div>
 
+          {/* ── Tiered Consultation Fees (Doctor Set) Full Management Card ── */}
+          <div style={{
+            gridColumn: '1 / -1',
+            background: '#ffffff',
+            borderRadius: 16,
+            padding: '24px 28px',
+            border: '1.5px solid #e2e8f0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 20,
+            boxShadow: '0 2px 12px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <DollarSign size={20} style={{ color: '#0f6e6e' }} />
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Tiered Consultation Fees (Doctor Set)
+                  </h3>
+                  <span style={{
+                    background: '#e0f2fe',
+                    color: '#0284c7',
+                    fontSize: 11,
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: 6
+                  }}>
+                    Automatic Live Calculation
+                  </span>
+                </div>
+                <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
+                  Platform minimum ₦{MIN_CONSULTATION_FEE.toLocaleString()} per session. Format rule: Chat must be less than Audio, which must be less than Video.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<Edit3 size={14} />}
+                  onClick={handleOpenFeeModal}
+                >
+                  Quick Edit Modal
+                </Button>
+                <Button
+                  variant="teal"
+                  size="sm"
+                  leftIcon={<CheckCircle2 size={14} />}
+                  onClick={handleSaveTieredFees}
+                >
+                  Save Tiered Fees
+                </Button>
+              </div>
+            </div>
+
+            {feeValidationErr && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 10,
+                padding: '10px 14px',
+                color: '#b91c1c',
+                fontSize: 12.5,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <AlertTriangle size={16} />
+                <span>{feeValidationErr}</span>
+              </div>
+            )}
+
+            {/* 3 Tier Input & Live Calculation Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+              {[
+                {
+                  label: 'Chat Consultation Fee',
+                  sub: 'Lowest tier · Minimum ₦2,000',
+                  icon: MessageSquare,
+                  value: feeInputChat,
+                  setter: setFeeInputChat,
+                  color: '#7c3aed',
+                  bg: '#f5f3ff',
+                  border: '#ddd6fe',
+                },
+                {
+                  label: 'Audio Call Fee',
+                  sub: 'Mid tier · Higher than chat',
+                  icon: Phone,
+                  value: feeInputAudio,
+                  setter: setFeeInputAudio,
+                  color: '#0284c7',
+                  bg: '#f0f9ff',
+                  border: '#bae6fd',
+                },
+                {
+                  label: 'Video Call Fee',
+                  sub: 'Highest tier · High-bandwidth clinical',
+                  icon: Video,
+                  value: feeInputVideo,
+                  setter: setFeeInputVideo,
+                  color: '#0f6e6e',
+                  bg: '#f0fdfa',
+                  border: '#99f6e4',
+                },
+              ].map((tier, idx) => {
+                const Icon = tier.icon;
+                const gross = Math.max(0, parseFloat(String(tier.value).replace(/,/g, '')) || 0);
+                const platformFee = +(gross * (PLATFORM_FEE_PERCENT / 100)).toFixed(2);
+                const net = +(gross - platformFee).toFixed(2);
+
+                return (
+                  <div
+                    key={idx}
+                    style={{
+                      background: tier.bg,
+                      border: `1.5px solid ${tier.border}`,
+                      borderRadius: 14,
+                      padding: '18px 20px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 14
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Icon size={17} style={{ color: tier.color }} />
+                        <div>
+                          <span style={{ fontSize: 13.5, fontWeight: 800, color: '#0f172a', display: 'block' }}>
+                            {tier.label}
+                          </span>
+                          <span style={{ fontSize: 11, color: '#64748b' }}>{tier.sub}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: 11.5, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                        Session Fee (NGN ₦)
+                      </label>
+                      <input
+                        type="number"
+                        min={MIN_CONSULTATION_FEE}
+                        step={500}
+                        value={tier.value}
+                        onChange={(e) => {
+                          tier.setter(e.target.value);
+                          setFeeValidationErr(null);
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: '1.5px solid #cbd5e1',
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: '#0f172a',
+                          background: '#ffffff',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    {/* Live Financial Breakdown Card */}
+                    <div style={{
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 10,
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b' }}>
+                        <span>Patient Pays (Gross):</span>
+                        <strong style={{ color: '#0f172a' }}>₦{gross.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#dc2626' }}>
+                        <span>Platform Infrastructure (10%):</span>
+                        <span>−₦{platformFee.toLocaleString()}</span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: '#059669',
+                        borderTop: '1px dashed #e2e8f0',
+                        paddingTop: 6,
+                        marginTop: 2
+                      }}>
+                        <span>Physician Net Take-Home:</span>
+                        <span>₦{net.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
         </div>
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL 1: HD VIDEO TELEHEALTH CONSULTATION STATION                   */}
+      {/* MODAL 1: FULLSCREEN & RESIZABLE HD TELEHEALTH CONSULTATION STUDIO    */}
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeVideoConsult && (
-        <Modal
-          isOpen={true}
-          onClose={() => setActiveVideoConsult(null)}
-          title={`Encrypted HD Teleconsultation — ${activeVideoConsult.patientName}`}
-          subtitle={`Vitals stream & live clinical consultation · Room ID: ROOM-${activeVideoConsult.id}`}
-          size="xl"
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.82)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            padding: callSizeMode === 'fullscreen' ? 0 : 16,
+            transition: 'all 200ms ease',
+          }}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
-
-            {/* Video Call Canvas */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{
-                position: 'relative',
-                height: 380,
-                background: '#090d16',
-                borderRadius: 14,
-                overflow: 'hidden',
+          {/* Main Studio Container */}
+          <div
+            style={{
+              position: 'relative',
+              width: callSizeMode === 'fullscreen' ? '100vw' : callSizeMode === 'expanded' ? '96vw' : '1140px',
+              maxWidth: callSizeMode === 'fullscreen' ? '100vw' : callSizeMode === 'expanded' ? '1480px' : '1180px',
+              height: callSizeMode === 'fullscreen' ? '100vh' : callSizeMode === 'expanded' ? '92vh' : '760px',
+              maxHeight: callSizeMode === 'fullscreen' ? '100vh' : '92vh',
+              background: '#090d16',
+              color: '#ffffff',
+              borderRadius: callSizeMode === 'fullscreen' ? 0 : 20,
+              boxShadow: '0 30px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.1)',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              transition: 'all 250ms cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+          >
+            {/* Top Studio Control Bar */}
+            <div
+              style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                border: '1px solid #334155'
-              }}>
-                {/* Patient Video Simulation */}
-                {!isVideoDisabled ? (
-                  <div style={{ textAlign: 'center', color: '#ffffff' }}>
-                    <div style={{
-                      width: 90, height: 90, borderRadius: '50%', background: '#1e293b',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px',
-                      fontSize: 32, fontWeight: 800, border: '3px solid #0f6e6e'
-                    }}>
-                      {activeVideoConsult.patientName.split(' ').map(n => n[0]).join('')}
-                    </div>
-                    <h4 style={{ fontSize: 17, fontWeight: 800, margin: 0 }}>{activeVideoConsult.patientName}</h4>
-                    <span style={{ fontSize: 12, color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 4 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-                      Encrypted Live 1080p WebRTC Feed
+                justifyContent: 'space-between',
+                padding: '12px 20px',
+                background: '#0f172a',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                flexShrink: 0,
+                gap: 16,
+                flexWrap: 'wrap',
+              }}
+            >
+              {/* Left: Patient Info & Call Timer */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #0f6e6e 0%, #0d9488 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#ffffff',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Video size={18} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: '#f8fafc' }}>
+                      {activeVideoConsult.patientName}
+                    </h3>
+                    <span
+                      style={{
+                        background: '#064e3b',
+                        color: '#34d399',
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      <ShieldCheck size={12} /> NDPA Encrypted Room-{activeVideoConsult.id}
                     </span>
                   </div>
-                ) : (
-                  <div style={{ color: '#94a3b8', textAlign: 'center' }}>
-                    <VideoOff size={44} style={{ margin: '0 auto 8px' }} />
-                    <p style={{ margin: 0 }}>Camera Video Feed Paused</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2, fontSize: 11.5, color: '#94a3b8' }}>
+                    <span>{activeVideoConsult.patientAge}y · {activeVideoConsult.patientGender}</span>
+                    <span>•</span>
+                    <span style={{ color: '#10b981', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Radio size={12} /> LIVE {formatTimer(callDurationSeconds)}
+                    </span>
                   </div>
-                )}
+                </div>
+              </div>
 
-                {/* Local Doctor PIP Preview */}
-                <div style={{
-                  position: 'absolute',
-                  right: 16,
-                  bottom: 16,
-                  width: 120,
-                  height: 90,
-                  background: '#1e293b',
-                  borderRadius: 10,
-                  border: '2px solid #0f6e6e',
+              {/* Center: Stage Switcher & Focus Mode */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleSwapFeeds}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: '#1e293b',
+                    color: '#e2e8f0',
+                    border: '1px solid #334155',
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  title="Swap Main Video Stage between Doctor Webcam and Patient Feed"
+                >
+                  <ArrowLeftRight size={13} style={{ color: '#38bdf8' }} />
+                  <span>{primaryVideoFeed === 'doctor_camera' ? 'Stage: Doctor Camera' : 'Stage: Patient Feed'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCallSplitMode((prev) => (prev === 'split' ? 'video_focus' : 'split'))}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: callSplitMode === 'video_focus' ? '#0f6e6e' : '#1e293b',
+                    color: '#ffffff',
+                    border: `1px solid ${callSplitMode === 'video_focus' ? '#14b8a6' : '#334155'}`,
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  title="Toggle 100% Video Examination Focus"
+                >
+                  {callSplitMode === 'video_focus' ? <Shrink size={13} /> : <Expand size={13} />}
+                  <span>{callSplitMode === 'video_focus' ? 'Show Notes Panel' : 'Video Only Mode'}</span>
+                </button>
+              </div>
+
+              {/* Right: Resizing, Fullscreen & Close Controls */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Size Preset Selector */}
+                <div
+                  style={{
+                    display: 'flex',
+                    background: '#1e293b',
+                    borderRadius: 8,
+                    border: '1px solid #334155',
+                    padding: 2,
+                    gap: 2,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setCallSizeMode('standard')}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: callSizeMode === 'standard' ? '#2563eb' : 'transparent',
+                      color: callSizeMode === 'standard' ? '#ffffff' : '#94a3b8',
+                    }}
+                    title="Standard Window Mode (1140px)"
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCallSizeMode('expanded')}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      borderRadius: 6,
+                      border: 'none',
+                      cursor: 'pointer',
+                      background: callSizeMode === 'expanded' ? '#2563eb' : 'transparent',
+                      color: callSizeMode === 'expanded' ? '#ffffff' : '#94a3b8',
+                    }}
+                    title="Expanded Studio Mode (1480px)"
+                  >
+                    Studio
+                  </button>
+                </div>
+
+                {/* True Fullscreen Toggle */}
+                <button
+                  type="button"
+                  onClick={handleToggleFullScreen}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    background: callSizeMode === 'fullscreen' ? '#047857' : '#1e293b',
+                    color: '#ffffff',
+                    border: `1px solid ${callSizeMode === 'fullscreen' ? '#10b981' : '#334155'}`,
+                    borderRadius: 8,
+                    padding: '6px 12px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  title="Toggle Fullscreen Video Consultation"
+                >
+                  {callSizeMode === 'fullscreen' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  <span>{callSizeMode === 'fullscreen' ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+                </button>
+
+                {/* Close Studio Button */}
+                <button
+                  type="button"
+                  onClick={() => setActiveVideoConsult(null)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    background: '#1e293b',
+                    color: '#94a3b8',
+                    border: '1px solid #334155',
+                    cursor: 'pointer',
+                    transition: 'all 150ms',
+                  }}
+                  title="Minimize / Close Studio"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Studio Body: Video Canvas + Clinical Notes */}
+            <div
+              style={{
+                flex: 1,
+                display: 'grid',
+                gridTemplateColumns: callSplitMode === 'video_focus' ? '1fr' : '1fr 360px',
+                minHeight: 0,
+                overflow: 'hidden',
+              }}
+            >
+              {/* Main Video Viewport Canvas */}
+              <div
+                style={{
+                  position: 'relative',
+                  background: '#050811',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#ffffff',
-                  fontSize: 11,
-                  fontWeight: 700
-                }}>
-                  You (Dr. Folake)
-                </div>
-
-                {/* Live Vitals HUD */}
-                <div style={{
-                  position: 'absolute',
-                  top: 14,
-                  left: 14,
-                  background: 'rgba(15, 23, 42, 0.85)',
-                  backdropFilter: 'blur(8px)',
-                  padding: '6px 12px',
-                  borderRadius: 8,
-                  fontSize: 11.5,
-                  color: '#ffffff',
-                  display: 'flex',
-                  gap: 12,
-                  border: '1px solid rgba(255,255,255,0.1)'
-                }}>
-                  <span>BP: <strong>{activeVideoConsult.vitals.bp}</strong></span>
-                  <span>HR: <strong>{activeVideoConsult.vitals.hr}</strong></span>
-                  <span>SpO2: <strong style={{ color: '#10b981' }}>{activeVideoConsult.vitals.spo2}</strong></span>
-                </div>
-              </div>
-
-              {/* Call Controls Bar */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                gap: 14,
-                padding: '12px 20px',
-                background: '#f8fafc',
-                borderRadius: 12,
-                border: '1px solid #e2e8f0'
-              }}>
-                <button
-                  type="button"
-                  onClick={() => setIsMicMuted(!isMicMuted)}
-                  style={{
-                    width: 44, height: 44, borderRadius: '50%',
-                    background: isMicMuted ? '#fee2e2' : '#ffffff',
-                    color: isMicMuted ? '#dc2626' : '#334155',
-                    border: '1px solid #cbd5e1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}
-                >
-                  {isMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setIsVideoDisabled(!isVideoDisabled)}
-                  style={{
-                    width: 44, height: 44, borderRadius: '50%',
-                    background: isVideoDisabled ? '#fee2e2' : '#ffffff',
-                    color: isVideoDisabled ? '#dc2626' : '#334155',
-                    border: '1px solid #cbd5e1', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                  }}
-                >
-                  {isVideoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveVideoConsult(null);
-                    triggerFeedback(`Consultation for ${activeVideoConsult.patientName} completed successfully.`);
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    background: '#dc2626', color: '#ffffff', border: 'none',
-                    borderRadius: 999, padding: '10px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer'
-                  }}
-                >
-                  <PhoneOff size={16} />
-                  End Consultation
-                </button>
-              </div>
-            </div>
-
-            {/* Quick Clinical Notes during Call */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 10, border: '1px solid #e2e8f0' }}>
-                <h5 style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', margin: '0 0 6px' }}>Chief Complaint</h5>
-                <p style={{ fontSize: 12.5, color: '#475569', margin: 0 }}>{activeVideoConsult.reason}</p>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                  Consultation Impressions & Plan
-                </label>
-                <textarea
-                  rows={6}
-                  placeholder="Record subjective observations, assessment, and treatment instructions..."
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 12.5, boxSizing: 'border-box' }}
-                />
-              </div>
-
-              <Button
-                variant="teal"
-                style={{ width: '100%' }}
-                leftIcon={<Pill size={14} />}
-                onClick={() => {
-                  setRxPatientName(`${activeVideoConsult.patientName} (${activeVideoConsult.patientAge}y · ${activeVideoConsult.patientGender})`);
-                  setIsPrescriptionModalOpen(true);
+                  overflow: 'hidden',
+                  minHeight: 0,
                 }}
               >
-                Fast Issue Prescription
-              </Button>
-            </div>
+                {/* 1. PRIMARY STAGE: DOCTOR CAMERA */}
+                {primaryVideoFeed === 'doctor_camera' ? (
+                  <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+                    {isCameraActive && !isVideoDisabled ? (
+                      <video
+                        ref={setMainVideoNode}
+                        autoPlay
+                        playsInline
+                        muted
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transform: 'scaleX(-1)', // Mirror webcam feed
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 24,
+                          textAlign: 'center',
+                          background: 'radial-gradient(circle at center, #1e293b 0%, #090d16 100%)',
+                        }}
+                      >
+                        {isVideoDisabled ? (
+                          <>
+                            <VideoOff size={52} style={{ color: '#ef4444', marginBottom: 12 }} />
+                            <h3 style={{ margin: '0 0 6px', fontSize: 18, fontWeight: 700 }}>Doctor Webcam Paused</h3>
+                            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#94a3b8' }}>
+                              You clicked video pause. Click the camera icon below to re-enable your video stream.
+                            </p>
+                            <Button variant="teal" size="sm" leftIcon={<Video size={14} />} onClick={handleToggleVideo}>
+                              Turn On Camera
+                            </Button>
+                          </>
+                        ) : cameraError ? (
+                          <div
+                            style={{
+                              maxWidth: 520,
+                              background: '#1e1e2d',
+                              border: '1px solid #dc2626',
+                              borderRadius: 14,
+                              padding: 24,
+                            }}
+                          >
+                            <AlertTriangle size={38} style={{ color: '#ef4444', margin: '0 auto 12px' }} />
+                            <h4 style={{ margin: '0 0 8px', fontSize: 16, fontWeight: 800, color: '#f8fafc' }}>
+                              Camera Access Diagnostics
+                            </h4>
+                            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#fca5a5' }}>
+                              {cameraError}
+                            </p>
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                              <Button
+                                variant="teal"
+                                size="sm"
+                                leftIcon={<RefreshCw size={14} />}
+                                onClick={requestMediaStream}
+                              >
+                                Re-test & Connect Camera
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setPrimaryVideoFeed('patient_feed')}
+                              >
+                                View Patient Feed
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center' }}>
+                            <div
+                              style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: '50%',
+                                border: '3px solid #0f6e6e',
+                                borderTopColor: '#2dd4bf',
+                                animation: 'spin 1s linear infinite',
+                                margin: '0 auto 16px',
+                              }}
+                            />
+                            <h4 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700 }}>
+                              Initializing HD Desktop Camera...
+                            </h4>
+                            <p style={{ margin: 0, fontSize: 12.5, color: '#94a3b8' }}>
+                              Requesting hardware access from Electron media layer
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* 2. PRIMARY STAGE: PATIENT WEBRTC STREAM */
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: 'radial-gradient(circle at center, #1e293b 0%, #090d16 100%)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 110,
+                        height: 110,
+                        borderRadius: '50%',
+                        background: '#1e293b',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px',
+                        fontSize: 38,
+                        fontWeight: 800,
+                        border: '4px solid #0f6e6e',
+                        color: '#ffffff',
+                        boxShadow: '0 0 40px rgba(15, 110, 110, 0.4)',
+                      }}
+                    >
+                      {activeVideoConsult.patientName
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')}
+                    </div>
+                    <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 6px', color: '#f8fafc' }}>
+                      {activeVideoConsult.patientName}
+                    </h3>
+                    <span
+                      style={{
+                        fontSize: 12.5,
+                        color: '#34d399',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}
+                    >
+                      <ShieldCheck size={15} /> Encrypted 1080p WebRTC Clinical Stream
+                    </span>
+                  </div>
+                )}
 
+                {/* ── PICTURE-IN-PICTURE (PIP) WINDOW ──────────────────────────── */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 20,
+                    bottom: 84,
+                    width: callSizeMode === 'fullscreen' ? 240 : 190,
+                    height: callSizeMode === 'fullscreen' ? 160 : 126,
+                    background: '#0f172a',
+                    borderRadius: 14,
+                    border: '2px solid #0f6e6e',
+                    overflow: 'hidden',
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.6)',
+                    zIndex: 20,
+                    cursor: 'pointer',
+                    transition: 'all 200ms ease',
+                  }}
+                  onClick={handleSwapFeeds}
+                  title="Click to swap with main stage"
+                >
+                  {primaryVideoFeed === 'patient_feed' ? (
+                    // Doctor Camera in PiP
+                    isCameraActive && !isVideoDisabled ? (
+                      <video
+                        ref={setPipVideoNode}
+                        autoPlay
+                        playsInline
+                        muted
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          transform: 'scaleX(-1)',
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'column',
+                          background: '#1e293b',
+                          color: '#94a3b8',
+                          padding: 8,
+                          textAlign: 'center',
+                        }}
+                      >
+                        <VideoOff size={22} style={{ marginBottom: 4 }} />
+                        <span style={{ fontSize: 10, fontWeight: 600 }}>Doctor Cam Off</span>
+                      </div>
+                    )
+                  ) : (
+                    // Patient in PiP
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        background: '#1e293b',
+                        color: '#ffffff',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 44,
+                          height: 44,
+                          borderRadius: '50%',
+                          background: '#0f6e6e',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 16,
+                          fontWeight: 700,
+                          marginBottom: 4,
+                        }}
+                      >
+                        {activeVideoConsult.patientName
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')}
+                      </div>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: '#f8fafc' }}>
+                        {activeVideoConsult.patientName.split(' ')[0]}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* PiP Label Badge */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: 6,
+                      left: 6,
+                      background: 'rgba(0,0,0,0.75)',
+                      backdropFilter: 'blur(4px)',
+                      padding: '2px 6px',
+                      borderRadius: 4,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                  >
+                    <span>{primaryVideoFeed === 'patient_feed' ? 'Dr. Folake' : 'Patient'}</span>
+                    <span style={{ fontSize: 9, color: '#34d399' }}>● PiP</span>
+                  </div>
+                </div>
+
+                {/* ── TOP-LEFT HUD: LIVE PATIENT VITALS ────────────────────────── */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 16,
+                    left: 16,
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    padding: '8px 16px',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+                    zIndex: 15,
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Heart size={14} style={{ color: '#ef4444' }} />
+                    <span style={{ color: '#94a3b8' }}>BP:</span>
+                    <strong style={{ color: '#f8fafc' }}>{activeVideoConsult.vitals.bp}</strong>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Activity size={14} style={{ color: '#38bdf8' }} />
+                    <span style={{ color: '#94a3b8' }}>HR:</span>
+                    <strong style={{ color: '#f8fafc' }}>{activeVideoConsult.vitals.hr}</strong>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Droplet size={14} style={{ color: '#10b981' }} />
+                    <span style={{ color: '#94a3b8' }}>SpO2:</span>
+                    <strong style={{ color: '#34d399' }}>{activeVideoConsult.vitals.spo2}</strong>
+                  </div>
+                </div>
+
+                {/* ── TOP-RIGHT HUD: HARDWARE STATUS & VU METER ────────────────── */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 16,
+                    right: 16,
+                    background: 'rgba(15, 23, 42, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    padding: '8px 14px',
+                    borderRadius: 10,
+                    fontSize: 11.5,
+                    color: '#e2e8f0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    zIndex: 15,
+                  }}
+                >
+                  <span style={{ color: isCameraActive ? '#34d399' : '#f87171', fontWeight: 700 }}>
+                    {isCameraActive ? cameraDeviceLabel : 'Camera Offline'}
+                  </span>
+                  <span>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: '#94a3b8' }}>MIC:</span>
+                    <div style={{ width: 40, height: 6, background: '#334155', borderRadius: 3, overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          width: `${isMicMuted ? 0 : Math.max(12, micVolume)}%`,
+                          height: '100%',
+                          background: isMicMuted ? '#ef4444' : '#10b981',
+                          transition: 'width 80ms ease-out',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── BOTTOM FLOATING CALL CONTROLS DOCK ───────────────────────── */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 18,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '8px 16px',
+                    background: 'rgba(15, 23, 42, 0.9)',
+                    backdropFilter: 'blur(12px)',
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    boxShadow: '0 12px 30px rgba(0,0,0,0.5)',
+                    zIndex: 25,
+                  }}
+                >
+                  {/* Microphone Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleToggleMic}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: isMicMuted ? '#ef4444' : '#1e293b',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 150ms',
+                    }}
+                    title={isMicMuted ? 'Unmute Microphone' : 'Mute Microphone'}
+                  >
+                    {isMicMuted ? <MicOff size={18} /> : <Mic size={18} />}
+                  </button>
+
+                  {/* Camera Toggle */}
+                  <button
+                    type="button"
+                    onClick={handleToggleVideo}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: isVideoDisabled ? '#ef4444' : '#1e293b',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 150ms',
+                    }}
+                    title={isVideoDisabled ? 'Turn On Webcam' : 'Turn Off Webcam'}
+                  >
+                    {isVideoDisabled ? <VideoOff size={18} /> : <Video size={18} />}
+                  </button>
+
+                  {/* Swap Views */}
+                  <button
+                    type="button"
+                    onClick={handleSwapFeeds}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: '#1e293b',
+                      color: '#38bdf8',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 150ms',
+                    }}
+                    title="Swap Main Camera / PiP View"
+                  >
+                    <ArrowLeftRight size={18} />
+                  </button>
+
+                  {/* Fullscreen Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleFullScreen}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: callSizeMode === 'fullscreen' ? '#047857' : '#1e293b',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 150ms',
+                    }}
+                    title="Toggle Fullscreen Consultation"
+                  >
+                    {callSizeMode === 'fullscreen' ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                  </button>
+
+                  {/* Snapshot Evidence Capture */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerFeedback('Clinical snapshot captured and saved to patient electronic case history.');
+                    }}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: '50%',
+                      background: '#1e293b',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 150ms',
+                    }}
+                    title="Capture Telehealth Examination Snapshot"
+                  >
+                    <Camera size={18} />
+                  </button>
+
+                  <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.2)', margin: '0 4px' }} />
+
+                  {/* End Call Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveVideoConsult(null);
+                      triggerFeedback(`Teleconsultation with ${activeVideoConsult.patientName} ended.`);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      background: '#dc2626',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: 999,
+                      padding: '10px 22px',
+                      fontSize: 13,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(220,38,38,0.4)',
+                    }}
+                  >
+                    <PhoneOff size={16} />
+                    End Call
+                  </button>
+                </div>
+              </div>
+
+              {/* ── RIGHT DRAWER: CLINICAL NOTES & FAST RX (when in split mode) ─ */}
+              {callSplitMode === 'split' && (
+                <div
+                  style={{
+                    background: '#0f172a',
+                    borderLeft: '1px solid rgba(255,255,255,0.08)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: 20,
+                    gap: 16,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {/* Patient Quick Profile */}
+                  <div
+                    style={{
+                      background: '#1e293b',
+                      borderRadius: 12,
+                      padding: 14,
+                      border: '1px solid rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', textTransform: 'uppercase' }}>
+                      Chief Complaint
+                    </div>
+                    <p style={{ margin: '6px 0 0', fontSize: 13, color: '#f1f5f9', fontWeight: 600 }}>
+                      {activeVideoConsult.reason}
+                    </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginTop: 10,
+                        fontSize: 11.5,
+                        color: '#94a3b8',
+                      }}
+                    >
+                      <span>Blood Group: <strong style={{ color: '#ffffff' }}>{activeVideoConsult.bloodGroup}</strong></span>
+                      <span>•</span>
+                      <span>Genotype: <strong style={{ color: '#ffffff' }}>{activeVideoConsult.genotype}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Consultation SOAP Notes */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#cbd5e1', marginBottom: 6 }}>
+                      Clinical Impressions & SOAP Notes
+                    </label>
+                    <textarea
+                      rows={callSizeMode === 'fullscreen' ? 14 : 9}
+                      placeholder="Record subjective history, physical observations, ICD-10 assessment, and patient care plan..."
+                      style={{
+                        width: '100%',
+                        flex: 1,
+                        background: '#1e293b',
+                        color: '#ffffff',
+                        padding: '12px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #334155',
+                        fontSize: 13,
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                        resize: 'none',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                  </div>
+
+                  {/* E-Prescription Fast Dispatch */}
+                  <Button
+                    variant="teal"
+                    style={{ width: '100%', padding: '12px' }}
+                    leftIcon={<Pill size={16} />}
+                    onClick={() => {
+                      setRxPatientName(`${activeVideoConsult.patientName} (${activeVideoConsult.patientAge}y · ${activeVideoConsult.patientGender})`);
+                      setIsPrescriptionModalOpen(true);
+                    }}
+                  >
+                    Fast Issue E-Prescription
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
-        </Modal>
+        </div>
       )}
 
       {/* ═════════════════════════════════════════════════════════════════════ */}
@@ -2544,6 +4268,367 @@ function DoctorPortalContent() {
               </Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* MODAL 3: PATIENT 3D BODY MAP & CLINICAL EHR MODAL                   */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {activeChartPatient && (
+        <Modal
+          isOpen={true}
+          onClose={() => setActiveChartPatient(null)}
+          title={`3D Body Map & Clinical Chart — ${activeChartPatient.patientName}`}
+          subtitle={`${activeChartPatient.patientAge}y · ${activeChartPatient.patientGender} · Room-${activeChartPatient.id}`}
+          size="xl"
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20 }}>
+            {/* Interactive Anatomical Body Map */}
+            <AnatomicalBodyMap
+              activeRegion={selectedBodyRegion}
+              onSelectRegion={setSelectedBodyRegion}
+              severity={painIntensity}
+              onSelectSeverity={setPainIntensity}
+            />
+
+            {/* Patient Clinical Info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ background: '#f8fafc', padding: 14, borderRadius: 10, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e', textTransform: 'uppercase' }}>
+                  Chief Complaint
+                </span>
+                <p style={{ margin: '4px 0 0', fontSize: 13, color: '#1e293b', fontWeight: 600 }}>
+                  {activeChartPatient.reason}
+                </p>
+                <div style={{ display: 'flex', gap: 12, marginTop: 10, fontSize: 12, color: '#64748b' }}>
+                  <span>Blood: <strong style={{ color: '#0f172a' }}>{activeChartPatient.bloodGroup}</strong></span>
+                  <span>Genotype: <strong style={{ color: '#0f172a' }}>{activeChartPatient.genotype}</strong></span>
+                </div>
+              </div>
+
+              {/* Vitals HUD */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                <div style={{ background: '#fef2f2', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#b91c1c', fontWeight: 700 }}>BP</span>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#991b1b', marginTop: 2 }}>
+                    {activeChartPatient.vitals.bp}
+                  </div>
+                </div>
+                <div style={{ background: '#eff6ff', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#1e40af', fontWeight: 700 }}>HR</span>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#1e3a8a', marginTop: 2 }}>
+                    {activeChartPatient.vitals.hr}
+                  </div>
+                </div>
+                <div style={{ background: '#ecfdf5', padding: 10, borderRadius: 8, textAlign: 'center' }}>
+                  <span style={{ fontSize: 11, color: '#065f46', fontWeight: 700 }}>SpO2</span>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: '#064e3b', marginTop: 2 }}>
+                    {activeChartPatient.vitals.spo2}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'auto' }}>
+                <Button
+                  variant="teal"
+                  style={{ width: '100%' }}
+                  leftIcon={<ExternalLink size={14} />}
+                  onClick={() => {
+                    setActiveChartPatient(null);
+                    router.push('/dashboard/body-map');
+                  }}
+                >
+                  Open Full 3D Body Map Studio
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  style={{ width: '100%' }}
+                  leftIcon={<Video size={14} />}
+                  onClick={() => {
+                    const consult = activeChartPatient;
+                    setActiveChartPatient(null);
+                    setActiveVideoConsult(consult);
+                  }}
+                >
+                  Start HD Teleconsultation
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {/* MODAL 4: SET TIERED CONSULTATION FEES (Exact Phone Match)           */}
+      {/* ═════════════════════════════════════════════════════════════════════ */}
+      {isFeeModalOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsFeeModalOpen(false)}
+          title="Set Tiered Consultation Fees"
+          subtitle="Configure custom clinician fees for Chat, Audio, and Video sessions. 10% platform fee deducted automatically."
+          size="lg"
+          footer={
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, width: '100%' }}>
+              <Button variant="outline" onClick={() => setIsFeeModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="teal" leftIcon={<CheckCircle2 size={14} />} onClick={handleSaveTieredFees}>
+                Save Tiered Fees
+              </Button>
+            </div>
+          }
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* Current Active Fees Banner */}
+            <div style={{
+              background: '#f0fdfa',
+              border: '1px solid #ccfbf1',
+              borderRadius: 12,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 10
+            }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#0f6e6e', textTransform: 'uppercase' }}>
+                  Currently Active Rates
+                </span>
+                <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: 12.5, fontWeight: 700, color: '#0f172a' }}>
+                  <span>Chat: ₦{tierFees.chat.toLocaleString()}</span>
+                  <span>·</span>
+                  <span>Audio: ₦{tierFees.audio.toLocaleString()}</span>
+                  <span>·</span>
+                  <span>Video: ₦{tierFees.video.toLocaleString()}</span>
+                </div>
+              </div>
+              <span style={{
+                background: '#ffffff',
+                border: '1px solid #99f6e4',
+                color: '#0f6e6e',
+                fontSize: 11,
+                fontWeight: 800,
+                padding: '4px 10px',
+                borderRadius: 8
+              }}>
+                Platform Min ₦{MIN_CONSULTATION_FEE.toLocaleString()}
+              </span>
+            </div>
+
+            <div style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '10px 14px',
+              fontSize: 12.5,
+              color: '#475569',
+              lineHeight: 1.5
+            }}>
+              Set different fees per consultation format. Minimum ₦{MIN_CONSULTATION_FEE.toLocaleString()} each.
+              Hierarchy rule: <strong>Chat</strong> must be less than <strong>Audio</strong>, which must be less than <strong>Video</strong>.
+            </div>
+
+            {feeValidationErr && (
+              <div style={{
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 10,
+                padding: '10px 14px',
+                color: '#b91c1c',
+                fontSize: 12.5,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <AlertTriangle size={16} />
+                <span>{feeValidationErr}</span>
+              </div>
+            )}
+
+            {/* Inputs for each Tier */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
+                  Chat Fee (₦)
+                </label>
+                <input
+                  type="number"
+                  min={MIN_CONSULTATION_FEE}
+                  step={500}
+                  value={feeInputChat}
+                  onChange={(e) => {
+                    setFeeInputChat(e.target.value);
+                    setFeeValidationErr(null);
+                  }}
+                  placeholder="8000"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <span style={{ fontSize: 10.5, color: '#64748b', marginTop: 4, display: 'block' }}>
+                  Min ₦{MIN_CONSULTATION_FEE.toLocaleString()}
+                </span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
+                  Audio Call Fee (₦)
+                </label>
+                <input
+                  type="number"
+                  min={MIN_CONSULTATION_FEE}
+                  step={500}
+                  value={feeInputAudio}
+                  onChange={(e) => {
+                    setFeeInputAudio(e.target.value);
+                    setFeeValidationErr(null);
+                  }}
+                  placeholder="10000"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <span style={{ fontSize: 10.5, color: '#64748b', marginTop: 4, display: 'block' }}>
+                  Must exceed Chat
+                </span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#475569', display: 'block', marginBottom: 6 }}>
+                  Video Call Fee (₦)
+                </label>
+                <input
+                  type="number"
+                  min={MIN_CONSULTATION_FEE}
+                  step={500}
+                  value={feeInputVideo}
+                  onChange={(e) => {
+                    setFeeInputVideo(e.target.value);
+                    setFeeValidationErr(null);
+                  }}
+                  placeholder="15000"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: '1.5px solid #cbd5e1',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    boxSizing: 'border-box'
+                  }}
+                />
+                <span style={{ fontSize: 10.5, color: '#64748b', marginTop: 4, display: 'block' }}>
+                  Must exceed Audio
+                </span>
+              </div>
+            </div>
+
+            {/* Platform Service Fee Breakdown — All 3 Tiers Live Automatic Calculation */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1.5px solid #e2e8f0',
+              borderRadius: 14,
+              padding: '16px 18px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sparkles size={16} style={{ color: '#059669' }} />
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#0f172a' }}>
+                    Platform Service Fee Breakdown (10% Live Deduction)
+                  </span>
+                </div>
+                <span style={{
+                  background: '#ecfdf5',
+                  color: '#059669',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  border: '1px solid #a7f3d0'
+                }}>
+                  Automatic Math
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                {[
+                  { label: 'Chat', raw: feeInputChat, icon: MessageSquare, color: '#7c3aed' },
+                  { label: 'Audio Call', raw: feeInputAudio, icon: Phone, color: '#0284c7' },
+                  { label: 'Video Call', raw: feeInputVideo, icon: Video, color: '#0f6e6e' },
+                ].map((tier, idx) => {
+                  const Icon = tier.icon;
+                  const gross = Math.max(0, parseFloat(String(tier.raw).replace(/,/g, '')) || 0);
+                  const platformFee = +(gross * 0.10).toFixed(2);
+                  const net = +(gross * 0.90).toFixed(2);
+
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        background: '#ffffff',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 10,
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: tier.color, fontWeight: 800, fontSize: 12.5 }}>
+                        <Icon size={14} />
+                        <span>{tier.label}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#64748b' }}>
+                        <span>Patient Pays:</span>
+                        <strong style={{ color: '#0f172a' }}>₦{gross.toLocaleString()}</strong>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#dc2626' }}>
+                        <span>Platform (10%):</span>
+                        <span>−₦{platformFee.toLocaleString()}</span>
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: 12.5,
+                        fontWeight: 800,
+                        color: '#059669',
+                        borderTop: '1px dashed #e2e8f0',
+                        paddingTop: 4,
+                        marginTop: 2
+                      }}>
+                        <span>You Receive:</span>
+                        <span>₦{net.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
         </Modal>
       )}
 

@@ -383,8 +383,8 @@ body {
   flex-shrink: 0;
 }
 
-.badge-success  { background: #f0fdf4; color: #16a34a; }
-.badge-success .badge-dot { background: #22c55e; }
+.badge-success  { background: #e6f4f4; color: #0f6e6e; }
+.badge-success .badge-dot { background: #0f6e6e; }
 .badge-warning  { background: #fffbeb; color: #d97706; }
 .badge-warning .badge-dot { background: #f59e0b; }
 .badge-error    { background: #fef2f2; color: #dc2626; }

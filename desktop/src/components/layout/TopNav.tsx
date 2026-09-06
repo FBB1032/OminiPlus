@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Menu, Bell, Search, ChevronDown } from 'lucide-react';
 import { useUIStore } from '@/store/uiStore';
 import { useAuthStore } from '@/store/authStore';
@@ -9,8 +11,16 @@ interface TopNavProps {
 }
 
 export function TopNav({ pageTitle }: TopNavProps) {
+  const router = useRouter();
   const { toggleMobileSidebar } = useUIStore();
   const { admin } = useAuthStore();
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleSearchSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchTerm.trim()) {
+      router.push(`/dashboard/patients?search=${encodeURIComponent(searchTerm.trim())}`);
+    }
+  };
 
   return (
     <header style={{
@@ -41,11 +51,24 @@ export function TopNav({ pageTitle }: TopNavProps) {
           flexShrink: 0,
         }}
         className="mobile-menu-btn"
+        aria-label="Open sidebar"
       >
         <Menu size={18} />
       </button>
 
-
+      {/* Page Title */}
+      {pageTitle && (
+        <h1 style={{
+          fontSize: 16,
+          fontWeight: 700,
+          color: '#111827',
+          letterSpacing: '-0.02em',
+          margin: 0,
+          flexShrink: 0,
+        }}>
+          {pageTitle}
+        </h1>
+      )}
 
       <div style={{ flex: 1 }} />
 
@@ -55,7 +78,7 @@ export function TopNav({ pageTitle }: TopNavProps) {
         alignItems: 'center',
         gap: 8,
         background: '#f9fafb',
-        border: '1px solid #f3f4f6',
+        border: '1px solid #e5e7eb',
         borderRadius: 8,
         height: 34,
         padding: '0 12px',
@@ -63,7 +86,10 @@ export function TopNav({ pageTitle }: TopNavProps) {
       }}>
         <Search size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
         <input
-          placeholder="Quick search…"
+          placeholder="Quick search… (press Enter)"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleSearchSubmit}
           style={{
             background: 'transparent', border: 'none', outline: 'none',
             fontSize: 13, color: '#374151', width: '100%',
@@ -74,21 +100,25 @@ export function TopNav({ pageTitle }: TopNavProps) {
           padding: '1px 5px', background: '#f3f4f6', border: '1px solid #e5e7eb',
           borderRadius: 4, fontSize: 10.5, color: '#9ca3af', fontFamily: 'inherit',
           letterSpacing: '-0.01em', flexShrink: 0,
-        }}>⌘K</kbd>
+        }}>↵</kbd>
       </div>
 
       {/* Notification bell */}
-      <button style={{
-        position: 'relative',
-        width: 36, height: 36,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderRadius: 8,
-        background: '#f9fafb',
-        border: '1px solid #f3f4f6',
-        color: '#374151',
-        cursor: 'pointer',
-        flexShrink: 0,
-      }}
+      <button
+        type="button"
+        onClick={() => router.push('/dashboard/notifications')}
+        title="View Notifications"
+        style={{
+          position: 'relative',
+          width: 36, height: 36,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 8,
+          background: '#f9fafb',
+          border: '1px solid #f3f4f6',
+          color: '#374151',
+          cursor: 'pointer',
+          flexShrink: 0,
+        }}
         onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
       >
@@ -105,10 +135,13 @@ export function TopNav({ pageTitle }: TopNavProps) {
 
       {/* Admin profile */}
       {admin && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', padding: '4px 6px',
-          borderRadius: 8, transition: 'background 120ms',
-        }}
+        <div
+          onClick={() => router.push('/dashboard/settings')}
+          title="Open Account Settings"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', padding: '4px 6px',
+            borderRadius: 8, transition: 'background 120ms',
+          }}
           onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb'; }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >

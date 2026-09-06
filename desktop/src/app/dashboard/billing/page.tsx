@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { Pagination } from '@/components/ui/Pagination';
 
 interface HospitalContract {
   id: string;
@@ -237,6 +238,33 @@ export default function PlatformBillingManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'overdue' | 'pending'>('all');
 
+  // Pagination for Tab 1 (Hospital Contracts)
+  const [contractPage, setContractPage] = useState(1);
+  const [contractPageSize, setContractPageSize] = useState(10);
+  const [contractIsSeeAll, setContractIsSeeAll] = useState(false);
+
+  // Pagination for Tab 2 (Doctor Commissions)
+  const [doctorPage, setDoctorPage] = useState(1);
+  const [doctorPageSize, setDoctorPageSize] = useState(10);
+  const [doctorIsSeeAll, setDoctorIsSeeAll] = useState(false);
+
+  // Pagination for Tab 3 (Official Invoices)
+  const [invoicePage, setInvoicePage] = useState(1);
+  const [invoicePageSize, setInvoicePageSize] = useState(10);
+  const [invoiceIsSeeAll, setInvoiceIsSeeAll] = useState(false);
+
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setContractPage(1);
+    setDoctorPage(1);
+    setInvoicePage(1);
+  };
+
+  const handleStatusFilterChange = (val: 'all' | 'active' | 'overdue' | 'pending') => {
+    setStatusFilter(val);
+    setContractPage(1);
+  };
+
   // Modals
   const [newInvoiceModalOpen, setNewInvoiceModalOpen] = useState(false);
   const [previewInvoiceModal, setPreviewInvoiceModal] = useState<InvoiceRecord | null>(null);
@@ -257,6 +285,32 @@ export default function PlatformBillingManagementPage() {
   const totalDoctorNetDisbursed = doctors.reduce((acc, d) => acc + (d.payoutStatus === 'settled' ? d.doctorNetEarnings : 0), 0);
   const totalOverdue = contracts.filter(c => c.status === 'overdue').reduce((acc, c) => acc + c.annualFee, 0);
   const pendingPayoutCount = doctors.filter(d => d.payoutStatus === 'pending_batch').length;
+
+  // Filtered & Paginated Tab Lists
+  const filteredContracts = contracts.filter(c => {
+    const matchesSearch = c.hospitalName.toLowerCase().includes(searchTerm.toLowerCase()) || c.state.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+  const displayedContracts = contractIsSeeAll
+    ? filteredContracts
+    : filteredContracts.slice((contractPage - 1) * contractPageSize, contractPage * contractPageSize);
+
+  const filteredDoctors = doctors.filter(d =>
+    d.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    d.specialization.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const displayedDoctors = doctorIsSeeAll
+    ? filteredDoctors
+    : filteredDoctors.slice((doctorPage - 1) * doctorPageSize, doctorPage * doctorPageSize);
+
+  const filteredInvoices = invoices.filter(inv =>
+    inv.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const displayedInvoices = invoiceIsSeeAll
+    ? filteredInvoices
+    : filteredInvoices.slice((invoicePage - 1) * invoicePageSize, invoicePage * invoicePageSize);
 
   const showToast = (msg: string) => {
     setSuccessToast(msg);
@@ -514,7 +568,7 @@ export default function PlatformBillingManagementPage() {
             type="text"
             placeholder="Search records, facility, or doctor..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             style={{
               background: 'transparent', border: 'none', outline: 'none',
               fontSize: 13, color: '#1e2a2a', width: '100%', fontFamily: 'inherit'
@@ -547,7 +601,7 @@ export default function PlatformBillingManagementPage() {
               <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Filter Status:</span>
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as any)}
+                onChange={(e) => handleStatusFilterChange(e.target.value as any)}
                 style={{
                   padding: '6px 12px', borderRadius: 8, border: '1px solid #cbd5e1',
                   background: '#ffffff', fontSize: 12.5, fontWeight: 600, color: '#334155', outline: 'none'
@@ -574,13 +628,7 @@ export default function PlatformBillingManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {contracts
-                  .filter(c => {
-                    const matchesSearch = c.hospitalName.toLowerCase().includes(searchTerm.toLowerCase()) || c.state.toLowerCase().includes(searchTerm.toLowerCase());
-                    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-                    return matchesSearch && matchesStatus;
-                  })
-                  .map((contract) => (
+                {displayedContracts.map((contract) => (
                     <tr
                       key={contract.id}
                       style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
@@ -721,6 +769,19 @@ export default function PlatformBillingManagementPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={contractPage}
+            totalPages={Math.max(1, Math.ceil(filteredContracts.length / contractPageSize))}
+            onPageChange={setContractPage}
+            total={filteredContracts.length}
+            pageSize={contractPageSize}
+            onPageSizeChange={(newSize) => {
+              setContractPageSize(newSize);
+              setContractPage(1);
+            }}
+            isSeeAll={contractIsSeeAll}
+            onToggleSeeAll={() => setContractIsSeeAll(!contractIsSeeAll)}
+          />
         </div>
       )}
 
@@ -776,9 +837,7 @@ export default function PlatformBillingManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {doctors
-                  .filter(d => d.doctorName.toLowerCase().includes(searchTerm.toLowerCase()) || d.specialization.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map((doc) => (
+                {displayedDoctors.map((doc) => (
                     <tr
                       key={doc.id}
                       style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
@@ -905,6 +964,19 @@ export default function PlatformBillingManagementPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={doctorPage}
+            totalPages={Math.max(1, Math.ceil(filteredDoctors.length / doctorPageSize))}
+            onPageChange={setDoctorPage}
+            total={filteredDoctors.length}
+            pageSize={doctorPageSize}
+            onPageSizeChange={(newSize) => {
+              setDoctorPageSize(newSize);
+              setDoctorPage(1);
+            }}
+            isSeeAll={doctorIsSeeAll}
+            onToggleSeeAll={() => setDoctorIsSeeAll(!doctorIsSeeAll)}
+          />
         </div>
       )}
 
@@ -955,9 +1027,7 @@ export default function PlatformBillingManagementPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices
-                  .filter(inv => inv.recipient.toLowerCase().includes(searchTerm.toLowerCase()) || inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map((inv) => (
+                {displayedInvoices.map((inv) => (
                     <tr
                       key={inv.id}
                       style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
@@ -1050,6 +1120,19 @@ export default function PlatformBillingManagementPage() {
               </tbody>
             </table>
           </div>
+          <Pagination
+            page={invoicePage}
+            totalPages={Math.max(1, Math.ceil(filteredInvoices.length / invoicePageSize))}
+            onPageChange={setInvoicePage}
+            total={filteredInvoices.length}
+            pageSize={invoicePageSize}
+            onPageSizeChange={(newSize) => {
+              setInvoicePageSize(newSize);
+              setInvoicePage(1);
+            }}
+            isSeeAll={invoiceIsSeeAll}
+            onToggleSeeAll={() => setInvoiceIsSeeAll(!invoiceIsSeeAll)}
+          />
         </div>
       )}
 

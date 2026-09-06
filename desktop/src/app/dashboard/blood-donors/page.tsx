@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 
 interface VerificationBloodDonor {
   id: string;
@@ -227,7 +229,9 @@ export default function BloodDonorsPage() {
   const [regionFilter, setRegionFilter] = useState('All Regions');
   const [bloodGroupFilter, setBloodGroupFilter] = useState('All Groups');
   const [selectedDonor, setSelectedDonor] = useState<VerificationBloodDonor | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
 
   // Modal State
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -290,6 +294,10 @@ export default function BloodDonorsPage() {
 
     return matchesSearch && matchesStatus && matchesRegion && matchesBlood;
   });
+
+  const displayedDonors = isSeeAll
+    ? filteredDonors
+    : filteredDonors.slice((page - 1) * pageSize, page * pageSize);
 
   // KPI Calculations
   const totalCount = donors.length;
@@ -356,7 +364,23 @@ export default function BloodDonorsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => exportToCsv('blood_donors_registry', filteredDonors.map(d => ({
+              id: d.id,
+              name: d.name,
+              bloodGroup: d.bloodGroup,
+              genotype: d.genotype,
+              city: d.city,
+              region: d.region,
+              phone: d.phone,
+              email: d.email,
+              status: d.partnerStatus,
+              donationsCount: d.donationsCount,
+              lastDonationDate: d.lastDonationDate
+            })))}
+          >
             <Download size={14} /> Export CSV
           </button>
           <Button variant="primary" leftIcon={<Plus size={14} />} onClick={() => setIsNewModalOpen(true)} style={{ background: '#dc2626', borderColor: '#dc2626' }}>
@@ -424,7 +448,10 @@ export default function BloodDonorsPage() {
               type="text"
               placeholder="Search by donor name, city, phone..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{
                 background: 'transparent', border: 'none', outline: 'none',
                 fontSize: 13, color: '#334155', width: '100%', fontFamily: 'inherit',
@@ -436,7 +463,10 @@ export default function BloodDonorsPage() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <select
               value={regionFilter}
-              onChange={(e) => setRegionFilter(e.target.value)}
+              onChange={(e) => {
+                setRegionFilter(e.target.value);
+                setPage(1);
+              }}
               style={{
                 height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid #e2e8f0',
                 background: '#f8fafc', fontSize: 12.5, fontWeight: 600, color: '#334155', outline: 'none'
@@ -449,7 +479,10 @@ export default function BloodDonorsPage() {
 
             <select
               value={bloodGroupFilter}
-              onChange={(e) => setBloodGroupFilter(e.target.value)}
+              onChange={(e) => {
+                setBloodGroupFilter(e.target.value);
+                setPage(1);
+              }}
               style={{
                 height: 38, padding: '0 12px', borderRadius: 8, border: '1px solid #e2e8f0',
                 background: '#f8fafc', fontSize: 12.5, fontWeight: 600, color: '#dc2626', outline: 'none'
@@ -472,7 +505,10 @@ export default function BloodDonorsPage() {
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
+                onClick={() => {
+                  setStatusFilter(tab.key);
+                  setPage(1);
+                }}
                 className={`tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
               >
                 {tab.label}
@@ -506,7 +542,7 @@ export default function BloodDonorsPage() {
                   </td>
                 </tr>
               ) : (
-                (showAll ? filteredDonors : filteredDonors.slice(0, 10)).map((donor) => {
+                displayedDonors.map((donor) => {
                   return (
                     <tr key={donor.id}>
                       {/* Name & Contact */}
@@ -624,23 +660,17 @@ export default function BloodDonorsPage() {
           </table>
         </div>
 
-        {/* Footer */}
-        {filteredDonors.length > 10 && (
-          <div style={{
-            padding: '12px 20px', borderTop: '1px solid #f1f5f9',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-          }}>
-            <span style={{ fontSize: 12, color: '#64748b' }}>
-              Showing {showAll ? filteredDonors.length : 10} of {filteredDonors.length} registered donors
-            </span>
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="btn btn-secondary btn-sm"
-            >
-              {showAll ? 'Show Top 10' : 'View All'}
-            </button>
-          </div>
-        )}
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filteredDonors.length / pageSize)}
+          onPageChange={setPage}
+          total={filteredDonors.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* ── Donor Details Modal Drawer ──────────────────────────────────── */}
@@ -700,17 +730,14 @@ export default function BloodDonorsPage() {
                   </p>
                 </div>
               </div>
-              <a
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setViewLabDocModal(true);
-                }}
+              <button
+                type="button"
+                onClick={() => setViewLabDocModal(true)}
                 className="btn btn-secondary btn-sm"
-                style={{ background: '#ffffff', borderColor: '#7dd3fc', color: '#0369a1', fontWeight: 700 }}
+                style={{ background: '#ffffff', borderColor: '#7dd3fc', color: '#0369a1', fontWeight: 700, cursor: 'pointer' }}
               >
                 View Document
-              </a>
+              </button>
             </div>
 
             {/* Grid details */}
@@ -942,12 +969,12 @@ export default function BloodDonorsPage() {
               <p style={{ margin: 0, color: '#475569', lineHeight: 1.6 }}>
                 Attached Document: <strong>{selectedDonor.labReportUrl || `blood_lab_report_${selectedDonor.id}.pdf`}</strong>
               </p>
-              <div style={{ marginTop: 10, padding: 10, background: '#ffffff', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, color: '#334155' }}>
-                ✓ HIV I & II: Non-Reactive<br />
-                ✓ Hepatitis B (HBsAg): Negative<br />
-                ✓ Hepatitis C (HCV): Negative<br />
-                ✓ Syphilis (VDRL): Non-Reactive<br />
-                ✓ Hemoglobin Level: 14.8 g/dL (Cleared for Phlebotomy)
+              <div style={{ marginTop: 10, padding: 10, background: '#ffffff', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, color: '#334155', lineHeight: 1.8 }}>
+                <strong>• HIV I & II:</strong> Non-Reactive<br />
+                <strong>• Hepatitis B (HBsAg):</strong> Negative<br />
+                <strong>• Hepatitis C (HCV):</strong> Negative<br />
+                <strong>• Syphilis (VDRL):</strong> Non-Reactive<br />
+                <strong>• Hemoglobin Level:</strong> 14.8 g/dL (Cleared for Phlebotomy)
               </div>
             </div>
 

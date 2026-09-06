@@ -49,7 +49,8 @@ function getNavigationForRole(role: AdminRole, isMoreHospitalOpen: boolean): Nav
           items: [
             { href: '/dashboard/doctor-portal?tab=dashboard', tab: 'dashboard', label: 'Clinical Dashboard', icon: 'Activity' },
             { href: '/dashboard/doctor-portal?tab=appointments', tab: 'appointments', label: 'Appointments Queue', icon: 'Calendar' },
-            { href: '/dashboard/doctor-portal?tab=patients', tab: 'patients', label: 'Patients & Body Map', icon: 'Users' },
+            { href: '/dashboard/body-map', label: '3D Body Map & Charts', icon: 'Activity' },
+            { href: '/dashboard/doctor-portal?tab=patients', tab: 'patients', label: 'Patients & EHR', icon: 'Users' },
             { href: '/dashboard/doctor-portal?tab=prescriptions', tab: 'prescriptions', label: 'Digital Prescriptions', icon: 'Pill' },
             { href: '/dashboard/doctor-portal?tab=schedule', tab: 'schedule', label: 'Duty Shifts & Hours', icon: 'Clock' },
             { href: '/dashboard/doctor-portal?tab=reviews', tab: 'reviews', label: 'Patient Reviews', icon: 'Star' },
@@ -170,6 +171,7 @@ function getNavigationForRole(role: AdminRole, isMoreHospitalOpen: boolean): Nav
             { href: '/dashboard/hospitals', label: 'Hospitals', icon: 'Building2' },
             { href: '/dashboard/doctors', label: 'Doctors', icon: 'Stethoscope' },
             { href: '/dashboard/patients', label: 'Patients', icon: 'Users' },
+            { href: '/dashboard/body-map', label: '3D Body Map Triage', icon: 'Activity' },
             { href: '/dashboard/appointments', label: 'Appointments', icon: 'Calendar' },
             { href: '/dashboard/billing', label: 'Institutional & Doctor Billing', icon: 'Receipt' },
             { href: '/dashboard/payments', label: 'Payments & Escrow', icon: 'CreditCard' },

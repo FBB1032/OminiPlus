@@ -14,10 +14,10 @@ export const DoctorStatusBadge: React.FC<DoctorStatusBadgeProps> = ({
   size = 'md',
 }) => {
   let label = 'Available Now';
-  let dotColor = '#10B981'; // Green
-  let badgeBg = '#ECFDF5';
-  let textColor = '#065F46';
-  let borderColor = '#A7F3D0';
+  let dotColor = '#0F6E6E'; // Teal
+  let badgeBg = '#E6F4F4';
+  let textColor = '#0F6E6E';
+  let borderColor = '#99D4D4';
 
   if (status === 'busy') {
     label = customWaitTime || 'Busy (In Consultation)';

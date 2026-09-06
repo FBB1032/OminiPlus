@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { Report, ReportEvidence } from '@/types';
 
 // Anonymize patient helper
@@ -152,7 +154,9 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'under_review' | 'handover_to_board' | 'resolved' | 'dismissed'>('all');
   const [search, setSearch] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
 
   // Disciplinary Modal Actions State
   const [isTempSuspendModalOpen, setIsTempSuspendModalOpen] = useState(false);
@@ -175,6 +179,10 @@ export default function ReportsPage() {
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const displayedReports = isSeeAll
+    ? filteredReports
+    : filteredReports.slice((page - 1) * pageSize, page * pageSize);
 
   // KPI Calculations
   const totalCount = reports.length;
@@ -398,7 +406,23 @@ export default function ReportsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary">
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              exportToCsv('incident_reports_audit_log.csv', filteredReports, [
+                { header: 'Report ID', key: 'id' },
+                { header: 'Reporter Name', key: 'reporterName' },
+                { header: 'Target Name', key: 'targetName' },
+                { header: 'Target Specialty', key: 'targetSpecialty' },
+                { header: 'Target Hospital', key: 'targetHospital' },
+                { header: 'Category', key: 'category' },
+                { header: 'Severity', key: 'severity' },
+                { header: 'Status', key: 'status' },
+                { header: 'Created Date', key: (r: Report) => new Date(r.createdAt).toLocaleString() },
+                { header: 'Disciplinary Action Note', key: (r: Report) => r.disciplinaryActionNote || 'N/A' },
+              ]);
+            }}
+          >
             <Download size={14} /> Export Audit Log
           </button>
         </div>
@@ -451,7 +475,10 @@ export default function ReportsPage() {
               type="text"
               placeholder="Search case ID, provider, patient..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{ background: 'transparent', border: 'none', outline: 'none', fontSize: 13, color: '#334155', width: '100%' }}
             />
           </div>
@@ -466,7 +493,10 @@ export default function ReportsPage() {
             ] as const).map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
+                onClick={() => {
+                  setStatusFilter(tab.key);
+                  setPage(1);
+                }}
                 className={`tab-btn ${statusFilter === tab.key ? 'active' : ''}`}
               >
                 {tab.label}
@@ -501,7 +531,7 @@ export default function ReportsPage() {
                   </td>
                 </tr>
               ) : (
-                (showAll ? filteredReports : filteredReports.slice(0, 10)).map((r) => (
+                displayedReports.map((r) => (
                   <tr key={r.id}>
                     <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#334155' }}>{r.id}</td>
                     <td style={{ fontWeight: 600, color: '#0f172a' }}>{getMaskedReporter(r.reporterId, r.reporterName)}</td>
@@ -555,6 +585,18 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filteredReports.length / pageSize)}
+          onPageChange={setPage}
+          total={filteredReports.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
 
       {/* ── Investigation Drawer Modal ────────────────────────────────────── */}

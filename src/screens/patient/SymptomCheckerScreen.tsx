@@ -501,7 +501,15 @@ export default function SymptomCheckerScreen({ navigation }: any) {
             <View style={styles.footerBtns}>
               <Button
                 label={`Book appointment with a ${result.spec}`}
-                onPress={() => navigation.navigate('BookAppointment')}
+                onPress={() => {
+                  const symptomList = selectedSymptoms.length > 0 ? selectedSymptoms.join(', ') : 'None selected';
+                  const triageSummary = `Triage Findings: ${result.diagnosis} (${result.level} - Pain ${painLevel}/10). Symptoms: ${symptomList}. Notes: ${notes || 'None'}`;
+                  navigation.navigate('BookAppointment', {
+                    specialization: result.spec,
+                    prefilledReason: triageSummary,
+                    painLogs,
+                  });
+                }}
               />
               <TouchableOpacity
                 style={styles.resetBtn}

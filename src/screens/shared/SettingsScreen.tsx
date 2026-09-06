@@ -23,13 +23,13 @@ import { RoleLegalModal } from '../../components/legal/RoleLegalModal';
 // ─── Language catalogue ───────────────────────────────────────────────────────
 
 const LANGUAGES = [
-  { code: 'en',    label: 'English',              native: 'English',          flag: '🇬🇧' },
-  { code: 'yo',    label: 'Yoruba',               native: 'Yorùbá',           flag: '🇳🇬' },
-  { code: 'ha',    label: 'Hausa',                native: 'Hausa',            flag: '🇳🇬' },
-  { code: 'ig',    label: 'Igbo',                 native: 'Igbo',             flag: '🇳🇬' },
-  { code: 'pcm',   label: 'Nigerian Pidgin',      native: 'Naija',            flag: '🇳🇬' },
-  { code: 'fr',    label: 'French',               native: 'Français',         flag: '🇫🇷' },
-  { code: 'ar',    label: 'Arabic',               native: 'العربية',          flag: '🇸🇦' },
+  { code: 'en',    label: 'English',              native: 'English',          tag: 'EN' },
+  { code: 'yo',    label: 'Yoruba',               native: 'Yorùbá',           tag: 'YO' },
+  { code: 'ha',    label: 'Hausa',                native: 'Hausa',            tag: 'HA' },
+  { code: 'ig',    label: 'Igbo',                 native: 'Igbo',             tag: 'IG' },
+  { code: 'pcm',   label: 'Nigerian Pidgin',      native: 'Naija',            tag: 'PCM' },
+  { code: 'fr',    label: 'French',               native: 'Français',         tag: 'FR' },
+  { code: 'ar',    label: 'Arabic',               native: 'العربية',          tag: 'AR' },
 ];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -215,7 +215,7 @@ export default function SettingsScreen({ navigation }: any) {
               icon="language-outline" iconColor="#0F6E6E"
               label="App Language"
               subtitle="Choose the language for the interface"
-              value={`${currentLang.flag}  ${currentLang.label}`}
+              value={`[${currentLang.tag}]  ${currentLang.label}`}
               onPress={() => setLangModalOpen(true)}
             />
           </View>
@@ -312,7 +312,9 @@ export default function SettingsScreen({ navigation }: any) {
                     }}
                     activeOpacity={0.75}
                   >
-                    <Text style={styles.langFlag}>{lang.flag}</Text>
+                    <View style={{ width: 36, height: 26, borderRadius: 6, backgroundColor: active ? Colors.primary[100] : '#f1f5f9', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '800', color: active ? Colors.primary[700] : '#475569' }}>{lang.tag}</Text>
+                    </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.langLabel, active && styles.langLabelActive]}>
                         {lang.label}

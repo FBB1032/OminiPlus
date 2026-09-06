@@ -140,7 +140,7 @@ export default function DoctorProfileScreen({ route, navigation }: any) {
           </View>
           <Text style={styles.docSpec}>{doctorData.spec}</Text>
           <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: doctorData.available ? '#10B981' : '#94A3B8' }]} />
+            <View style={[styles.statusDot, { backgroundColor: doctorData.available ? '#0F6E6E' : '#94A3B8' }]} />
             <Text style={styles.statusText}>{doctorData.available ? 'Available Today' : 'Unavailable'}</Text>
           </View>
         </View>

@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Table, Column } from '@/components/ui/Table';
+import { Pagination } from '@/components/ui/Pagination';
+import { exportToCsv } from '@/lib/exportCsv';
 import type { AuditLog } from '@/types';
 
 const ACTIONS = [
@@ -29,7 +31,9 @@ const MOCK_LOGS: AuditLog[] = Array.from({ length: 30 }, (_, i) => ({
 
 export default function AuditLogsPage() {
   const [search, setSearch] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [isSeeAll, setIsSeeAll] = useState(false);
 
   const filtered = MOCK_LOGS.filter(l =>
     !search || 
@@ -37,6 +41,10 @@ export default function AuditLogsPage() {
     l.adminName.toLowerCase().includes(search.toLowerCase()) ||
     l.resource.toLowerCase().includes(search.toLowerCase())
   );
+
+  const displayedLogs = isSeeAll
+    ? filtered
+    : filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const columns: Column<AuditLog>[] = [
     {
@@ -111,7 +119,20 @@ export default function AuditLogsPage() {
           <p className="page-subtitle">Immutable compliance trails of all administrative and operations changes.</p>
         </div>
 
-        <button className="btn btn-secondary">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => exportToCsv('security_audit_logs', filtered.map(l => ({
+            id: l.id,
+            adminId: l.adminId,
+            adminName: l.adminName,
+            action: l.action,
+            resource: l.resource,
+            resourceId: l.resourceId,
+            ipAddress: l.ipAddress,
+            createdAt: l.createdAt
+          })))}
+        >
           <Download size={14} /> Export Logs
         </button>
       </div>
@@ -146,7 +167,10 @@ export default function AuditLogsPage() {
               type="text"
               placeholder="Search logs by action or admin..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               style={{
                 background: 'transparent', border: 'none', outline: 'none',
                 fontSize: 13, color: '#334155', width: '100%', fontFamily: 'inherit',
@@ -158,29 +182,19 @@ export default function AuditLogsPage() {
 
       {/* Immutable Logs Table */}
       <Card padding="none">
-        <Table columns={columns} data={showAll ? filtered : filtered.slice(0, 10)} keyExtractor={l => l.id} />
+        <Table columns={columns} data={displayedLogs} keyExtractor={l => l.id} />
 
-        {filtered.length > 10 && (
-          <div style={{
-            padding: '14px 20px',
-            borderTop: '1px solid #f1f5f9',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: '#fafafa',
-          }}>
-            <p style={{ fontSize: 13, color: '#64748b', fontWeight: 500 }}>
-              Showing {showAll ? filtered.length : Math.min(10, filtered.length)} of {filtered.length} audit logs
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? 'Show First 10' : `See All (${filtered.length})`}
-            </Button>
-          </div>
-        )}
+        {/* Pagination & See All Bar */}
+        <Pagination
+          page={page}
+          totalPages={Math.ceil(filtered.length / pageSize)}
+          onPageChange={setPage}
+          total={filtered.length}
+          pageSize={pageSize}
+          onPageSizeChange={(newSize) => { setPageSize(newSize); setPage(1); }}
+          isSeeAll={isSeeAll}
+          onToggleSeeAll={() => setIsSeeAll(!isSeeAll)}
+        />
       </Card>
     </div>
   );

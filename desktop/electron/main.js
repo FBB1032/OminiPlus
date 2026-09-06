@@ -1,4 +1,4 @@
-const { app, BrowserWindow, shell, ipcMain, Menu } = require('electron');
+const { app, BrowserWindow, shell, ipcMain, Menu, session } = require('electron');
 const path = require('path');
 
 let mainWindow = null;
@@ -114,6 +114,42 @@ function createMainWindow() {
 }
 
 app.whenReady().then(() => {
+  // Explicitly grant media permissions (webcam, microphone, audio, fullscreen)
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    const allowed = ['media', 'mediaKeySystem', 'notifications', 'fullscreen', 'pointerLock'];
+    if (allowed.includes(permission)) {
+      return callback(true);
+    }
+    callback(false);
+  });
+
+  session.defaultSession.setPermissionCheckHandler((webContents, permission) => {
+    const allowed = ['media', 'mediaKeySystem', 'notifications', 'fullscreen', 'pointerLock'];
+    return allowed.includes(permission);
+  });
+
+  // Fullscreen IPC handlers for Video Telehealth Consultation
+  ipcMain.handle('toggle-fullscreen', () => {
+    if (mainWindow) {
+      const next = !mainWindow.isFullScreen();
+      mainWindow.setFullScreen(next);
+      return next;
+    }
+    return false;
+  });
+
+  ipcMain.handle('set-fullscreen', (_event, flag) => {
+    if (mainWindow) {
+      mainWindow.setFullScreen(flag);
+      return mainWindow.isFullScreen();
+    }
+    return false;
+  });
+
+  ipcMain.handle('is-fullscreen', () => {
+    return mainWindow ? mainWindow.isFullScreen() : false;
+  });
+
   createMainWindow();
 
   app.on('activate', () => {
