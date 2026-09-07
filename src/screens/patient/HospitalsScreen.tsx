@@ -137,25 +137,10 @@ export default function HospitalsScreen({ navigation }: any) {
     return MOCK_HOSPITALS.find((h) => h.id === selectedHospitalId) || MOCK_HOSPITALS[0];
   }, [selectedHospitalId]);
 
-  const handleCallEmergency = (phone: string, name: string) => {
-    Alert.alert(
-      `Call Emergency Ward`,
-      `Dial emergency hotline ${phone} for ${name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Dial Hotline',
-          onPress: () => {
-            const url = `tel:${phone.replace(/\s+/g, '')}`;
-            Linking.canOpenURL(url)
-              .then((supported) => {
-                if (supported) Linking.openURL(url);
-                else toastSuccess('Dialing ER', `Calling ${phone}...`);
-              })
-              .catch(() => toastSuccess('Dialing ER', `Calling ${phone}...`));
-          },
-        },
-      ]
+  const handleCallEmergency = (phone: string) => {
+    const url = `tel:${phone.replace(/\s+/g, '')}`;
+    Linking.openURL(url).catch(() =>
+      Alert.alert('Call Unavailable', 'No phone or dialer application is available on this device.')
     );
   };
 
@@ -355,7 +340,7 @@ export default function HospitalsScreen({ navigation }: any) {
 
                   <TouchableOpacity
                     style={styles.selectedCallBtn}
-                    onPress={() => handleCallEmergency(activeHospital.emergencyPhone, activeHospital.name)}
+                    onPress={() => handleCallEmergency(activeHospital.emergencyPhone)}
                     activeOpacity={0.8}
                   >
                     <Ionicons name="call" size={14} color="#DC2626" />
@@ -484,7 +469,7 @@ export default function HospitalsScreen({ navigation }: any) {
 
                     <TouchableOpacity
                       style={styles.cardCallBtn}
-                      onPress={() => handleCallEmergency(hospital.emergencyPhone, hospital.name)}
+                      onPress={() => handleCallEmergency(hospital.emergencyPhone)}
                       activeOpacity={0.8}
                     >
                       <Ionicons name="call-outline" size={14} color="#DC2626" />
