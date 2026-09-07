@@ -19,14 +19,14 @@ const loginSchema = z.object({
 });
 type LoginForm = z.infer<typeof loginSchema>;
 
-const ROLES: AdminRole[] = ['super_admin', 'verification_admin', 'support_admin', 'security_admin', 'moderator', 'doctor'];
+const ROLES: AdminRole[] = ['admin', 'doctor'];
 
 export default function LoginPage() {
   const router = useRouter();
   const setAdmin = useAuthStore(s => s.setAdmin);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [selectedRole, setSelectedRole] = useState<AdminRole>('super_admin');
+  const [selectedRole, setSelectedRole] = useState<AdminRole>('admin');
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),

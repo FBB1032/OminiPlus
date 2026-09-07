@@ -59,7 +59,7 @@ const ACTIVITY_STYLES: Record<string, { bg: string; color: string }> = {
 
 export default function DashboardPage() {
   const admin = useAuthStore(s => s.admin);
-  const adminRole = admin?.role || 'super_admin';
+  const adminRole = admin?.role || 'admin';
   const permissions = ROLE_PERMISSIONS[adminRole] || [];
   const hasPermission = (p: string) => permissions.includes(p as any);
 

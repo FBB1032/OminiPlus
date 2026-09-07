@@ -1,5 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { useSkeletonDelay } from '../../hooks/useSkeletonDelay';
+import React, { useState, useCallback, useMemo } from "react";
+import { useSkeletonDelay } from "../../hooks/useSkeletonDelay";
 import {
   View,
   Text,
@@ -10,25 +10,41 @@ import {
   Modal,
   useWindowDimensions,
   Platform,
-} from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
-import { useDoctorAppointments, useUpdateAppointmentStatus } from '../../hooks/useDoctor';
-import { Avatar, SkeletonList, EmptyState, ErrorState, Button } from '../../components';
-import { DoctorAppointmentItem } from '../../components/list-items/DoctorAppointmentItem';
-import { useToast, useAuth } from '../../hooks/useAuth';
+} from "react-native";
+import { FlashList } from "@shopify/flash-list";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  Colors,
+  Spacing,
+  FontSize,
+  FontWeight,
+  Shadows,
+  BorderRadius,
+} from "../../theme";
+import {
+  useDoctorAppointments,
+  useUpdateAppointmentStatus,
+} from "../../hooks/useDoctor";
+import {
+  Avatar,
+  SkeletonList,
+  EmptyState,
+  ErrorState,
+  Button,
+} from "../../components";
+import { DoctorAppointmentItem } from "../../components/list-items/DoctorAppointmentItem";
+import { useToast, useAuth } from "../../hooks/useAuth";
 
 // ─── Time slot helpers ────────────────────────────────────────────────────────
 
 const HOURS = Array.from({ length: 13 }, (_, i) => i + 7); // 07:00 – 19:00
-const MINUTES = ['00', '30'];
+const MINUTES = ["00", "30"];
 
 function buildTimeSlots(): string[] {
   const slots: string[] = [];
   HOURS.forEach((h) => {
     MINUTES.forEach((m) => {
-      const hh = String(h).padStart(2, '0');
+      const hh = String(h).padStart(2, "0");
       slots.push(`${hh}:${m}`);
     });
   });
@@ -42,11 +58,11 @@ function getNextDays(count: number): { label: string; value: string }[] {
   for (let i = 1; i <= count; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const value = d.toISOString().split('T')[0];
+    const value = d.toISOString().split("T")[0];
     const label = d.toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
+      weekday: "short",
+      month: "short",
+      day: "numeric",
     });
     days.push({ label, value });
   }
@@ -57,11 +73,11 @@ const NEXT_DAYS = getNextDays(14);
 // ─── Status filter tabs ───────────────────────────────────────────────────────
 
 const STATUS_FILTERS = [
-  { label: 'All', value: undefined },
-  { label: 'Pending', value: 'pending' },
-  { label: 'Scheduled', value: 'scheduled' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Cancelled', value: 'cancelled' },
+  { label: "All", value: undefined },
+  { label: "Pending", value: "pending" },
+  { label: "Scheduled", value: "scheduled" },
+  { label: "Completed", value: "completed" },
+  { label: "Cancelled", value: "cancelled" },
 ];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
@@ -72,22 +88,36 @@ export default function AppointmentsScreen({ navigation }: any) {
   const isTablet = width >= 768;
   const isCompact = width < 380;
 
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
-  const { data: appointmentData, isLoading: _isLoading, isError, refetch } =
-    useDoctorAppointments({ status: selectedStatus });
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(
+    undefined,
+  );
+  const {
+    data: appointmentData,
+    isLoading: _isLoading,
+    isError,
+    refetch,
+  } = useDoctorAppointments({ status: selectedStatus });
   const showSkeleton = useSkeletonDelay(_isLoading, 150);
   const updateStatusMutation = useUpdateAppointmentStatus();
   const { success: showToastSuccess, error: showToastError } = useToast();
 
   // ── Optimistic overrides: { [appointmentId]: status | 'rescheduled' } ──────
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
-  const [scheduledAtOverrides, setScheduledAtOverrides] = useState<Record<string, string>>({});
+  const [statusOverrides, setStatusOverrides] = useState<
+    Record<string, string>
+  >({});
+  const [scheduledAtOverrides, setScheduledAtOverrides] = useState<
+    Record<string, string>
+  >({});
 
   // ── Decline confirmation modal ────────────────────────────────────────────
-  const [declineModal, setDeclineModal] = useState<{ visible: boolean; appointmentId: string; patientName: string }>({
+  const [declineModal, setDeclineModal] = useState<{
+    visible: boolean;
+    appointmentId: string;
+    patientName: string;
+  }>({
     visible: false,
-    appointmentId: '',
-    patientName: '',
+    appointmentId: "",
+    patientName: "",
   });
 
   // ── Reschedule modal ──────────────────────────────────────────────────────
@@ -96,9 +126,11 @@ export default function AppointmentsScreen({ navigation }: any) {
     appointmentId: string;
     patientName: string;
     currentDate: string;
-  }>({ visible: false, appointmentId: '', patientName: '', currentDate: '' });
-  const [rescheduleDate, setRescheduleDate] = useState<string>(NEXT_DAYS[0]?.value ?? '');
-  const [rescheduleTime, setRescheduleTime] = useState<string>('09:00');
+  }>({ visible: false, appointmentId: "", patientName: "", currentDate: "" });
+  const [rescheduleDate, setRescheduleDate] = useState<string>(
+    NEXT_DAYS[0]?.value ?? "",
+  );
+  const [rescheduleTime, setRescheduleTime] = useState<string>("09:00");
 
   const tabletWrap = isTablet ? styles.tabletMaxWrap : undefined;
   const isApproved = user?.isApproved !== false;
@@ -113,8 +145,8 @@ export default function AppointmentsScreen({ navigation }: any) {
     async (id: string, newStatus: string) => {
       if (!isApproved) {
         showToastError(
-          'Verification Required',
-          'Your account must be verified before performing scheduling actions.'
+          "Verification Required",
+          "Your account must be verified before performing scheduling actions.",
         );
         return;
       }
@@ -123,8 +155,8 @@ export default function AppointmentsScreen({ navigation }: any) {
       try {
         await updateStatusMutation.mutateAsync({ id, status: newStatus });
         showToastSuccess(
-          'Updated',
-          `Appointment ${newStatus === 'scheduled' ? 'approved' : newStatus}.`
+          "Updated",
+          `Appointment ${newStatus === "scheduled" ? "approved" : newStatus}.`,
         );
       } catch {
         // Roll back on failure
@@ -133,43 +165,62 @@ export default function AppointmentsScreen({ navigation }: any) {
           delete next[id];
           return next;
         });
-        showToastError('Error', 'Failed to update appointment. Please try again.');
+        showToastError(
+          "Error",
+          "Failed to update appointment. Please try again.",
+        );
       }
     },
-    [isApproved, applyOptimisticStatus, updateStatusMutation, showToastSuccess, showToastError]
+    [
+      isApproved,
+      applyOptimisticStatus,
+      updateStatusMutation,
+      showToastSuccess,
+      showToastError,
+    ],
   );
 
   // ── Decline flow ──────────────────────────────────────────────────────────
 
-  const openDeclineModal = useCallback((appointmentId: string, patientName: string) => {
-    setDeclineModal({ visible: true, appointmentId, patientName });
-  }, []);
+  const openDeclineModal = useCallback(
+    (appointmentId: string, patientName: string) => {
+      setDeclineModal({ visible: true, appointmentId, patientName });
+    },
+    [],
+  );
 
   const confirmDecline = useCallback(async () => {
     setDeclineModal((m) => ({ ...m, visible: false }));
-    await callUpdateStatus(declineModal.appointmentId, 'cancelled');
+    await callUpdateStatus(declineModal.appointmentId, "cancelled");
   }, [declineModal.appointmentId, callUpdateStatus]);
 
   // ── Reschedule flow ───────────────────────────────────────────────────────
 
   const openRescheduleModal = useCallback(
-    (appointmentId: string, patientName: string, currentScheduledAt: string) => {
-      setRescheduleDate(NEXT_DAYS[0]?.value ?? '');
-      setRescheduleTime('09:00');
+    (
+      appointmentId: string,
+      patientName: string,
+      currentScheduledAt: string,
+    ) => {
+      setRescheduleDate(NEXT_DAYS[0]?.value ?? "");
+      setRescheduleTime("09:00");
       setRescheduleModal({
         visible: true,
         appointmentId,
         patientName,
-        currentDate: new Date(currentScheduledAt).toLocaleDateString(undefined, {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
+        currentDate: new Date(currentScheduledAt).toLocaleDateString(
+          undefined,
+          {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          },
+        ),
       });
     },
-    []
+    [],
   );
 
   const confirmReschedule = useCallback(() => {
@@ -178,13 +229,19 @@ export default function AppointmentsScreen({ navigation }: any) {
       ...prev,
       [rescheduleModal.appointmentId]: newIso,
     }));
-    applyOptimisticStatus(rescheduleModal.appointmentId, 'scheduled');
+    applyOptimisticStatus(rescheduleModal.appointmentId, "scheduled");
     setRescheduleModal((m) => ({ ...m, visible: false }));
     showToastSuccess(
-      'Rescheduled',
-      `New time proposed to ${rescheduleModal.patientName}: ${rescheduleDate} at ${rescheduleTime}`
+      "Rescheduled",
+      `New time proposed to ${rescheduleModal.patientName}: ${rescheduleDate} at ${rescheduleTime}`,
     );
-  }, [rescheduleDate, rescheduleTime, rescheduleModal, applyOptimisticStatus, showToastSuccess]);
+  }, [
+    rescheduleDate,
+    rescheduleTime,
+    rescheduleModal,
+    applyOptimisticStatus,
+    showToastSuccess,
+  ]);
 
   // ── Merge appointments with optimistic overrides ───────────────────────────
 
@@ -202,58 +259,69 @@ export default function AppointmentsScreen({ navigation }: any) {
   const renderAppointmentItem = useCallback(
     ({ item }: { item: any }) => {
       const patientId: string = item.patientId || item.patient?.id;
-      const patientName = `${item.patient?.firstName ?? ''} ${item.patient?.lastName ?? ''}`.trim();
+      const patientName =
+        `${item.patient?.firstName ?? ""} ${item.patient?.lastName ?? ""}`.trim();
 
       return (
         <DoctorAppointmentItem
           item={item}
-          onPress={() => patientId && navigation.navigate('PatientDetail', { patientId })}
+          onPress={() =>
+            patientId && navigation.navigate("PatientDetail", { patientId })
+          }
           onDecline={() => openDeclineModal(item.id, patientName)}
-          onReschedule={() => openRescheduleModal(item.id, patientName, item.scheduledAt)}
-          onApprove={() => callUpdateStatus(item.id, 'scheduled')}
-          onComplete={() => callUpdateStatus(item.id, 'completed')}
+          onReschedule={() =>
+            openRescheduleModal(item.id, patientName, item.scheduledAt)
+          }
+          onApprove={() => callUpdateStatus(item.id, "scheduled")}
+          onComplete={() => callUpdateStatus(item.id, "completed")}
           onJoinVideo={
-            item.type === 'video'
+            item.type === "video"
               ? () =>
-                  navigation.navigate('VideoConsultation', {
+                  navigation.navigate("VideoConsultation", {
                     appointmentId: item.id,
-                    doctorName: `Dr. ${user?.lastName ?? 'Doctor'}`,
+                    doctorName: `Dr. ${user?.lastName ?? "Doctor"}`,
                   })
               : undefined
           }
           onWritePrescription={
             !item.prescription
               ? () =>
-                  navigation.navigate('Prescription', {
+                  navigation.navigate("Prescription", {
                     appointmentId: item.id,
                     patientId,
-                    mode: 'create',
+                    mode: "create",
                   })
               : undefined
           }
           onViewPrescription={
             item.prescription
               ? () =>
-                  navigation.navigate('Prescription', {
+                  navigation.navigate("Prescription", {
                     appointmentId: item.id,
                     patientId,
-                    mode: 'view',
+                    mode: "view",
                     prescriptionId: item.prescription.id,
                   })
               : undefined
           }
-          onChat={() => navigation.navigate('ConsultationChat', { appointmentId: item.id })}
+          onChat={() =>
+            navigation.navigate("ConsultationChat", { appointmentId: item.id })
+          }
           onViewChatHistory={() =>
-            navigation.navigate('ConsultationChat', { appointmentId: item.id })
+            navigation.navigate("ConsultationChat", { appointmentId: item.id })
           }
           approvedDoctor={isApproved}
         />
       );
     },
     [
-      navigation, user, isApproved,
-      callUpdateStatus, openDeclineModal, openRescheduleModal,
-    ]
+      navigation,
+      user,
+      isApproved,
+      callUpdateStatus,
+      openDeclineModal,
+      openRescheduleModal,
+    ],
   );
 
   return (
@@ -269,7 +337,8 @@ export default function AppointmentsScreen({ navigation }: any) {
           <View style={styles.pendingBanner}>
             <Ionicons name="time" size={18} color="#D97706" />
             <Text style={styles.pendingBannerText}>
-              Verification Pending — appointment actions are locked until approved.
+              Verification Pending — appointment actions are locked until
+              approved.
             </Text>
           </View>
         </View>
@@ -288,14 +357,19 @@ export default function AppointmentsScreen({ navigation }: any) {
                 onPress={() => setSelectedStatus(item.value)}
                 style={[styles.filterTab, active && styles.filterTabActive]}
               >
-                <Text style={[styles.filterLabel, active && styles.filterLabelActive]}>
+                <Text
+                  style={[
+                    styles.filterLabel,
+                    active && styles.filterLabelActive,
+                  ]}
+                >
                   {item.label}
                 </Text>
               </TouchableOpacity>
             );
           }}
           showsHorizontalScrollIndicator={false}
-          estimatedItemSize={80}
+          // estimatedItemSize={80}
           contentContainerStyle={styles.filterContent}
         />
       </View>
@@ -326,7 +400,7 @@ export default function AppointmentsScreen({ navigation }: any) {
           refreshing={_isLoading}
           onRefresh={refetch}
           showsVerticalScrollIndicator={false}
-          estimatedItemSize={340}
+          // estimatedItemSize={340}
         />
       )}
 
@@ -337,7 +411,9 @@ export default function AppointmentsScreen({ navigation }: any) {
         visible={declineModal.visible}
         transparent
         animationType="fade"
-        onRequestClose={() => setDeclineModal((m) => ({ ...m, visible: false }))}
+        onRequestClose={() =>
+          setDeclineModal((m) => ({ ...m, visible: false }))
+        }
         statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
@@ -354,15 +430,20 @@ export default function AppointmentsScreen({ navigation }: any) {
 
             <Text style={styles.modalTitle}>Decline Appointment?</Text>
             <Text style={styles.modalSubtitle}>
-              You are about to decline the appointment request from{' '}
-              <Text style={{ fontWeight: FontWeight.bold }}>{declineModal.patientName}</Text>.{'\n'}
+              You are about to decline the appointment request from{" "}
+              <Text style={{ fontWeight: FontWeight.bold }}>
+                {declineModal.patientName}
+              </Text>
+              .{"\n"}
               The patient will be notified immediately.
             </Text>
 
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalBtnOutline]}
-                onPress={() => setDeclineModal((m) => ({ ...m, visible: false }))}
+                onPress={() =>
+                  setDeclineModal((m) => ({ ...m, visible: false }))
+                }
                 activeOpacity={0.8}
               >
                 <Text style={styles.modalBtnOutlineText}>Keep Appointment</Text>
@@ -387,14 +468,18 @@ export default function AppointmentsScreen({ navigation }: any) {
         visible={rescheduleModal.visible}
         transparent
         animationType="slide"
-        onRequestClose={() => setRescheduleModal((m) => ({ ...m, visible: false }))}
+        onRequestClose={() =>
+          setRescheduleModal((m) => ({ ...m, visible: false }))
+        }
         statusBarTranslucent
       >
         <View style={styles.modalOverlayBottom}>
           <TouchableOpacity
             style={StyleSheet.absoluteFillObject}
             activeOpacity={1}
-            onPress={() => setRescheduleModal((m) => ({ ...m, visible: false }))}
+            onPress={() =>
+              setRescheduleModal((m) => ({ ...m, visible: false }))
+            }
           />
           <View style={styles.rescheduleSheet}>
             {/* Handle */}
@@ -405,15 +490,24 @@ export default function AppointmentsScreen({ navigation }: any) {
               <View>
                 <Text style={styles.modalTitle}>Reschedule Appointment</Text>
                 <Text style={styles.modalSubtitle}>
-                  Patient: <Text style={{ fontWeight: FontWeight.bold }}>{rescheduleModal.patientName}</Text>
-                  {'\n'}Current: {rescheduleModal.currentDate}
+                  Patient:{" "}
+                  <Text style={{ fontWeight: FontWeight.bold }}>
+                    {rescheduleModal.patientName}
+                  </Text>
+                  {"\n"}Current: {rescheduleModal.currentDate}
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => setRescheduleModal((m) => ({ ...m, visible: false }))}
+                onPress={() =>
+                  setRescheduleModal((m) => ({ ...m, visible: false }))
+                }
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={22} color={Colors.text.secondary} />
+                <Ionicons
+                  name="close"
+                  size={22}
+                  color={Colors.text.secondary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -424,8 +518,12 @@ export default function AppointmentsScreen({ navigation }: any) {
             >
               {/* Date selection */}
               <Text style={styles.pickLabel}>
-                <Ionicons name="calendar-outline" size={13} color={Colors.primary[600]} />
-                {'  '}Select New Date
+                <Ionicons
+                  name="calendar-outline"
+                  size={13}
+                  color={Colors.primary[600]}
+                />
+                {"  "}Select New Date
               </Text>
               <ScrollView
                 horizontal
@@ -441,7 +539,12 @@ export default function AppointmentsScreen({ navigation }: any) {
                       onPress={() => setRescheduleDate(d.value)}
                       activeOpacity={0.75}
                     >
-                      <Text style={[styles.dateChipText, active && styles.dateChipTextActive]}>
+                      <Text
+                        style={[
+                          styles.dateChipText,
+                          active && styles.dateChipTextActive,
+                        ]}
+                      >
                         {d.label}
                       </Text>
                     </TouchableOpacity>
@@ -451,8 +554,12 @@ export default function AppointmentsScreen({ navigation }: any) {
 
               {/* Time selection */}
               <Text style={[styles.pickLabel, { marginTop: Spacing[4] }]}>
-                <Ionicons name="time-outline" size={13} color={Colors.primary[600]} />
-                {'  '}Select New Time
+                <Ionicons
+                  name="time-outline"
+                  size={13}
+                  color={Colors.primary[600]}
+                />
+                {"  "}Select New Time
               </Text>
               <View style={styles.timeGrid}>
                 {TIME_SLOTS.map((t) => {
@@ -464,7 +571,12 @@ export default function AppointmentsScreen({ navigation }: any) {
                       onPress={() => setRescheduleTime(t)}
                       activeOpacity={0.75}
                     >
-                      <Text style={[styles.timeChipText, active && styles.timeChipTextActive]}>
+                      <Text
+                        style={[
+                          styles.timeChipText,
+                          active && styles.timeChipTextActive,
+                        ]}
+                      >
                         {t}
                       </Text>
                     </TouchableOpacity>
@@ -485,7 +597,9 @@ export default function AppointmentsScreen({ navigation }: any) {
             <View style={styles.sheetFooter}>
               <TouchableOpacity
                 style={[styles.modalBtn, styles.modalBtnOutline, { flex: 1 }]}
-                onPress={() => setRescheduleModal((m) => ({ ...m, visible: false }))}
+                onPress={() =>
+                  setRescheduleModal((m) => ({ ...m, visible: false }))
+                }
                 activeOpacity={0.8}
               >
                 <Text style={styles.modalBtnOutlineText}>Cancel</Text>
@@ -496,7 +610,9 @@ export default function AppointmentsScreen({ navigation }: any) {
                 activeOpacity={0.8}
               >
                 <Ionicons name="send-outline" size={16} color="#fff" />
-                <Text style={styles.modalBtnPrimaryText}>Confirm & Notify Patient</Text>
+                <Text style={styles.modalBtnPrimaryText}>
+                  Confirm & Notify Patient
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -517,7 +633,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    alignItems: 'center',
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: FontSize.md,
@@ -526,18 +642,18 @@ const styles = StyleSheet.create({
   },
 
   pendingBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF3C7',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
     borderBottomWidth: 1,
-    borderBottomColor: '#FDE68A',
+    borderBottomColor: "#FDE68A",
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
     gap: 8,
   },
   pendingBannerText: {
     fontSize: FontSize.xs,
-    color: '#B45309',
+    color: "#B45309",
     fontWeight: FontWeight.semiBold,
     flex: 1,
     flexShrink: 1,
@@ -567,33 +683,36 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.medium,
     color: Colors.text.secondary,
   },
-  filterLabelActive: { color: Colors.text.inverse, fontWeight: FontWeight.bold },
+  filterLabelActive: {
+    color: Colors.text.inverse,
+    fontWeight: FontWeight.bold,
+  },
 
   listContainer: { padding: Spacing[4], flexGrow: 1 },
-  listContainerTablet: { maxWidth: 880, alignSelf: 'center', width: '100%' },
+  listContainerTablet: { maxWidth: 880, alignSelf: "center", width: "100%" },
   separator: { height: Spacing[4] },
-  tabletMaxWrap: { width: '100%', maxWidth: 880, alignSelf: 'center' },
+  tabletMaxWrap: { width: "100%", maxWidth: 880, alignSelf: "center" },
 
   // ── Shared modal styles ────────────────────────────────────────────────────
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(15,23,42,0.55)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: Spacing[5],
   },
   modalOverlayBottom: {
     flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.55)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(15,23,42,0.55)",
+    justifyContent: "flex-end",
   },
   modalCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius['2xl'],
+    borderRadius: BorderRadius["2xl"],
     padding: Spacing[6],
-    width: '100%',
+    width: "100%",
     maxWidth: 360,
-    alignItems: 'center',
+    alignItems: "center",
     gap: Spacing[3],
     ...Shadows.xl,
   },
@@ -601,26 +720,26 @@ const styles = StyleSheet.create({
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalSubtitle: {
     fontSize: FontSize.sm,
     color: Colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 20,
     marginTop: 2,
   },
   modalActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing[3],
-    width: '100%',
+    width: "100%",
     marginTop: Spacing[2],
   },
   modalBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     paddingVertical: 14,
     borderRadius: BorderRadius.lg,
@@ -637,13 +756,13 @@ const styles = StyleSheet.create({
     color: Colors.text.primary,
   },
   modalBtnDanger: {
-    backgroundColor: '#EF4444',
+    backgroundColor: "#EF4444",
     borderWidth: 0,
   },
   modalBtnDangerText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   modalBtnPrimary: {
     backgroundColor: Colors.primary[600],
@@ -652,7 +771,7 @@ const styles = StyleSheet.create({
   modalBtnPrimaryText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     flexShrink: 1,
   },
 
@@ -661,18 +780,18 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FEF2F2',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#FEF2F2",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing[1],
   },
 
   // ── Reschedule bottom sheet ────────────────────────────────────────────────
   rescheduleSheet: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: BorderRadius['3xl'],
-    borderTopRightRadius: BorderRadius['3xl'],
-    maxHeight: '88%',
+    borderTopLeftRadius: BorderRadius["3xl"],
+    borderTopRightRadius: BorderRadius["3xl"],
+    maxHeight: "88%",
     ...Shadows.xl,
   },
   sheetHandle: {
@@ -680,13 +799,13 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: Colors.border,
     borderRadius: 2,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: Spacing[3],
   },
   sheetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     paddingHorizontal: Spacing[5],
     paddingVertical: Spacing[4],
     borderBottomWidth: 1,
@@ -699,10 +818,10 @@ const styles = StyleSheet.create({
     gap: Spacing[2],
   },
   sheetFooter: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: Spacing[3],
     padding: Spacing[5],
-    paddingBottom: Platform.OS === 'ios' ? Spacing[8] : Spacing[5],
+    paddingBottom: Platform.OS === "ios" ? Spacing[8] : Spacing[5],
     borderTopWidth: 1,
     borderTopColor: Colors.border,
   },
@@ -711,7 +830,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     fontWeight: FontWeight.bold,
     color: Colors.text.secondary,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: Spacing[2],
   },
@@ -735,12 +854,12 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semiBold,
     color: Colors.text.secondary,
   },
-  dateChipTextActive: { color: '#FFFFFF' },
+  dateChipTextActive: { color: "#FFFFFF" },
 
   // Time chips
   timeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: Spacing[2],
   },
   timeChip: {
@@ -751,7 +870,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     minWidth: 60,
-    alignItems: 'center',
+    alignItems: "center",
   },
   timeChipActive: {
     backgroundColor: Colors.primary[600],
@@ -762,23 +881,23 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.semiBold,
     color: Colors.text.secondary,
   },
-  timeChipTextActive: { color: '#FFFFFF' },
+  timeChipTextActive: { color: "#FFFFFF" },
 
   // Summary
   rescheduleSummary: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: "#F0FDF4",
     padding: Spacing[3],
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: "#BBF7D0",
     marginTop: Spacing[3],
   },
   rescheduleSummaryText: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.semiBold,
-    color: '#065F46',
+    color: "#065F46",
   },
 });

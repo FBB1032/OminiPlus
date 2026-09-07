@@ -180,7 +180,7 @@ export function Sidebar() {
   const { isSidebarCollapsed, toggleSidebar, isMobileSidebarOpen, closeMobileSidebar } = useUIStore();
   const { admin, logout } = useAuthStore();
 
-  const adminRole = admin?.role || 'super_admin';
+  const adminRole = admin?.role || 'admin';
   const permissions = ROLE_PERMISSIONS[adminRole] || [];
 
   const isActive = (href: string) => {
