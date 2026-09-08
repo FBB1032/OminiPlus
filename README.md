@@ -31,13 +31,36 @@
                │                                       │                                       │
                └───────────────────────────────────────┼───────────────────────────────────────┘
                                                        │
-                                     ┌─────────────────┴─────────────────┐
-                                     ▼                                   ▼
-                          ┌──────────────────────┐            ┌──────────────────────┐
-                          │  NESTJS BACKEND API  │            │  TOP 3 MEDICAL AI    │
-                          │ (PostgreSQL + Redis) │            │ (Gemini + Deepgram)  │
-                          └──────────────────────┘            └──────────────────────┘
+                                      ┌────────────────┴────────────────┐
+                                      ▼                                 ▼
+                        ┌──────────────────────────┐      ┌──────────────────────────────┐
+                        │   SUPABASE BACKEND       │      │  TOP 3 MEDICAL AI            │
+                        │ • PostgreSQL (unified)   │      │  (Gemini + Deepgram)         │
+                        │ • Auth (one identity for │      └──────────────────────────────┘
+                        │   mobile + web + desktop)│
+                        │ • RLS + Edge Functions   │
+                        └──────────────────────────┘
 ```
+
+---
+
+## 🗄️ Unified Supabase Backend (Web + Mobile + Desktop)
+
+All platforms share **one Supabase project** — one PostgreSQL database and one
+authentication service. An account created on mobile signs into the web app
+and vice versa. Architecture, migrations, RLS policies, RPC functions, edge
+functions and setup steps live in [`supabase/README.md`](./supabase/README.md).
+
+### Dummy Sign-in Credentials (work on every platform)
+
+| Role | Email | Password |
+|---|---|---|
+| Platform Admin (6) | `superadmin@ominipulse.ai` · `verification@` · `support@` · `security@` · `moderator@` · `hospitalrel@ominipulse.ai` | `OminiAdmin2026!` · `VerifyAdmin2026!` · `SupportAdmin2026!` · `SecureAdmin2026!` · `Moder8Admin2026!` · `PartnerAdmin2026!` |
+| Doctor | `doctor@ominipulse.ai` | `Doctor2026!` |
+| Patient | `patient@ominipulse.ai` | `Patient2026!` |
+
+Hospital staff demo accounts and the full setup guide are in
+[`supabase/README.md`](./supabase/README.md#3-dummy-sign-in-credentials-all-platforms).
 
 ---
 

@@ -1,0 +1,6 @@
+// OminiPulse Edge Function config
+// Deploy commands:
+//   supabase functions deploy send-otp
+//   supabase functions deploy reset-password
+// Required secrets:
+//   supabase secrets set RESEND_API_KEY=...  OTP_FROM_EMAIL=...

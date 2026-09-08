@@ -31,26 +31,27 @@ const ROLES: AdminRole[] = [
 ];
 
 const ROLE_CREDENTIALS: Record<AdminRole, { email: string; pass: string }> = {
-  admin:          { email: 'admin@ominipulse.ai',        pass: 'admin123' },
-  hospital_admin: { email: 'admin@xyzspecialist.ng',     pass: 'AdminPass2026!' },
-  doctor:         { email: 'doctor@ominipulse.ai',       pass: 'admin123' },
-  nurse:          { email: 'a.yusuf@xyzspecialist.ng',   pass: 'HospitalPass2026!' },
-  receptionist:   { email: 'f.mohammed@xyzspecialist.ng', pass: 'HospitalPass2026!' },
-  blood_officer:  { email: 'm.garba@xyzspecialist.ng',   pass: 'HospitalPass2026!' },
-  pharmacist:     { email: 'c.okonkwo@xyzspecialist.ng', pass: 'PharmPass2026!' },
-  lab_technician: { email: 'e.nnamdi@xyzspecialist.ng',  pass: 'LabPass2026!' },
+  admin:          { email: 'superadmin@ominipulse.ai',   pass: 'OminiAdmin2026!' },
+  hospital_admin: { email: 'admin@xyzspecialist.ng',     pass: 'HospAdmin2026!' },
+  doctor:         { email: 'doctor@ominipulse.ai',       pass: 'Doctor2026!' },
+  nurse:          { email: 'nurse@xyzspecialist.ng',     pass: 'Nurse2026!' },
+  receptionist:   { email: 'reception@xyzspecialist.ng', pass: 'Reception2026!' },
+  blood_officer:  { email: 'bloodbank@xyzspecialist.ng', pass: 'BloodBank2026!' },
+  pharmacist:     { email: 'pharmacist@xyzspecialist.ng', pass: 'Pharm2026!' },
+  lab_technician: { email: 'labtech@xyzspecialist.ng',  pass: 'LabTech2026!' },
 };
 
 export default function LoginPage() {
   const router = useRouter();
   const setAdmin = useAuthStore(s => s.setAdmin);
+  const login = useAuthStore(s => s.login);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
   const [selectedRole, setSelectedRole] = useState<AdminRole>('admin');
 
   const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'admin@ominipulse.ai', password: 'admin123' },
+    defaultValues: { email: 'superadmin@ominipulse.ai', password: 'OminiAdmin2026!' },
   });
 
   const handleSelectRole = (role: AdminRole) => {
@@ -63,34 +64,41 @@ export default function LoginPage() {
     setServerError('');
     await new Promise(r => setTimeout(r, 600));
 
-    // Determine target persona
-    let roleToAssign: AdminRole = selectedRole;
+    let roleToAssign: AdminRole;
 
-    if (selectedRole === 'pharmacist' || data.email.startsWith('c.okonkwo')) {
-      roleToAssign = 'pharmacist';
-    } else if (selectedRole === 'lab_technician' || data.email.startsWith('e.nnamdi')) {
-      roleToAssign = 'lab_technician';
-    } else if (selectedRole === 'nurse' || data.email.startsWith('a.yusuf')) {
-      roleToAssign = 'nurse';
-    } else if (selectedRole === 'receptionist' || data.email.startsWith('f.mohammed')) {
-      roleToAssign = 'receptionist';
-    } else if (selectedRole === 'blood_officer' || data.email.startsWith('m.garba')) {
-      roleToAssign = 'blood_officer';
-    } else if (selectedRole === 'doctor' || data.email.includes('doctor')) {
-      roleToAssign = 'doctor';
-    } else if (selectedRole === 'hospital_admin' || data.email.includes('xyzspecialist') || data.email.includes('hospital')) {
-      roleToAssign = 'hospital_admin';
-    } else {
-      roleToAssign = 'admin';
+    try {
+      // ── Unified Supabase auth (same account as mobile app) ──
+      await login(data.email, data.password);
+      roleToAssign = useAuthStore.getState().admin?.role ?? 'admin';
+    } catch (err: any) {
+      // ── Demo fallback when Supabase is not configured ──
+      const isConfigError = String(err?.message ?? '').includes('not configured');
+      if (!isConfigError) {
+        setServerError(err?.message ?? 'Invalid email or password.');
+        return;
+      }
+
+      if (data.email.startsWith('c.okonkwo')) {
+        roleToAssign = 'pharmacist';
+      } else if (data.email.startsWith('e.nnamdi')) {
+        roleToAssign = 'lab_technician';
+      } else if (data.email.startsWith('a.yusuf')) {
+        roleToAssign = 'nurse';
+      } else if (data.email.startsWith('f.mohammed')) {
+        roleToAssign = 'receptionist';
+      } else if (data.email.startsWith('m.garba')) {
+        roleToAssign = 'blood_officer';
+      } else if (data.email.includes('doctor')) {
+        roleToAssign = 'doctor';
+      } else if (data.email.includes('xyzspecialist') || data.email.includes('hospital')) {
+        roleToAssign = 'hospital_admin';
+      } else {
+        roleToAssign = 'admin';
+      }
+
+      const presetAdmin = MOCK_ADMINS[roleToAssign] || MOCK_ADMINS.admin;
+      setAdmin({ ...presetAdmin, email: data.email }, `demo-token-${roleToAssign}`);
     }
-
-    const presetAdmin = MOCK_ADMINS[roleToAssign] || MOCK_ADMINS.admin;
-    const userToLogin = {
-      ...presetAdmin,
-      email: data.email,
-    };
-
-    setAdmin(userToLogin, `mock-jwt-token-${roleToAssign}`);
 
     if (roleToAssign === 'doctor') {
       router.push('/dashboard/doctor-portal');

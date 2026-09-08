@@ -1,6 +1,11 @@
 // API Configuration
 export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://api.ominipulse.health/v1';
 
+// Supabase unified backend (database + auth) — set in .env:
+//   EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY
+export const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+export const SUPABASE_FUNCTIONS_URL = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : '';
+
 // App Info
 export const APP_NAME = 'Omini Pulse AI';
 export const APP_VERSION = '1.0.0';
