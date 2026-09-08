@@ -31,6 +31,7 @@ import {
   EmptyState,
   ErrorState,
   Button,
+  HeartbeatRefreshControl,
 } from "../../components";
 import { DoctorAppointmentItem } from "../../components/list-items/DoctorAppointmentItem";
 import { useToast, useAuth } from "../../hooks/useAuth";
@@ -397,8 +398,7 @@ export default function AppointmentsScreen({ navigation }: any) {
             isTablet && styles.listContainerTablet,
           ]}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={_isLoading}
-          onRefresh={refetch}
+          refreshControl={<HeartbeatRefreshControl refreshing={_isLoading} onRefresh={refetch} />}
           showsVerticalScrollIndicator={false}
           // estimatedItemSize={340}
         />
@@ -418,7 +418,7 @@ export default function AppointmentsScreen({ navigation }: any) {
       >
         <View style={styles.modalOverlay}>
           <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() => setDeclineModal((m) => ({ ...m, visible: false }))}
           />
@@ -475,7 +475,7 @@ export default function AppointmentsScreen({ navigation }: any) {
       >
         <View style={styles.modalOverlayBottom}>
           <TouchableOpacity
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             activeOpacity={1}
             onPress={() =>
               setRescheduleModal((m) => ({ ...m, visible: false }))

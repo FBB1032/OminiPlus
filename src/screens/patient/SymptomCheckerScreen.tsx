@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   TextInput,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { Card, Button, StepIndicator, BodyMap, AppModal } from '../../components';
@@ -47,8 +47,47 @@ export default function SymptomCheckerScreen({ navigation }: any) {
 
   const [painLogs, setPainLogs] = useState<PainLog[]>([]);
   const [activePart, setActivePart] = useState<BodyPartId | null>(null);
-  const [tempSeverity, setTempSeverity] = useState<number>(5);
+  const [tempSeverity, setTempSeverity] = useState<number>(2);
   const [tempNotes, setTempNotes] = useState('');
+  const [isSeverityModalOpen, setIsSeverityModalOpen] = useState(false);
+
+  const handleSelectPart = (partId: BodyPartId) => {
+    setActivePart(partId);
+    const existing = painLogs.find((l) => l.bodyPartId === partId);
+    if (existing) {
+      setTempSeverity(existing.severity);
+      setTempNotes(existing.notes || '');
+    } else {
+      // Default to 2 (Mild - Yellow) so it immediately shows Yellow on first tap
+      const initialSev = 2;
+      setTempSeverity(initialSev);
+      setTempNotes('');
+      setPainLogs((prev) => [...prev, { bodyPartId: partId, severity: initialSev, notes: '' }]);
+    }
+    // Open the direct number picker modal right in the user's face!
+    setIsSeverityModalOpen(true);
+  };
+
+  const handleSetPartSeverity = (severity: number) => {
+    if (!activePart) return;
+    setTempSeverity(severity);
+    setPainLogs((prev) => {
+      const idx = prev.findIndex((l) => l.bodyPartId === activePart);
+      if (idx > -1) {
+        const copy = [...prev];
+        copy[idx] = { ...copy[idx], severity };
+        return copy;
+      }
+      return [...prev, { bodyPartId: activePart, severity, notes: tempNotes }];
+    });
+  };
+
+  const handleRemovePart = (partId: BodyPartId) => {
+    setPainLogs((prev) => prev.filter((l) => l.bodyPartId !== partId));
+    if (activePart === partId) {
+      setActivePart(null);
+    }
+  };
 
   const handleContinue = () => {
     if (painLogs.length === 0) {
@@ -217,13 +256,108 @@ export default function SymptomCheckerScreen({ navigation }: any) {
             <BodyMap
               painLogs={painLogs}
               interactive={true}
-              onPartPress={(partId) => {
-                const existing = painLogs.find((l) => l.bodyPartId === partId);
-                setTempSeverity(existing ? existing.severity : 5);
-                setTempNotes(existing?.notes || '');
-                setActivePart(partId);
-              }}
+              selectedPartId={activePart}
+              onPartPress={handleSelectPart}
             />
+
+            {/* Instant Pain Level Selector for Selected Region */}
+            {activePart ? (
+              <View style={styles.inlinePainCard}>
+                <View style={styles.inlinePainHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                    <Ionicons name="finger-print" size={16} color="#0F6E6E" />
+                    <Text style={styles.inlinePainTitle}>
+                      {activePart.toUpperCase().replace('_', ' ')}
+                    </Text>
+                    <View
+                      style={[
+                        styles.inlineSeverityPill,
+                        {
+                          backgroundColor:
+                            tempSeverity >= 7 ? '#FEF2F2' : tempSeverity >= 4 ? '#FFF7ED' : '#FEFCE8',
+                          borderColor:
+                            tempSeverity >= 7 ? '#EF4444' : tempSeverity >= 4 ? '#F97316' : '#EAB308',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.inlineSeverityPillText,
+                          {
+                            color:
+                              tempSeverity >= 7 ? '#EF4444' : tempSeverity >= 4 ? '#C2410C' : '#A16207',
+                          },
+                        ]}
+                      >
+                        {tempSeverity}/10 •{' '}
+                        {tempSeverity >= 7 ? 'Severe (Red)' : tempSeverity >= 4 ? 'Moderate (Orange)' : 'Mild (Yellow)'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => handleRemovePart(activePart)}
+                    style={styles.removePartBtn}
+                  >
+                    <Ionicons name="close-circle-outline" size={16} color="#EF4444" />
+                    <Text style={styles.removePartBtnText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 1 to 10 Color-Coded Number Buttons */}
+                <Text style={styles.numberRowLabel}>Tap number to set pain intensity (colors region):</Text>
+                <View style={styles.numberRow}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+                    const isSelected = tempSeverity === num;
+                    const numColor = num >= 7 ? '#EF4444' : num >= 4 ? '#F97316' : '#EAB308';
+                    return (
+                      <TouchableOpacity
+                        key={num}
+                        style={[
+                          styles.inlineNumBtn,
+                          { borderColor: numColor },
+                          isSelected && { backgroundColor: numColor },
+                        ]}
+                        onPress={() => handleSetPartSeverity(num)}
+                        activeOpacity={0.75}
+                      >
+                        <Text
+                          style={[
+                            styles.inlineNumText,
+                            { color: isSelected ? '#FFFFFF' : numColor },
+                          ]}
+                        >
+                          {num}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* Severity Guide Legend */}
+                <View style={styles.legendRow}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
+                    <Text style={styles.legendText}>1–3 Mild (Yellow)</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
+                    <Text style={styles.legendText}>4–6 Moderate (Orange)</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+                    <Text style={styles.legendText}>7–10 Severe (Red)</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.tapPromptCard}>
+                <Ionicons name="hand-left-outline" size={18} color="#0F6E6E" />
+                <Text style={styles.tapPromptText}>
+                  Tap any body region above to set its pain level (1-10) and watch it glow Yellow, Orange, or Red.
+                </Text>
+              </View>
+            )}
 
             {painLogs.length > 0 ? (
               <View style={styles.loggedList}>
@@ -233,7 +367,7 @@ export default function SymptomCheckerScreen({ navigation }: any) {
                     <View style={styles.loggedTextWrap}>
                       <View style={styles.loggedNameRow}>
                         <View style={[styles.severityDot, {
-                          backgroundColor: log.severity >= 8 ? '#EF4444' : log.severity >= 4 ? '#F97316' : '#EAB308'
+                          backgroundColor: log.severity >= 7 ? '#EF4444' : log.severity >= 4 ? '#F97316' : '#EAB308'
                         }]} />
                         <Text style={styles.loggedName}>{log.bodyPartId.toUpperCase().replace('_', ' ')} ({log.severity}/10)</Text>
                       </View>
@@ -272,8 +406,8 @@ export default function SymptomCheckerScreen({ navigation }: any) {
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => {
                   const isSelected = painLevel === level;
                   const getScaleColor = () => {
-                    if (level <= 3) return '#10B981';
-                    if (level <= 6) return '#F59E0B';
+                    if (level <= 3) return '#EAB308';
+                    if (level <= 6) return '#F97316';
                     return '#EF4444';
                   };
                   return (
@@ -367,7 +501,15 @@ export default function SymptomCheckerScreen({ navigation }: any) {
             <View style={styles.footerBtns}>
               <Button
                 label={`Book appointment with a ${result.spec}`}
-                onPress={() => navigation.navigate('BookAppointment')}
+                onPress={() => {
+                  const symptomList = selectedSymptoms.length > 0 ? selectedSymptoms.join(', ') : 'None selected';
+                  const triageSummary = `Triage Findings: ${result.diagnosis} (${result.level} - Pain ${painLevel}/10). Symptoms: ${symptomList}. Notes: ${notes || 'None'}`;
+                  navigation.navigate('BookAppointment', {
+                    specialization: result.spec,
+                    prefilledReason: triageSummary,
+                    painLogs,
+                  });
+                }}
               />
               <TouchableOpacity
                 style={styles.resetBtn}
@@ -386,81 +528,140 @@ export default function SymptomCheckerScreen({ navigation }: any) {
         )}
       </View>
 
+      {/* Direct Interactive Pain Severity Dialog */}
       <AppModal
-        visible={activePart !== null}
-        onClose={() => {
-          setActivePart(null);
-        }}
-        title={`Pain Level: ${activePart ? activePart.toUpperCase().replace('_', ' ') : ''}`}
-        footer={
-          <View style={{ flexDirection: 'row', gap: Spacing[3], width: '100%' }}>
-            <Button
-              variant="outline"
-              label="Cancel"
-              onPress={() => setActivePart(null)}
-              style={{ flex: 1 }}
-            />
-            <Button
-              variant="primary"
-              label="Save Details"
-              onPress={() => {
-                if (activePart) {
-                  const existingIdx = painLogs.findIndex(l => l.bodyPartId === activePart);
-                  const updatedLogs = [...painLogs];
-                  if (existingIdx > -1) {
-                    updatedLogs[existingIdx] = {
-                      bodyPartId: activePart,
-                      severity: tempSeverity,
-                      notes: tempNotes,
-                    };
-                  } else {
-                    updatedLogs.push({
-                      bodyPartId: activePart,
-                      severity: tempSeverity,
-                      notes: tempNotes,
-                    });
-                  }
-                  setPainLogs(updatedLogs);
-                  setActivePart(null);
-                }
-              }}
-              style={{ flex: 1 }}
-            />
-          </View>
-        }
+        visible={isSeverityModalOpen && Boolean(activePart)}
+        onClose={() => setIsSeverityModalOpen(false)}
+        title={activePart ? `Rate Pain: ${activePart.toUpperCase().replace('_', ' ')}` : 'Rate Pain'}
+        contentStyle={{ maxWidth: 360, alignSelf: 'center' }}
       >
         <View style={styles.modalBody}>
-          <Text style={styles.modalLabel}>Severity (1-10): {tempSeverity}</Text>
-          <View style={styles.modalSeverityRow}>
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-              <TouchableOpacity
-                key={num}
-                style={[
-                  styles.severityBtn,
-                  tempSeverity === num && styles.severityBtnActive,
-                  tempSeverity === num && {
-                    backgroundColor: num >= 8 ? '#EF4444' : num >= 4 ? '#F97316' : '#EAB308'
-                  }
-                ]}
-                onPress={() => setTempSeverity(num)}
-              >
-                <Text style={[styles.severityBtnText, tempSeverity === num && styles.severityBtnTextActive]}>
-                  {num}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <Text style={styles.modalSubtitle}>
+            Tap a number (1–10) to map your pain level and color this region on the 3D Body Map:
+          </Text>
+
+          {/* Dynamic Color Banner */}
+          <View
+            style={[
+              styles.modalSeverityBanner,
+              {
+                backgroundColor:
+                  tempSeverity >= 7 ? '#FEF2F2' : tempSeverity >= 4 ? '#FFF7ED' : '#FEFCE8',
+                borderColor:
+                  tempSeverity >= 7 ? '#EF4444' : tempSeverity >= 4 ? '#F97316' : '#EAB308',
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalSeverityDot,
+                {
+                  backgroundColor:
+                    tempSeverity >= 7 ? '#EF4444' : tempSeverity >= 4 ? '#F97316' : '#EAB308',
+                },
+              ]}
+            />
+            <Text
+              style={[
+                styles.modalSeverityTitle,
+                {
+                  color:
+                    tempSeverity >= 7 ? '#DC2626' : tempSeverity >= 4 ? '#C2410C' : '#A16207',
+                },
+              ]}
+            >
+              Level {tempSeverity}/10 •{' '}
+              {tempSeverity >= 7
+                ? 'Severe (Red)'
+                : tempSeverity >= 4
+                ? 'Moderate (Orange)'
+                : 'Mild (Yellow)'}
+            </Text>
           </View>
-          
-          <Text style={styles.modalLabel}>Discomfort Notes</Text>
+
+          {/* 1 - 10 Quick Select Grid / Row */}
+          <View style={styles.modalGrid}>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => {
+              const isSelected = tempSeverity === num;
+              const numColor = num >= 7 ? '#EF4444' : num >= 4 ? '#F97316' : '#EAB308';
+              return (
+                <TouchableOpacity
+                  key={num}
+                  style={[
+                    styles.modalNumBtn,
+                    { borderColor: numColor },
+                    isSelected && { backgroundColor: numColor },
+                  ]}
+                  onPress={() => handleSetPartSeverity(num)}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.modalNumText,
+                      { color: isSelected ? '#FFFFFF' : numColor },
+                    ]}
+                  >
+                    {num}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Color Scale Legend */}
+          <View style={styles.modalLegend}>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
+              <Text style={styles.legendText}>1–3 Mild (Yellow)</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#F97316' }]} />
+              <Text style={styles.legendText}>4–6 Moderate (Orange)</Text>
+            </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+              <Text style={styles.legendText}>7–10 Severe (Red)</Text>
+            </View>
+          </View>
+
+          {/* Notes Input */}
+          <Text style={styles.notesLabel}>Optional Notes (e.g. throbbing, sharp, constant):</Text>
           <TextInput
-            style={styles.modalInput}
+            style={styles.modalNotesInput}
+            placeholder="Describe the sensation..."
+            placeholderTextColor="#94A3B8"
             value={tempNotes}
-            onChangeText={setTempNotes}
-            placeholder="Describe the type of pain (e.g. throbbing, sharp, constant, etc.)"
-            placeholderTextColor={Colors.text.disabled}
-            multiline={true}
-            numberOfLines={3}
+            onChangeText={(text) => {
+              setTempNotes(text);
+              if (activePart) {
+                setPainLogs((prev) =>
+                  prev.map((l) => (l.bodyPartId === activePart ? { ...l, notes: text } : l))
+                );
+              }
+            }}
           />
+
+          {/* Action Buttons */}
+          <View style={styles.modalActions}>
+            <Button
+              label={`Save & View on Map (${tempSeverity}/10)`}
+              onPress={() => setIsSeverityModalOpen(false)}
+              variant="primary"
+              style={{ flex: 1 }}
+            />
+            {activePart && (
+              <TouchableOpacity
+                style={styles.modalClearBtn}
+                onPress={() => {
+                  handleRemovePart(activePart);
+                  setIsSeverityModalOpen(false);
+                }}
+              >
+                <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                <Text style={styles.modalClearBtnText}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </AppModal>
     </SafeAreaView>
@@ -785,51 +986,207 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: Spacing[6],
   },
-  // Modal Styles
-  modalBody: {
-    padding: Spacing[2],
-    gap: Spacing[4],
+  // Inline Instant Pain Level Selector Styles
+  inlinePainCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: Spacing[4],
+    marginTop: Spacing[3],
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    ...Shadows.sm,
+    gap: 10,
   },
-  modalLabel: {
+  inlinePainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  inlinePainTitle: {
     fontSize: FontSize.sm,
     fontWeight: FontWeight.bold,
     color: Colors.text.primary,
   },
-  modalSeverityRow: {
+  inlineSeverityPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  inlineSeverityPillText: {
+    fontSize: 10.5,
+    fontWeight: FontWeight.bold,
+  },
+  removePartBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: '#FEF2F2',
+  },
+  removePartBtnText: {
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
+    color: '#EF4444',
+  },
+  numberRowLabel: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    fontWeight: FontWeight.medium,
+  },
+  numberRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 4,
   },
-  severityBtn: {
+  inlineNumBtn: {
     flex: 1,
-    height: 36,
+    height: 34,
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F1F5F9',
+    borderWidth: 1.5,
+    backgroundColor: '#FFFFFF',
+  },
+  inlineNumText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 8,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 10,
+    color: Colors.text.secondary,
+    fontWeight: FontWeight.medium,
+  },
+  tapPromptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F0FDFA',
     borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  severityBtnActive: {
-    borderColor: 'transparent',
-  },
-  severityBtnText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: Colors.text.primary,
-  },
-  severityBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: '#F8FAFC',
+    borderColor: '#CCFBF1',
     borderRadius: 12,
     padding: Spacing[3],
+    marginTop: Spacing[3],
+  },
+  tapPromptText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: '#0F766E',
+    lineHeight: 16,
+  },
+  modalBody: {
+    padding: Spacing[4],
+  },
+  modalSubtitle: {
+    fontSize: FontSize.sm,
+    color: Colors.text.secondary,
+    lineHeight: 19,
+    marginBottom: Spacing[3],
+  },
+  modalSeverityBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: Spacing[4],
+  },
+  modalSeverityDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  modalSeverityTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+  },
+  modalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+    justifyContent: 'center',
+    marginBottom: Spacing[3],
+  },
+  modalNumBtn: {
+    width: 54,
+    height: 46,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    backgroundColor: '#FFFFFF',
+    ...Shadows.xs,
+  },
+  modalNumText: {
+    fontSize: FontSize.base,
+    fontWeight: '800',
+  },
+  modalLegend: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[2],
+    marginBottom: Spacing[4],
+  },
+  notesLabel: {
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.secondary,
+    marginBottom: 6,
+  },
+  modalNotesInput: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: Spacing[3],
+    paddingVertical: Spacing[2],
     fontSize: FontSize.sm,
     color: Colors.text.primary,
-    textAlignVertical: 'top',
-    height: 72,
+    backgroundColor: '#F8FAFC',
+    marginBottom: Spacing[4],
+  },
+  modalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalClearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+    backgroundColor: '#FEF2F2',
+  },
+  modalClearBtnText: {
+    color: '#EF4444',
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.bold,
   },
 });

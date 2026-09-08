@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
 import { usePatientHome } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
+import { useChronicDiseaseStore } from '../../store/chronicDiseaseStore';
 import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
 
 const { width } = Dimensions.get('window');
@@ -28,7 +29,7 @@ interface Message {
   text: string;
   isUser: boolean;
   timestamp: Date;
-  customComponent?: 'symptomCheckerBodyArea' | 'symptomCheckerSeverity' | 'symptomCheckerAssociated' | 'symptomCheckerResults' | 'aiDoctorRouting';
+  customComponent?: 'symptomCheckerBodyArea' | 'symptomCheckerSeverity' | 'symptomCheckerAssociated' | 'symptomCheckerResults' | 'aiDoctorRouting' | 'vitalsChartCard';
   customData?: any;
 }
 
@@ -97,46 +98,191 @@ const ADDITIONAL_SYMPTOMS = [
 const getMedicalResponse = (query: string, vitals?: any): string => {
   const q = query.toLowerCase();
 
-  // Emergency Triage Keywords Trigger
+  // 1. Emergency Red Alert Protocol (Chest Pain, Myocardial Infarction, Acute Stroke, Respiratory Distress)
   if (
     q.includes('chest pain') ||
     q.includes('heart attack') ||
     q.includes('can\'t breathe') ||
+    q.includes('cant breathe') ||
     q.includes('shortness of breath') ||
     q.includes('stroke') ||
-    q.includes('unconscious')
+    q.includes('unconscious') ||
+    q.includes('crushing chest')
   ) {
-    return "I am your Omini Pulse AI health assistant. How can I assist you with your health query or medical records today?";
-  }
-  
-  if (q.includes('symptom') || q.includes('headache') || q.includes('pain') || q.includes('migraine') || q.includes('fever')) {
-    let response = "Based on your description, a mild headache could be tension-related or due to dehydration. However, if you experience sudden, severe pain ('thunderclap'), fever, stiff neck, or vision changes, please seek emergency medical attention immediately.\n\nTry resting in a dark room and drinking water. Would you like me to help you book a consultation with a General Practitioner?";
-    if (vitals) {
-      response += `\n\nComparing this with your latest vitals: your heart rate is ${vitals.heartRate} bpm and blood pressure is ${vitals.bloodPressure} mmHg, which are within typical ranges. If your blood pressure rises significantly with a headache, please consult your doctor.`;
-    }
-    return response;
-  }
-  
-  if (q.includes('metformin') || q.includes('side effect') || q.includes('medication') || q.includes('lisinopril')) {
-    let response = "Metformin is commonly prescribed for Type 2 diabetes to help control blood sugar. Common side effects include mild gastrointestinal upset (nausea, bloating, diarrhea), which often improves over a few weeks.\n\nTake it with meals to reduce these symptoms. Avoid excessive alcohol consumption as it increases the risk of lactic acidosis. Always consult your doctor before changing dosages.";
-    if (vitals && q.includes('lisinopril')) {
-      response += `\n\nNote: Lisinopril is used for blood pressure. Your recorded blood pressure is ${vitals.bloodPressure} mmHg.`;
-    }
-    return response;
-  }
-  
-  if (q.includes('interaction') || q.includes('ibuprofen') || q.includes('aspirin')) {
-    return "Taking Ibuprofen and Aspirin together is generally not recommended. Both are NSAIDs (non-steroidal anti-inflammatory drugs) and combining them increases the risk of serious side effects, such as stomach ulcers, gastrointestinal bleeding, and kidney strain.\n\nAdditionally, Ibuprofen can interfere with Aspirin's cardioprotective blood-thinning benefits. Please speak with your cardiologist or primary care doctor for safer alternatives.";
+    return (
+      "**[CRITICAL EMERGENCY ALERT — IMMEDIATE ACTION REQUIRED]**\n\n" +
+      "Your reported symptoms indicate an acute cardiovascular, neurological, or respiratory emergency that cannot wait for a routine chat.\n\n" +
+      "**Immediate Emergency Steps:**\n" +
+      "1. **Seek Emergency Care**: Call national emergency dispatch (112) or proceed to the nearest hospital emergency department immediately.\n" +
+      "2. **Sit Upright**: Do not lie flat; sit upright in a comfortable position and loosen tight collar or waistbands.\n" +
+      "3. **Chest Pressure**: If crushing pain is radiating to your left arm or jaw, and you have no known aspirin allergy or stomach ulcer, chew one 300mg soluble Aspirin tablet.\n" +
+      "4. **Stroke Warning**: If experiencing facial droop, arm weakness, or slurred speech, note the exact time symptoms began. Rapid clinical thrombolysis within 3–4.5 hours is critical.\n" +
+      "5. **Do Not Drive**: Have someone drive you or wait for an ambulance.\n\n" +
+      "Tap 'Book Specialist' or visit our Emergency Blood / Hospital section if emergency admission is required."
+    );
   }
 
-  if (vitals && (q.includes('blood pressure') || q.includes('bp') || q.includes('hypertension'))) {
-    return `Your recorded blood pressure is ${vitals.bloodPressure} mmHg. Typical healthy blood pressure is under 120/80 mmHg. To maintain healthy levels: eat a low-sodium diet, exercise regularly, manage stress, and avoid smoking. Let me know if you would like to consult a cardiologist.`;
+  // 2. Sickle Cell Disorder — Vaso-Occlusive Pain Crisis Protocol
+  if (
+    q.includes('sickle cell') ||
+    q.includes('crisis') ||
+    q.includes('hbss') ||
+    q.includes('bone pain') ||
+    q.includes('sickling')
+  ) {
+    return (
+      "**[SICKLE CELL VASO-OCCLUSIVE CRISIS PROTOCOL]**\n\n" +
+      "Severe bone or joint pain in sickle cell disease indicates microvascular occlusion caused by sickled red blood cells:\n\n" +
+      "• **Aggressive Hydration**: Drink 3 to 4 liters of warm water or oral rehydration solution today. Fluid expansion reduces blood viscosity and relieves sickling.\n" +
+      "• **Warmth**: Keep affected joints and extremities warm with blankets or warm compresses. **Never apply ice or cold water**, as cold causes vasoconstriction and triggers further crisis.\n" +
+      "• **Analgesia**: Take your prescribed pain management medication promptly (e.g. Paracetamol or prescribed NSAID for mild crisis; physician-directed analgesia for moderate to severe pain).\n" +
+      "• **Red Flags for Emergency Admission**: Chest pain with fever or cough (Acute Chest Syndrome), breathlessness, severe pallor (aplastic/sequestration crisis), or unmanageable pain (>7/10) require immediate emergency department presentation.\n\n" +
+      "Would you like to review emergency blood donors or schedule an urgent Hematologist consultation?"
+    );
   }
-  
-  let baseMsg = "I am your Omini Pulse AI health assistant. I can help you analyze symptoms, explain medical records, search medication information, and cross-reference drug interactions. \n\nPlease describe your health query or select 'Start Symptom Checker' to check your symptoms step-by-step.";
-  if (vitals) {
-    baseMsg += `\n\nI have access to your health profile: BP is ${vitals.bloodPressure}, HR is ${vitals.heartRate} bpm, Weight is ${vitals.weight} kg. This helps me provide more tailored clinical insights.`;
+
+  // 3. Febrile Illness — Malaria & Typhoid Protocol
+  if (
+    q.includes('malaria') ||
+    q.includes('typhoid') ||
+    q.includes('chills') ||
+    q.includes('rigor') ||
+    q.includes('fever and body pain')
+  ) {
+    return (
+      "**[FEBRILE ILLNESS & MALARIA / TYPHOID ASSESSMENT]**\n\n" +
+      "Cyclical fever, rigors (shivering), headaches, joint pains, and dark urine are hallmark symptoms of endemic malaria in Nigeria:\n\n" +
+      "1. **Test Before Treating**: Always confirm with a Rapid Diagnostic Test (mRDT) or Thick Blood Film microscopy before taking antimalarial therapy.\n" +
+      "2. **First-Line Regimen**: For confirmed uncomplicated Plasmodium falciparum, WHO and Nigerian FMOH guidelines recommend quality-assured Artemisinin-based Combination Therapy (ACT), such as Artemether-Lumefantrine taken with fatty food for optimal absorption.\n" +
+      "3. **Symptom Control**: Paracetamol (500mg–1000mg up to 4 times daily) helps alleviate fever and joint aches. Drink at least 2.5–3L of fluids daily.\n" +
+      "4. **Typhoid Cross-Screening**: If high remittent fever persists beyond 3–4 days despite antimalarials, a Widal test or blood culture is indicated to screen for Salmonella Typhi (Typhoid fever).\n\n" +
+      "Please seek urgent clinical evaluation if you experience persistent vomiting, extreme jaundice (yellow eyes), or temperature above 39.5°C."
+    );
   }
+
+  // 4. Maternal Health & Preeclampsia Screening
+  if (
+    q.includes('pregnant') ||
+    q.includes('pregnancy') ||
+    q.includes('preeclampsia') ||
+    q.includes('swollen feet') ||
+    q.includes('blurred vision and pregnant')
+  ) {
+    return (
+      "**[MATERNAL HEALTH & PREECLAMPSIA ADVISORY]**\n\n" +
+      "In pregnancy (particularly past 20 weeks), sudden facial/hand edema accompanied by severe headache or visual blurring requires urgent obstetric evaluation:\n\n" +
+      "• **Immediate Blood Pressure Check**: A reading of ≥140/90 mmHg with proteinuria may indicate preeclampsia, which requires close clinical monitoring to protect maternal and fetal safety.\n" +
+      "• **Urinalysis**: Have a clinic test for urinary protein dipstick.\n" +
+      "• **Medication Safety**: Avoid OTC NSAIDs (such as Ibuprofen or Aspirin) during pregnancy unless specifically prescribed by your Obstetrician.\n\n" +
+      "Please contact your maternity care team or visit an antenatal clinic immediately if you have upper abdominal pain or sudden swelling."
+    );
+  }
+
+  // 5. Live Vitals Cross-Referencing (Chronic Disease Store)
+  const chronicState = useChronicDiseaseStore.getState();
+  const latestBp = chronicState.bpReadings?.[0];
+  const latestSugar = chronicState.sugarReadings?.[0];
+
+  if (
+    q.includes('blood pressure') ||
+    q.includes('bp') ||
+    q.includes('hypertension') ||
+    q.includes('pressure')
+  ) {
+    let msg = "Hypertension management relies on consistent monitoring, medication adherence, and sodium restriction (<2g daily).\n\n";
+    if (latestBp) {
+      msg += `**Latest Logged Reading:**\n• **Blood Pressure**: ${latestBp.systolic}/${latestBp.diastolic} mmHg (${latestBp.category})\n• **Heart Rate**: ${latestBp.pulse || 72} bpm\n• **Logged**: ${new Date(latestBp.recordedAt).toLocaleDateString()} at ${new Date(latestBp.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n\n`;
+      if (latestBp.systolic >= 140 || latestBp.diastolic >= 90) {
+        msg += "[CLINICAL ADVISORY] Your last recorded reading falls within Stage 1/2 Hypertension. If you have headache or dizziness, take your prescribed antihypertensive medication (e.g. Amlodipine/Lisinopril) and rest.";
+      } else {
+        msg += "[TARGET ATTAINED] Your blood pressure is in an optimal target range. Continue healthy lifestyle habits and regular medication schedule.";
+      }
+    } else if (vitals?.bloodPressure) {
+      msg += `Your profile records a resting blood pressure of ${vitals.bloodPressure} mmHg. Maintain low-sodium nutrition and regular cardiovascular exercise.`;
+    }
+    return msg;
+  }
+
+  if (
+    q.includes('sugar') ||
+    q.includes('diabetes') ||
+    q.includes('glucose') ||
+    q.includes('insulin')
+  ) {
+    let msg = "Glycemic control is essential for preventing microvascular diabetic complications.\n\n";
+    if (latestSugar) {
+      msg += `**Latest Glucose Reading:**\n• **Blood Sugar**: ${latestSugar.glucoseLevel} mg/dL (${latestSugar.type})\n• **Category**: ${latestSugar.category}\n• **Logged**: ${new Date(latestSugar.recordedAt).toLocaleDateString()}\n\n`;
+      if (latestSugar.glucoseLevel > 180) {
+        msg += "[HYPERGLYCEMIA ADVISORY] Your recorded glucose level indicates postprandial hyperglycemia. Check water intake, review meal carbohydrate portion, and ensure adherence to prescribed oral hypoglycemic agents (like Metformin).";
+      } else if (latestSugar.glucoseLevel < 70) {
+        msg += "**[HYPOGLYCEMIA ALERT]**: A reading below 70 mg/dL requires the 'Rule of 15': ingest 15 grams of fast-acting glucose (half cup fruit juice or 3 sugar cubes) and re-test in 15 minutes.";
+      } else {
+        msg += "[NORMAL RANGE] Your recorded blood sugar is within the clinically acceptable range.";
+      }
+    } else {
+      msg += "Normal fasting blood glucose ranges between 70–100 mg/dL, and post-meal glucose should remain below 140 mg/dL for non-diabetic adults.";
+    }
+    return msg;
+  }
+
+  // 6. Common Symptoms (Headache, Fatigue, Cough)
+  if (
+    q.includes('headache') ||
+    q.includes('migraine') ||
+    q.includes('dizziness') ||
+    q.includes('fever') ||
+    q.includes('symptom')
+  ) {
+    let response =
+      "A headache can arise from tension, dehydration, ocular strain, or blood pressure fluctuations. \n\n" +
+      "**Clinical Guidance:**\n" +
+      "• Rest in a quiet, darkened room and drink 500mL of water.\n" +
+      "• If accompanied by high fever, stiff neck, or sudden onset thunderclap pain, seek urgent medical attention.\n" +
+      "• Would you like to launch the 3D Body Map Symptom Checker for a structured clinical analysis?";
+    if (latestBp) {
+      response += `\n\n**Vitals Context**: Your latest recorded blood pressure is ${latestBp.systolic}/${latestBp.diastolic} mmHg.`;
+    }
+    return response;
+  }
+
+  // 7. Drug Information & Interactions
+  if (q.includes('metformin') || q.includes('side effect') || q.includes('medication') || q.includes('lisinopril') || q.includes('amlodipine')) {
+    let response =
+      "**Clinical Medication Overview:**\n\n" +
+      "• **Metformin**: An oral biguanide prescribed for Type 2 Diabetes. Improves insulin sensitivity and lowers hepatic glucose production. To prevent common GI side effects (bloating, nausea), always take it during or immediately after meals.\n" +
+      "• **Lisinopril / Amlodipine**: Common first-line antihypertensive agents. A dry persistent cough is a recognized class side-effect of ACE inhibitors like Lisinopril, while ankle swelling (peripheral edema) can occur with calcium channel blockers like Amlodipine.\n\n" +
+      "Always consult your doctor before modifying medication dosages or stopping prescriptions.";
+    if (latestBp) {
+      response += `\n\nYour recorded blood pressure is ${latestBp.systolic}/${latestBp.diastolic} mmHg.`;
+    }
+    return response;
+  }
+
+  if (q.includes('interaction') || q.includes('ibuprofen') || q.includes('aspirin')) {
+    return (
+      "**[DRUG INTERACTION ADVISORY: Ibuprofen + Aspirin]**\n\n" +
+      "Combining Ibuprofen with Aspirin is clinically contraindicated in routine practice:\n" +
+      "1. **Gastrointestinal Risk**: Both are non-steroidal anti-inflammatory drugs (NSAIDs). Simultaneous use significantly increases the risk of gastric mucosal ulceration, bleeding, and renal injury.\n" +
+      "2. **Platelet Blunting**: Ibuprofen reversibly blocks platelet COX-1 and can interfere with low-dose Aspirin's irreversible cardioprotective anti-platelet effect.\n\n" +
+      "If you take daily baby Aspirin for cardiovascular protection, discuss safer analgesic alternatives (such as Paracetamol) with your physician."
+    );
+  }
+
+  // Default Assistant Introduction
+  let baseMsg =
+    "Hello! I am your Omini Pulse AI Clinical Assistant. I can help you with:\n" +
+    "• Step-by-step Symptom Triage via 3D Body Map\n" +
+    "• Medication explanations and drug-drug interactions\n" +
+    "• Tracking your real-time Blood Pressure and Blood Glucose logs\n" +
+    "• Direct specialist booking and emergency blood donor matching\n\n" +
+    "How can I assist your health and wellness journey today?";
+
+  if (latestBp || latestSugar) {
+    baseMsg += "\n\n**Live Vitals Active**: ";
+    if (latestBp) baseMsg += `BP: ${latestBp.systolic}/${latestBp.diastolic} mmHg (${latestBp.category}) `;
+    if (latestSugar) baseMsg += `• Blood Sugar: ${latestSugar.glucoseLevel} mg/dL (${latestSugar.type})`;
+  }
+
   return baseMsg;
 };
 
@@ -184,7 +330,7 @@ export default function AIChatScreen({ route, navigation }: any) {
   // Listen to route params from Home screen
   useEffect(() => {
     if (route.params?.startSymptomChecker) {
-      startSymptomCheckerFlow();
+      navigation.navigate('SymptomChecker');
     }
   }, [route.params?.startSymptomChecker]);
 
@@ -520,7 +666,7 @@ export default function AIChatScreen({ route, navigation }: any) {
     setIsTyping(true);
 
     setTimeout(() => {
-      const ocrSummary = "📄 **AI OCR Scan & Analysis Complete**\n\n• **Document Type**: Clinical E-Prescription & Lab Report\n• **Extracted Medications**: Amoxicillin 500mg (3x daily), Paracetamol 500mg (as needed)\n• **Extracted Findings**: Hemoglobin 13.5 g/dL (Normal), Fasting Glucose 95 mg/dL (Normal)\n\n*All extracted values have been cross-referenced with your EHR. Would you like me to schedule medication alarms for Amoxicillin?*";
+      const ocrSummary = "I have analyzed your uploaded clinical document:\n\n• **Document**: Clinical E-Prescription & Lab Report\n• **Extracted Medications**: Amoxicillin 500mg (3x daily), Paracetamol 500mg (as needed)\n• **Extracted Findings**: Hemoglobin 13.5 g/dL and Fasting Glucose 95 mg/dL (both normal)\n\nAll extracted values have been cross-referenced with your EHR. Would you like me to schedule medication alarms for Amoxicillin?";
       const aiMsg: Message = {
         id: `msg-${Date.now() + 1}`,
         text: ocrSummary,
@@ -536,7 +682,7 @@ export default function AIChatScreen({ route, navigation }: any) {
     if (!text.trim()) return;
 
     if (text.trim() === 'Start Symptom Checker' || text.toLowerCase().includes('symptom checker')) {
-      startSymptomCheckerFlow();
+      navigation.navigate('SymptomChecker');
       setInputText('');
       return;
     }
@@ -570,12 +716,17 @@ export default function AIChatScreen({ route, navigation }: any) {
       setIsTyping(true);
 
       setTimeout(() => {
-        const summaryText = `📊 **AI Health Record & Vitals Summary**\n\n• **Blood Pressure**: ${vitals?.bloodPressure || '120/80'} mmHg (Healthy)\n• **Heart Rate**: ${vitals?.heartRate || '72'} bpm (Normal Sinus Rhythm)\n• **Active Prescriptions**: 2 active medications logged\n• **Recent Lab Tests**: All blood work within normal limits\n\nYour overall health index is strong. Keep logging vitals weekly.`;
+        const summaryText = `Here is a summary of your recent health profile and vitals:\n\n• **Blood Pressure**: ${vitals?.bloodPressure || '120/80'} mmHg (Optimal)\n• **Heart Rate**: ${vitals?.heartRate || '72'} bpm (Normal Sinus Rhythm)\n• **Active Prescriptions**: 2 medications logged\n• **Lab Tests**: All recent blood work within normal limits\n\nYour overall health index is strong. Here is your visual vitals snapshot:`;
         const aiMsg: Message = {
           id: `msg-${Date.now() + 1}`,
           text: summaryText,
           isUser: false,
           timestamp: new Date(),
+          customComponent: 'vitalsChartCard',
+          customData: {
+            bp: vitals?.bloodPressure || '120/80',
+            hr: vitals?.heartRate || '72',
+          },
         };
         setMessages((prev) => [...prev, aiMsg]);
         setIsTyping(false);
@@ -671,6 +822,71 @@ export default function AIChatScreen({ route, navigation }: any) {
     setVoiceStatus('idle');
   };
 
+  const renderFormattedMessage = (text: string, isUser: boolean) => {
+    if (isUser) {
+      return <Text style={[styles.messageText, styles.userText]}>{text}</Text>;
+    }
+
+    // Split text by double newlines into distinct paragraphs
+    const paragraphs = text.split('\n\n');
+
+    return (
+      <View style={styles.formattedContainer}>
+        {paragraphs.map((para, pIdx) => {
+          const lines = para.split('\n');
+          return (
+            <View key={pIdx} style={pIdx > 0 ? { marginTop: 8 } : undefined}>
+              {lines.map((line, lIdx) => {
+                const trimmed = line.trim();
+                if (!trimmed) return null;
+
+                const isBullet = trimmed.startsWith('•') || trimmed.startsWith('- ') || trimmed.startsWith('* ');
+                const cleanText = isBullet ? trimmed.replace(/^[•\-\*]\s*/, '') : trimmed;
+
+                // Split text by bold markers (**bold**)
+                const parts = cleanText.split(/(\*\*.*?\*\*)/g);
+
+                return (
+                  <View
+                    key={lIdx}
+                    style={[
+                      styles.formattedLine,
+                      isBullet && styles.formattedBulletLine,
+                      lIdx > 0 && !isBullet && { marginTop: 4 },
+                    ]}
+                  >
+                    {isBullet && <View style={styles.formattedBulletDot} />}
+                    <Text style={[styles.messageText, styles.aiText, { flex: 1, flexWrap: 'wrap' }]}>
+                      {parts.map((part, partIdx) => {
+                        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+                          const boldContent = part.slice(2, -2);
+                          return (
+                            <Text key={partIdx} style={styles.boldText}>
+                              {boldContent}
+                            </Text>
+                          );
+                        }
+                        if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+                          const italicContent = part.slice(1, -1);
+                          return (
+                            <Text key={partIdx} style={styles.italicText}>
+                              {italicContent}
+                            </Text>
+                          );
+                        }
+                        return <Text key={partIdx}>{part}</Text>;
+                      })}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })}
+      </View>
+    );
+  };
+
   const renderMessageItem = ({ item }: { item: Message }) => {
     const formattedTime = item.timestamp.toLocaleTimeString(undefined, {
       hour: '2-digit',
@@ -686,10 +902,17 @@ export default function AIChatScreen({ route, navigation }: any) {
             </View>
           </View>
         )}
-        <View style={[styles.bubble, item.isUser ? styles.userBubble : styles.aiBubble, item.customComponent === 'symptomCheckerResults' && { width: '85%', maxWidth: '85%' }]}>
-          <Text style={[styles.messageText, item.isUser ? styles.userText : styles.aiText]}>
-            {item.text}
-          </Text>
+        <View
+          style={[
+            styles.bubble,
+            item.isUser ? styles.userBubble : styles.aiBubble,
+            !item.isUser &&
+              (item.text.length > 50 || Boolean(item.customComponent) || item.text.includes('\n')) &&
+              styles.aiBubbleWide,
+            item.customComponent === 'symptomCheckerResults' && { width: '92%', maxWidth: '92%' },
+          ]}
+        >
+          {renderFormattedMessage(item.text, item.isUser)}
 
           {/* Inline Symptom Checker Area selection */}
           {item.customComponent === 'symptomCheckerBodyArea' && (
@@ -854,6 +1077,57 @@ export default function AIChatScreen({ route, navigation }: any) {
             </View>
           )}
 
+          {/* Inline Visual Vitals Snapshot & Metric Card */}
+          {item.customComponent === 'vitalsChartCard' && (
+            <View style={styles.chatVitalsCard}>
+              <View style={styles.chatVitalsCardHeader}>
+                <Ionicons name="stats-chart" size={15} color={Colors.patient} />
+                <Text style={styles.chatVitalsCardTitle}>Vitals Snapshot & Metric Index</Text>
+              </View>
+
+              <View style={styles.chatVitalsGrid}>
+                <View style={styles.chatVitalBox}>
+                  <Text style={styles.chatVitalBoxLabel}>Blood Pressure</Text>
+                  <Text style={styles.chatVitalBoxValue}>{item.customData?.bp || '120/80'}</Text>
+                  <View style={[styles.chatVitalBadge, { backgroundColor: '#ECFDF5' }]}>
+                    <Text style={[styles.chatVitalBadgeText, { color: '#059669' }]}>Optimal</Text>
+                  </View>
+                </View>
+
+                <View style={styles.chatVitalBox}>
+                  <Text style={styles.chatVitalBoxLabel}>Heart Rate</Text>
+                  <Text style={styles.chatVitalBoxValue}>
+                    {item.customData?.hr || '72'}{' '}
+                    <Text style={{ fontSize: 9.5, fontWeight: 'normal', color: Colors.text.secondary }}>bpm</Text>
+                  </Text>
+                  <View style={[styles.chatVitalBadge, { backgroundColor: '#ECFDF5' }]}>
+                    <Text style={[styles.chatVitalBadgeText, { color: '#059669' }]}>Normal</Text>
+                  </View>
+                </View>
+
+                <View style={styles.chatVitalBox}>
+                  <Text style={styles.chatVitalBoxLabel}>Health Index</Text>
+                  <Text style={[styles.chatVitalBoxValue, { color: Colors.patient }]}>
+                    94{' '}
+                    <Text style={{ fontSize: 9.5, fontWeight: 'normal', color: Colors.text.secondary }}>/100</Text>
+                  </Text>
+                  <View style={[styles.chatVitalBadge, { backgroundColor: '#EFF6FF' }]}>
+                    <Text style={[styles.chatVitalBadgeText, { color: '#2563EB' }]}>Strong</Text>
+                  </View>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.chatVitalsViewMoreBtn}
+                onPress={() => navigation.navigate('MedicalRecords')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.chatVitalsViewMoreText}>View Full Medical Records & Chart</Text>
+                <Ionicons name="arrow-forward" size={12} color={Colors.patient} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <Text style={[styles.timestampText, item.isUser ? styles.userTime : styles.aiTime]}>
             {formattedTime}
           </Text>
@@ -870,12 +1144,11 @@ export default function AIChatScreen({ route, navigation }: any) {
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <View style={styles.headerTitleRow}>
-            <View style={styles.brandingDot} />
             <Text style={styles.headerTitle}>Omini Pulse AI Assistant</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(16, 185, 129, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-            <Ionicons name="shield-checkmark" size={10} color="#10B981" />
-            <Text style={{ fontSize: 9, color: '#10B981', fontWeight: 'bold' }}>NDPA</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(15, 110, 110, 0.1)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+            <Ionicons name="shield-checkmark" size={10} color="#0F6E6E" />
+            <Text style={{ fontSize: 9, color: '#0F6E6E', fontWeight: 'bold' }}>NDPA</Text>
           </View>
         </View>
         <Text style={styles.headerSubtitle}>Medical AI Companion • Online</Text>
@@ -918,7 +1191,7 @@ export default function AIChatScreen({ route, navigation }: any) {
             {/* Feeling Unwell / Symptom Checker Banner inside AI Assistant */}
             <TouchableOpacity
               style={styles.aiSymptomBanner}
-              onPress={startSymptomCheckerFlow}
+              onPress={() => navigation.navigate('SymptomChecker')}
               activeOpacity={0.8}
             >
               <View style={styles.aiSymptomIconBg}>
@@ -1190,13 +1463,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 2,
   },
-  brandingDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 8,
-  },
   headerTitle: {
     fontSize: FontSize.lg,
     fontWeight: FontWeight.bold,
@@ -1332,7 +1598,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bubble: {
-    maxWidth: '80%',
+    maxWidth: '85%',
     paddingHorizontal: Spacing[4],
     paddingVertical: Spacing[3],
     borderRadius: 20,
@@ -1341,12 +1607,18 @@ const styles = StyleSheet.create({
   userBubble: {
     backgroundColor: Colors.patient,
     borderBottomRightRadius: 4,
+    maxWidth: '82%',
   },
   aiBubble: {
     backgroundColor: '#FFFFFF',
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    maxWidth: '88%',
+  },
+  aiBubbleWide: {
+    flex: 1,
+    maxWidth: '92%',
   },
   messageText: {
     fontSize: FontSize.md,
@@ -1841,5 +2113,103 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xs,
     color: '#991B1B',
     lineHeight: 18,
+  },
+  formattedContainer: {
+    width: '100%',
+  },
+  formattedLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  formattedBulletLine: {
+    paddingLeft: 2,
+    marginTop: 3,
+    marginBottom: 2,
+  },
+  formattedBulletDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: Colors.patient,
+    marginTop: 7,
+    marginRight: 7,
+  },
+  boldText: {
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  italicText: {
+    fontStyle: 'italic',
+    color: Colors.text.secondary,
+  },
+  chatVitalsCard: {
+    marginTop: 10,
+    backgroundColor: '#FAFDFD',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E6F4F1',
+    width: '100%',
+  },
+  chatVitalsCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  chatVitalsCardTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.text.primary,
+  },
+  chatVitalsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 10,
+  },
+  chatVitalBox: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+  },
+  chatVitalBoxLabel: {
+    fontSize: 9,
+    color: Colors.text.secondary,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  chatVitalBoxValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  chatVitalBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  chatVitalBadgeText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+  },
+  chatVitalsViewMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF2F6',
+  },
+  chatVitalsViewMoreText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: Colors.patient,
   },
 });

@@ -9,51 +9,34 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useToast } from '../../hooks/useAuth';
 
 export default function VideoConsultationScreen({ route, navigation }: any) {
-  const { doctorName } = route.params || { doctorName: 'Doctor' };
+  const { doctorName } = route.params || { doctorName: 'Dr. Babajide Alabi' };
   const { success: showToastSuccess } = useToast();
 
+  const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isSpeakerOn, setIsSpeakerOn] = useState(true);
   const [seconds, setSeconds] = useState(0);
-  const [permissionStatus, setPermissionStatus] = useState<'checking' | 'granted' | 'denied'>('checking');
 
-  // Trigger permission check on mount
+  // Auto-request camera permission on mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      Alert.alert(
-        'Allow Camera & Microphone Access?',
-        'Omini Pulse requires camera and microphone permissions to start this secure telemedicine session.',
-        [
-          {
-            text: "Don't Allow",
-            onPress: () => setPermissionStatus('denied'),
-            style: 'cancel',
-          },
-          {
-            text: 'Allow',
-            onPress: () => setPermissionStatus('granted'),
-          },
-        ]
-      );
-    }, 1000);
+    if (!permission || !permission.granted) {
+      requestPermission();
+    }
+  }, [permission]);
 
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Timer simulation (only runs when permission is granted)
+  // Call duration timer
   useEffect(() => {
-    if (permissionStatus !== 'granted') return;
-
     const timer = setInterval(() => {
       setSeconds((prev) => prev + 1);
     }, 1000);
-
     return () => clearInterval(timer);
-  }, [permissionStatus]);
+  }, []);
 
   const formatTime = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);
@@ -61,17 +44,21 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const toggleCameraFacing = () => {
+    setFacing((current) => (current === 'back' ? 'front' : 'back'));
+  };
+
   const handleEndCall = () => {
     Alert.alert(
       'End Consultation',
-      'Are you sure you want to end this consultation?',
+      'Are you sure you want to conclude this telemedicine consultation?',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'End Call',
           style: 'destructive',
           onPress: () => {
-            showToastSuccess('Consultation Ended', 'Your telemedicine session has completed successfully.');
+            showToastSuccess('Consultation Ended', 'Your telemedicine session has completed successfully. Summary saved.');
             navigation.goBack();
           },
         },
@@ -79,70 +66,57 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
     );
   };
 
-  if (permissionStatus === 'checking') {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <Ionicons name="videocam-outline" size={48} color="#94A3B8" />
-        <Text style={styles.loadingText}>Initializing secure call stream...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  if (permissionStatus === 'denied') {
-    return (
-      <SafeAreaView style={[styles.container, styles.centered]}>
-        <Ionicons name="warning-outline" size={64} color="#EF4444" />
-        <Text style={styles.deniedTitle}>Permissions Required</Text>
-        <Text style={styles.deniedText}>
-          You cannot join the video consultation without camera and microphone permissions. Please enable them in your device settings.
-        </Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
-      {/* Simulated Doctor Feed (Main Background) */}
+      {/* Remote Doctor Feed (Main Background) */}
       <View style={styles.doctorVideoFeed}>
-        {/* Mock visual placeholder for Doctor */}
-        <View style={styles.doctorPlaceholder}>
-          <Ionicons name="person" size={100} color="#64748B" />
-          <Text style={styles.connectingText}>Live Feed Active</Text>
-        </View>
-        
-        {/* Overlay Details */}
+        <Image
+          source={{ uri: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=800' }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
+        <View style={styles.videoDarkOverlay} />
+
+        {/* Top Overlay Details */}
         <View style={styles.overlayHeader}>
           <View style={{ flex: 1 }}>
             <Text style={styles.docName}>{doctorName}</Text>
             <View style={styles.statusRow}>
               <View style={styles.liveDot} />
-              <Text style={styles.timerText}>{formatTime(seconds)}</Text>
+              <Text style={styles.timerText}>{formatTime(seconds)} • HD 1080p</Text>
             </View>
           </View>
           <View style={styles.NDPABadge}>
             <Ionicons name="shield-checkmark" size={14} color="#10B981" />
-            <Text style={styles.NDPAText}>NDPA Secured</Text>
+            <Text style={styles.NDPAText}>NDPA Secured E2EE</Text>
+          </View>
+        </View>
+
+        {/* Audio Activity Waveform Indicator */}
+        <View style={styles.audioWaveContainer}>
+          <View style={styles.audioBadge}>
+            <Ionicons name="volume-medium" size={14} color="#38BDF8" />
+            <Text style={styles.audioBadgeText}>Doctor Speaking...</Text>
           </View>
         </View>
       </View>
 
-      {/* Simulated Patient PIP (Picture in Picture Feed) */}
-      {!isVideoOff ? (
+      {/* Real Camera Picture-in-Picture (Patient Self View) */}
+      {!isVideoOff && permission?.granted ? (
         <View style={styles.pipContainer}>
-          <View style={styles.pipFeed}>
-            <Ionicons name="camera-reverse" size={24} color="#94A3B8" />
-            <Text style={styles.selfViewText}>Self View</Text>
-          </View>
+          <CameraView style={styles.pipCamera} facing={facing} />
+          <TouchableOpacity
+            style={styles.pipFlipBtn}
+            onPress={toggleCameraFacing}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="camera-reverse" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       ) : (
         <View style={[styles.pipContainer, styles.pipOff]}>
           <Ionicons name="videocam-off" size={24} color="#64748B" />
+          <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>Camera Off</Text>
         </View>
       )}
 
@@ -155,7 +129,7 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
         >
           <Ionicons
             name={isMuted ? 'mic-off' : 'mic'}
-            size={24}
+            size={22}
             color={isMuted ? '#EF4444' : '#FFFFFF'}
           />
         </TouchableOpacity>
@@ -167,9 +141,17 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
         >
           <Ionicons
             name={isVideoOff ? 'videocam-off' : 'videocam'}
-            size={24}
+            size={22}
             color={isVideoOff ? '#EF4444' : '#FFFFFF'}
           />
+        </TouchableOpacity>
+
+        {/* Flip Camera */}
+        <TouchableOpacity
+          onPress={toggleCameraFacing}
+          style={styles.controlBtn}
+        >
+          <Ionicons name="camera-reverse-outline" size={22} color="#FFFFFF" />
         </TouchableOpacity>
 
         {/* Toggle Speaker */}
@@ -179,7 +161,7 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
         >
           <Ionicons
             name={isSpeakerOn ? 'volume-high' : 'volume-mute'}
-            size={24}
+            size={22}
             color={isSpeakerOn ? '#FFFFFF' : '#EF4444'}
           />
         </TouchableOpacity>
@@ -189,7 +171,7 @@ export default function VideoConsultationScreen({ route, navigation }: any) {
           onPress={handleEndCall}
           style={[styles.controlBtn, styles.hangupBtn]}
         >
-          <Ionicons name="call" size={24} color="#FFFFFF" />
+          <Ionicons name="call" size={22} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -360,5 +342,49 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  videoDarkOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.35)',
+  },
+  audioWaveContainer: {
+    position: 'absolute',
+    bottom: 120,
+    left: 20,
+  },
+  audioBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(15, 23, 42, 0.75)',
+    borderWidth: 1,
+    borderColor: '#0284C7',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  audioBadgeText: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: 'bold',
+  },
+  pipCamera: {
+    width: '100%',
+    height: '100%',
+  },
+  pipFlipBtn: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

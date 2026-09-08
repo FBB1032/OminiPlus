@@ -24,25 +24,8 @@ import { PainLog, Appointment, DoctorScreenProps, PatientScreenProps } from '../
 import { Avatar, Card, Divider } from '../../components';
 import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '../../theme';
 import { useQueryClient } from '@tanstack/react-query';
-
-interface Message {
-  id: string;
-  senderId: string;
-  senderRole: 'patient' | 'doctor';
-  text: string;
-  timestamp: string;
-  status: 'sent' | 'delivered' | 'read';
-  isUrgent?: boolean;
-  attachment?: {
-    name: string;
-    type: 'pdf' | 'image';
-    size: string;
-  };
-  prescription?: {
-    diagnosis: string;
-    medications: Array<{ name: string; dosage: string; frequency: string }>;
-  };
-}
+import { useChatStore, ChatMessage as Message } from '../../store/chatStore';
+import { useChronicDiseaseStore } from '../../store/chronicDiseaseStore';
 
 export default function ConsultationChatScreen({ route, navigation }: DoctorScreenProps<'ConsultationChat'> | PatientScreenProps<'ConsultationChat'>) {
   const { appointmentId } = route.params;
@@ -108,33 +91,29 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
   const [chatStatus, setChatStatus] = useState<string>(
     appointment.status === 'scheduled' || appointment.status === 'approved' ? 'active' : appointment.status
   );
-  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isUrgent, setIsUrgent] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isContextExpanded, setIsContextExpanded] = useState(true);
   const [isAttachmentModalOpen, setIsAttachmentModalOpen] = useState(false);
-  const [contextTab, setContextTab] = useState<'info' | 'soap' | 'painmap'>('info');
+  const [contextTab, setContextTab] = useState<'info' | 'vitals' | 'soap' | 'painmap'>('info');
+
+  const { messagesByAppointment, loadMessages, sendMessage, markMessagesAsRead } = useChatStore();
+  const { bpReadings, sugarReadings, loadChronicData, getAdherenceRate } = useChronicDiseaseStore();
+
+  const messages = messagesByAppointment[appointmentId] || [];
 
   // Countdown Timer state: 30 minutes consultation window (1800 seconds)
   const [timeLeft, setTimeLeft] = useState(1800);
 
   const flatListRef = useRef<FlatList>(null);
 
-  // Load Initial Messages
+  // Load Persistent Messages & Chronic Data
   useEffect(() => {
-    const initialMsgs: Message[] = [
-      {
-        id: '1',
-        senderId: 'd-1',
-        senderRole: 'doctor',
-        text: 'Hello, welcome to our telemedicine session. How can I help you today?',
-        timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-        status: 'read',
-      },
-    ];
-    setMessages(initialMsgs);
-  }, []);
+    loadMessages(appointmentId);
+    markMessagesAsRead(appointmentId, isDoctor ? 'doctor' : 'patient');
+    loadChronicData();
+  }, [appointmentId, isDoctor]);
 
   // Timer Effect
   useEffect(() => {
@@ -173,10 +152,11 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
   };
 
   // Send Message Handler
-  const handleSend = (text?: string, customAttachment?: Message['attachment']) => {
+  // Send Message Handler
+  const handleSend = async (text?: string, customAttachment?: Message['attachment']) => {
     if (isUnverifiedDoctor) {
       toast.error(
-        'Verification Pending ⏳',
+        'Verification Pending',
         'Your MDCN license is under review by Compliance. Unverified doctors cannot send consultation messages.'
       );
       return;
@@ -185,75 +165,17 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
     const textToSend = text?.trim() || '';
     if (!textToSend && !customAttachment) return;
 
-    const newMsg: Message = {
-      id: `msg-${Date.now()}`,
-      senderId: user?.id || 'me',
+    await sendMessage(appointmentId, {
+      senderId: user?.id || (isDoctor ? 'd-1' : 'p-1'),
       senderRole: isDoctor ? 'doctor' : 'patient',
       text: textToSend,
-      timestamp: new Date().toISOString(),
-      status: 'sent',
       isUrgent: !isDoctor && isUrgent,
       attachment: customAttachment,
-    };
+    });
 
-    setMessages((prev) => [...prev, newMsg]);
     setInputText('');
     setIsUrgent(false);
     scrollToBottom();
-
-    // Simulate delivery update
-    setTimeout(() => {
-      setMessages((prevMsgs) =>
-        prevMsgs.map((m) => (m.id === newMsg.id ? { ...m, status: 'delivered' } : m))
-      );
-    }, 500);
-
-    // Simulate read update
-    setTimeout(() => {
-      setMessages((prevMsgs) =>
-        prevMsgs.map((m) => (m.id === newMsg.id ? { ...m, status: 'read' } : m))
-      );
-    }, 1000);
-
-    // Simulate typing and response
-    if (chatStatus === 'active') {
-      setIsTyping(true);
-      setTimeout(() => {
-        setIsTyping(false);
-        const autoReply: Message = {
-          id: `reply-${Date.now()}`,
-          senderId: isDoctor ? 'p-1' : 'd-1',
-          senderRole: isDoctor ? 'patient' : 'doctor',
-          text: isDoctor
-            ? "Thank you for the advice, Doctor. I will follow up with the medication as instructed."
-            : "Understood. Please monitor your temperature and let me know if it rises. I have logged this in your clinical record.",
-          timestamp: new Date().toISOString(),
-          status: 'read',
-        };
-        setMessages((prev) => [...prev, autoReply]);
-        scrollToBottom();
-
-        // Trigger Toast & Global Notifications list update
-        toast.info(
-          isDoctor ? 'New Message from Patient' : 'New Message from Doctor',
-          autoReply.text
-        );
-
-        // Update notifications list in cache
-        queryClient.setQueryData(['notifications'], (old: any) => {
-          const list = Array.isArray(old) ? old : (old || []);
-          const newNotif = {
-            id: `n-chat-${Date.now()}`,
-            type: 'general',
-            title: isDoctor ? 'Message from Patient' : 'Message from Dr. Alabi',
-            body: autoReply.text,
-            isRead: false,
-            createdAt: new Date().toISOString(),
-          };
-          return [newNotif, ...list];
-        });
-      }, 2500);
-    }
   };
 
   // Simulated Lab Result Pickers
@@ -511,6 +433,17 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
+                  style={[styles.contextTab, contextTab === 'vitals' && styles.contextTabActive]}
+                  onPress={() => setContextTab('vitals')}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Ionicons name="pulse" size={12} color={contextTab === 'vitals' ? Colors.primary[600] : Colors.text.secondary} />
+                    <Text style={[styles.contextTabLabel, contextTab === 'vitals' && styles.contextTabLabelActive]}>
+                      Vitals ({bpReadings.length})
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
                   style={[styles.contextTab, contextTab === 'soap' && styles.contextTabActive]}
                   onPress={() => setContextTab('soap')}
                 >
@@ -580,6 +513,38 @@ export default function ConsultationChatScreen({ route, navigation }: DoctorScre
                     </View>
                   </View>
                 </>
+              ) : contextTab === 'vitals' ? (
+                <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled={true}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: 'bold', color: Colors.text.primary }}>
+                      Patient BP & Vitals Records ({bpReadings.length})
+                    </Text>
+                    <View style={{ backgroundColor: '#F0FDFA', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 10, color: '#0F766E', fontWeight: 'bold' }}>Adherence: {getAdherenceRate()}%</Text>
+                    </View>
+                  </View>
+                  {bpReadings.length === 0 ? (
+                    <Text style={{ fontSize: 11, color: '#94A3B8', fontStyle: 'italic' }}>No blood pressure logs submitted yet.</Text>
+                  ) : (
+                    bpReadings.slice(0, 4).map((bp, i) => (
+                      <View key={bp.id || i} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                        <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.text.primary }}>
+                          {bp.systolic}/{bp.diastolic} mmHg {bp.pulse ? `• ${bp.pulse} bpm` : ''}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: bp.category === 'stage1' || bp.category === 'stage2' ? '#EF4444' : '#16A34A', fontWeight: 'bold', textTransform: 'capitalize' }}>
+                          {bp.category}
+                        </Text>
+                      </View>
+                    ))
+                  )}
+                  {sugarReadings.length > 0 && (
+                    <View style={{ marginTop: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 }}>
+                        Blood Glucose ({sugarReadings[0].glucoseLevel} mg/dL • {sugarReadings[0].type})
+                      </Text>
+                    </View>
+                  )}
+                </ScrollView>
               ) : contextTab === 'painmap' ? (
                 <View style={styles.painMapContainer}>
                   {appointment.patient?.painLogs && appointment.patient.painLogs.length > 0 ? (

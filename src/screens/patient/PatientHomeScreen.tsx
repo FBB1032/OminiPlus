@@ -6,111 +6,72 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  Image,
   TextInput,
+  Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
-import { usePatientHome, useCancelAppointment } from '../../hooks/usePatient';
+import { usePatientHome } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
-import { Card, Avatar, ErrorState, SearchBar, AppModal, Input, Button, SkeletonHomePage, DoctorStatusBadge } from '../../components';
+import {
+  Avatar,
+  ErrorState,
+  SkeletonHomePage,
+  HeartbeatRefreshControl,
+  HeartbeatRefreshHeader,
+} from '../../components';
 import { useToast } from '../../hooks/useAuth';
-
-// ─── Static Mock Data ─────────────────────────────────────────────────────────
-
-const SPECIALITIES = [
-  { id: '1', name: 'General',    icon: 'medkit',         color: '#2563EB', bg: '#EFF6FF' },
-  { id: '2', name: 'Cardiology', icon: 'heart',          color: '#DC2626', bg: '#FEF2F2' },
-  { id: '3', name: 'Dental',     icon: 'happy',          color: '#059669', bg: '#ECFDF5' },
-  { id: '4', name: 'Dermatology', icon: 'color-palette', color: '#7C3AED', bg: '#F5F3FF' },
-  { id: '5', name: 'Eye Care',   icon: 'eye',            color: '#D97706', bg: '#FFFBEB' },
-  { id: '6', name: 'Psychiatry', icon: 'fitness',        color: '#0891B2', bg: '#ECFEFF' },
-];
-
-const FEATURED_DOCTORS = [
-  {
-    id: '1',
-    name: 'Dr. Folake Ademola',
-    spec: 'Cardiologist',
-    rating: 4.9,
-    patients: 1200,
-    avatar: 'https://images.unsplash.com/photo-1594824813573-246434e33963?w=300',
-    available: true,
-  },
-  {
-    id: '2',
-    name: 'Dr. Tunde Adewale',
-    spec: 'Neurologist',
-    rating: 4.8,
-    patients: 980,
-    avatar: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=300',
-    available: true,
-  },
-  {
-    id: '3',
-    name: 'Dr. Amina Yusuf',
-    spec: 'Dermatologist',
-    rating: 4.7,
-    patients: 2100,
-    avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300',
-    available: false,
-  },
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PatientHomeScreen({ navigation }: any) {
   const { user } = useAuth();
   const { data: homeData, isLoading: _isLoading, isError, refetch } = usePatientHome();
   const showSkeleton = useSkeletonDelay(_isLoading, 150);
-  const cancelMutation = useCancelAppointment();
   const { success: toastSuccess, error: toastError } = useToast();
-  
   const queryClient = useQueryClient();
-  const [isEditTempOpen, setIsEditTempOpen] = useState(false);
-  const [inputTemp, setInputTemp] = useState('');
-  const [localTemp, setLocalTemp] = useState<number | null>(null);
 
-  // Quick Access See All modal state
-  const [isSeeAllQuickAccessOpen, setIsSeeAllQuickAccessOpen] = useState(false);
-
-  // Filter modal state
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  // Vitals check states
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSeeAllServicesOpen, setIsSeeAllServicesOpen] = useState(false);
   const [isEditVitalsOpen, setIsEditVitalsOpen] = useState(false);
+
+  // Vitals inputs
   const [inputBP, setInputBP] = useState('');
   const [inputHR, setInputHR] = useState('');
-  const [inputTempField, setInputTempField] = useState('');
+  const [inputTemp, setInputTemp] = useState('');
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    refetch().finally(() => {
+      setTimeout(() => setIsRefreshing(false), 800);
+    });
+  };
 
   const handleOpenVitalsEdit = () => {
     setInputBP(healthSummary?.bloodPressure || '120/80');
     setInputHR(healthSummary?.heartRate?.toString() || '72');
-    setInputTempField(localTemp !== null ? localTemp.toString() : (healthSummary?.temperature?.toString() || '36.6'));
+    setInputTemp(healthSummary?.temperature?.toString() || '36.6');
     setIsEditVitalsOpen(true);
   };
 
   const handleSaveVitals = () => {
     const hrVal = parseInt(inputHR, 10);
-    const tempVal = parseFloat(inputTempField);
-    
+    const tempVal = parseFloat(inputTemp);
+
     if (!inputBP.includes('/')) {
-      toastError('Error', 'Please enter a valid Blood Pressure (e.g., 120/80).');
+      toastError('Invalid Format', 'Please enter Blood Pressure as systolic/diastolic (e.g. 120/80).');
       return;
     }
-    if (isNaN(hrVal) || hrVal < 30 || hrVal > 200) {
-      toastError('Error', 'Please enter a valid Heart Rate between 30 and 200 bpm.');
+    if (isNaN(hrVal) || hrVal < 30 || hrVal > 220) {
+      toastError('Invalid Heart Rate', 'Heart rate must be between 30 and 220 bpm.');
       return;
     }
-    if (isNaN(tempVal) || tempVal < 20 || tempVal > 50) {
-      toastError('Error', 'Please enter a valid Temperature between 20°C and 50°C.');
+    if (isNaN(tempVal) || tempVal < 25 || tempVal > 45) {
+      toastError('Invalid Temp', 'Body temperature must be between 25°C and 45°C.');
       return;
     }
 
-    setLocalTemp(tempVal);
     queryClient.setQueryData(QUERY_KEYS.patientHome, (oldData: any) => {
       if (!oldData) return oldData;
       return {
@@ -121,47 +82,15 @@ export default function PatientHomeScreen({ navigation }: any) {
           heartRate: hrVal,
           temperature: tempVal,
           lastUpdated: new Date().toISOString(),
-        }
+        },
       };
     });
-    
+
     setIsEditVitalsOpen(false);
-    toastSuccess('Success', 'Vitals checked and updated successfully.');
+    toastSuccess('Vitals Updated', 'Your vitals summary has been logged.');
   };
 
-  const handleSaveTemp = () => {
-    const val = parseFloat(inputTemp);
-    if (!isNaN(val) && val > 20 && val < 50) {
-      setLocalTemp(val);
-      queryClient.setQueryData(QUERY_KEYS.patientHome, (oldData: any) => {
-        if (!oldData) return oldData;
-        return {
-          ...oldData,
-          healthSummary: {
-            ...oldData.healthSummary,
-            temperature: val,
-            lastUpdated: new Date().toISOString(),
-          }
-        };
-      });
-      setIsEditTempOpen(false);
-      toastSuccess('Success', 'Body temperature updated successfully.');
-    } else {
-      toastError('Error', 'Please enter a valid temperature between 20°C and 50°C.');
-    }
-  };
-
-  const handleCancel = async (id: string) => {
-    try {
-      await cancelMutation.mutateAsync(id);
-      toastSuccess('Cancelled', 'Appointment cancelled.');
-      refetch();
-    } catch {
-      toastError('Error', 'Failed to cancel appointment.');
-    }
-  };
-
-  // ─── Loading ───────────────────────────────────────────────────────────────
+  // ─── Loading & Error ────────────────────────────────────────────────────────
   if (showSkeleton) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -172,1092 +101,896 @@ export default function PatientHomeScreen({ navigation }: any) {
     );
   }
 
-  // ─── Error ─────────────────────────────────────────────────────────────────
   if (isError || !homeData) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ErrorState onRetry={refetch} message="Failed to load your dashboard." />
+        <ErrorState onRetry={refetch} message="Failed to load your health dashboard." />
       </SafeAreaView>
     );
   }
 
-  const { upcomingAppointments, recentPrescriptions, healthSummary } = homeData;
+  const { upcomingAppointments, healthSummary } = homeData;
   const nextAppt = upcomingAppointments?.[0] ?? null;
 
-  // Calculate BMI dynamically from Patient profile info (with fallback)
+  // Dynamic BMI Calculation
   const height = user?.height || healthSummary?.height || 170;
   const weight = user?.weight || healthSummary?.weight || 70;
   const bmi = parseFloat((weight / Math.pow(height / 100, 2)).toFixed(1));
 
-  let bmiCategory = 'Normal';
-  let bmiColor = '#10B981'; // green
-  if (bmi < 18.5) {
-    bmiCategory = 'Underweight';
-    bmiColor = '#3B82F6'; // blue
-  } else if (bmi >= 25 && bmi < 30) {
-    bmiCategory = 'Overweight';
-    bmiColor = '#F59E0B'; // orange
-  } else if (bmi >= 30) {
-    bmiCategory = 'Obese';
-    bmiColor = '#EF4444'; // red
-  }
-
-  // Top 3 Main Quick Actions
-  // NOTE: Blood Donors GPS locator is frozen for MVP (Phase 2). Replaced with Records.
-  const mainQuickActions = [
-    { label: 'Pharmacy',  icon: 'medical',       bg: '#EFF6FF', color: '#2563EB', desc: 'E-Prescriptions & Drugs',  action: () => navigation.navigate('Pharmacy') },
-    { label: 'Hospitals', icon: 'business',      bg: '#F5F3FF', color: '#7C3AED', desc: 'Partner Centers',          action: () => navigation.navigate('Hospitals') },
-    { label: 'Records',   icon: 'document-text', bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History',        action: () => navigation.navigate('PatientRecords') },
+  // Services Directory for See All Sheet (Neatly categorized)
+  const serviceCategories = [
+    {
+      title: 'Consultations & Triage',
+      items: [
+        {
+          label: 'Book Doctor',
+          icon: 'calendar',
+          color: '#0F6E6E',
+          bg: '#E6F4F4',
+          desc: 'Schedule video, voice or clinic visit',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('BookAppointment'); },
+        },
+        {
+          label: 'Body Map & Symptoms',
+          icon: 'body',
+          color: '#7C3AED',
+          bg: '#F5F3FF',
+          desc: 'Interactive 3D/2D pain mapping & triage',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('SymptomChecker'); },
+        },
+        {
+          label: 'Find Specialists',
+          icon: 'people',
+          color: '#2563EB',
+          bg: '#EFF6FF',
+          desc: 'Directory of MDCN-verified physicians',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('Specialists'); },
+        },
+      ],
+    },
+    {
+      title: 'Medications & Care',
+      items: [
+        {
+          label: 'Pharmacy & E-Rx',
+          icon: 'bandage',
+          color: '#0284C7',
+          bg: '#E0F2FE',
+          desc: 'Digital prescriptions & home delivery',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('Pharmacy'); },
+        },
+        {
+          label: 'Medication Reminders',
+          icon: 'alarm',
+          color: '#E11D48',
+          bg: '#FFE4E6',
+          desc: 'Pill timers & daily adherence logs',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('MedicationReminders'); },
+        },
+        {
+          label: 'Chronic Care Tracker',
+          icon: 'fitness',
+          color: '#059669',
+          bg: '#ECFDF5',
+          desc: 'Hypertension, diabetes & pregnancy care',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('ChronicDisease'); },
+        },
+      ],
+    },
+    {
+      title: 'Emergency & Hospitals',
+      items: [
+        {
+          label: 'Hospitals Network',
+          icon: 'business',
+          color: '#DC2626',
+          bg: '#FEF2F2',
+          desc: 'Accredited hospitals & emergency centers',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('Hospitals'); },
+        },
+        {
+          label: 'Blood Bank & Donors',
+          icon: 'water',
+          color: '#DC2626',
+          bg: '#FEE2E2',
+          desc: 'Verified hospital pipeline & inventory',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('BloodDonors'); },
+        },
+        {
+          label: 'Report an Incident',
+          icon: 'shield',
+          color: '#D97706',
+          bg: '#FEF3C7',
+          desc: 'Clinical complaints & patient advocacy',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('ReportIncident'); },
+        },
+      ],
+    },
+    {
+      title: 'Records & Privacy (NDPA)',
+      items: [
+        {
+          label: 'Health Records',
+          icon: 'document-text',
+          color: '#0D9488',
+          bg: '#CCFBF1',
+          desc: 'EHR health records, lab reports & scans',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('PatientRecords'); },
+        },
+        {
+          label: 'AI Health Insights',
+          icon: 'analytics',
+          color: '#0891B2',
+          bg: '#CFFAFE',
+          desc: 'Automated clinical vitals analysis',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('AIHealthInsights'); },
+        },
+        {
+          label: 'Access Logs',
+          icon: 'eye',
+          color: '#4F46E5',
+          bg: '#EEF2FF',
+          desc: 'Audit trail: see who viewed your records',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('AccessLogs'); },
+        },
+        {
+          label: 'Data Sharing Consents',
+          icon: 'lock-closed',
+          color: '#16A34A',
+          bg: '#DCFCE7',
+          desc: 'Manage doctor permissions & revocations',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('ConsentManagement'); },
+        },
+        {
+          label: 'Wearable Sync',
+          icon: 'watch',
+          color: '#9333EA',
+          bg: '#F3E8FF',
+          desc: 'Smartwatch & sensor telemetry',
+          action: () => { setIsSeeAllServicesOpen(false); navigation.navigate('WearableSync'); },
+        },
+      ],
+    },
   ];
 
-  // Full Quick Access list for See All Modal
-  // NOTE: Blood Donors & Wearable Sync are frozen for MVP — hidden from quick-access entry points.
-  const allQuickActions = [
-    { label: 'Pharmacy',       icon: 'medical',       bg: '#EFF6FF', color: '#2563EB', desc: 'E-Prescriptions & Drugs',         action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Pharmacy'); } },
-    { label: 'Hospitals',      icon: 'business',      bg: '#F5F3FF', color: '#7C3AED', desc: 'Verified Hospitals & Centers',     action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('Hospitals'); } },
-    { label: 'Records',        icon: 'document-text', bg: '#ECFDF5', color: '#059669', desc: 'EHR Health History & Files',        action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('PatientRecords'); } },
-    { label: 'Reminders',      icon: 'alarm',         bg: '#FFF1F2', color: '#E11D48', desc: 'Pill Alarms & Medication Logs',     action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('MedicationReminders'); } },
-    { label: 'Check Vitals',   icon: 'heart-half',    bg: '#FEF3C7', color: '#D97706', desc: 'Log BP, Heart Rate & Temp',        action: () => { setIsSeeAllQuickAccessOpen(false); handleOpenVitalsEdit(); } },
-    { label: 'Chronic Care',   icon: 'fitness',       bg: '#F0FDFA', color: '#0D9488', desc: 'BP, Sugar & Pregnancy Tracker',    action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ChronicDisease'); } },
-    { label: 'AI Insights',    icon: 'analytics',     bg: '#F0FDFA', color: '#0891B2', desc: 'AI Analysis of Your Health',       action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AIHealthInsights'); } },
-    { label: 'Who Viewed',     icon: 'eye',           bg: '#EFF6FF', color: '#1D4ED8', desc: 'Audit Trail & Access Logs',        action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('AccessLogs'); } },
-    { label: 'My Consents',    icon: 'lock-closed',   bg: '#F0FDF4', color: '#15803D', desc: 'Data Sharing Permissions',         action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ConsentManagement'); } },
-    { label: 'Report Incident',icon: 'shield',        bg: '#FEF2F2', color: '#DC2626', desc: 'File Provider Complaint',          action: () => { setIsSeeAllQuickAccessOpen(false); navigation.navigate('ReportIncident'); } },
-  ];
-
-  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.safeArea}>
-
-      {/* ── Top Header ────────────────────────────────────────────────────── */}
+      {/* ── Top Header ──────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
+        <View style={styles.headerUser}>
           <Avatar
             name={`${user?.firstName} ${user?.lastName}`}
             uri={user?.avatarUrl}
             size="md"
           />
           <View>
-            <Text style={styles.greetLabel}>Welcome back</Text>
-            <Text style={styles.greetName}>{user?.firstName} {user?.lastName}</Text>
+            <Text style={styles.greetingSub}>Hello,</Text>
+            <Text style={styles.greetingName}>{user?.firstName || 'Patient'}</Text>
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: Spacing[2] }}>
+        <View style={styles.headerRightActions}>
           <TouchableOpacity
-            style={styles.msgBtn}
+            style={styles.iconCircleBtn}
             onPress={() => navigation.navigate('PatientAppointments')}
             activeOpacity={0.7}
           >
-            <Ionicons name="chatbubbles-outline" size={22} color={Colors.text.primary} />
-            <View style={styles.msgDot} />
+            <Ionicons name="chatbubbles-outline" size={20} color={Colors.text.primary} />
+            <View style={styles.badgeDot} />
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.notifBtn}
+            style={styles.iconCircleBtn}
             onPress={() => navigation.navigate('Notifications')}
             activeOpacity={0.7}
           >
-            <Ionicons name="notifications-outline" size={22} color={Colors.text.primary} />
-            <View style={styles.notifDot} />
+            <Ionicons name="notifications-outline" size={20} color={Colors.text.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* ── Scrollable Body ───────────────────────────────────────────────── */}
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={styles.scrollBody}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <HeartbeatRefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            color="#0F6E6E"
+          />
+        }
       >
-
-        {/* Search */}
-        <SearchBar
-          placeholder="Search doctors, symptoms, specialties…"
-          onFilterPress={() => setIsFilterOpen(true)}
+        <HeartbeatRefreshHeader
+          refreshing={isRefreshing}
+          color="#0F6E6E"
+          message="Updating health records & pulse..."
         />
 
-        {/* ── Upcoming Appointment Banner ───────────────────────────────── */}
+        {/* ── Immediate Clarity Hero: "What can we help you with?" ─────────── */}
+        <View style={styles.heroSection}>
+          <Text style={styles.heroTitle}>What would you like to do today?</Text>
+          <View style={styles.heroGrid}>
+            {/* 1. Book Consultation */}
+            <TouchableOpacity
+              style={[styles.heroCard, { backgroundColor: '#0F6E6E' }]}
+              onPress={() => navigation.navigate('BookAppointment')}
+              activeOpacity={0.88}
+            >
+              <View style={styles.heroCardIconWrap}>
+                <Ionicons name="videocam" size={22} color="#FFFFFF" />
+              </View>
+              <Text style={styles.heroCardTitle}>Talk to a Doctor</Text>
+              <Text style={styles.heroCardSub}>Video or voice consult</Text>
+            </TouchableOpacity>
+
+            {/* 2. Check Symptoms & Body Map */}
+            <TouchableOpacity
+              style={[styles.heroCard, { backgroundColor: '#581C87' }]}
+              onPress={() => navigation.navigate('SymptomChecker')}
+              activeOpacity={0.88}
+            >
+              <View style={styles.heroCardIconWrap}>
+                <Ionicons name="body" size={22} color="#FFFFFF" />
+              </View>
+              <Text style={styles.heroCardTitle}>Body Map & Triage</Text>
+              <Text style={styles.heroCardSub}>Interactive symptom check</Text>
+            </TouchableOpacity>
+
+            {/* 3. Emergency Care */}
+            <TouchableOpacity
+              style={[styles.heroCard, { backgroundColor: '#991B1B' }]}
+              onPress={() => navigation.navigate('Hospitals')}
+              activeOpacity={0.88}
+            >
+              <View style={styles.heroCardIconWrap}>
+                <Ionicons name="medical" size={22} color="#FFFFFF" />
+              </View>
+              <Text style={styles.heroCardTitle}>Emergency Care</Text>
+              <Text style={styles.heroCardSub}>Nearest hospitals & SOS</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── Active Consultation Focus (If Scheduled) ──────────────────────── */}
         {nextAppt ? (
-          <View style={styles.apptBanner}>
-            <View style={styles.apptBannerGlow} />
-            <View style={styles.apptBannerTop}>
-              <View style={styles.apptBannerBadge}>
-                <Ionicons name="videocam" size={11} color="#38BDF8" />
-                <Text style={styles.apptBannerBadgeText}>VIDEO CONSULTATION</Text>
+          <View style={styles.apptCard}>
+            <View style={styles.apptCardTop}>
+              <View style={styles.apptBadge}>
+                <Ionicons name="videocam" size={12} color="#0284C7" />
+                <Text style={styles.apptBadgeText}>UPCOMING CONSULTATION</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('PatientAppointments')}>
-                <Text style={styles.apptBannerSeeAll}>View All</Text>
+                <Text style={styles.viewApptsLink}>View All</Text>
               </TouchableOpacity>
             </View>
 
-            <View style={styles.apptBannerBody}>
+            <View style={styles.apptDoctorRow}>
               <Avatar
                 name={`Dr. ${nextAppt.doctor?.lastName}`}
                 uri={nextAppt.doctor?.avatarUrl}
-                size="lg"
+                size="md"
               />
-              <View style={styles.apptBannerInfo}>
-                <Text style={styles.apptBannerDoc}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.apptDocName}>
                   Dr. {nextAppt.doctor?.firstName} {nextAppt.doctor?.lastName}
                 </Text>
-                <Text style={styles.apptBannerSpec}>{nextAppt.doctor?.specialization}</Text>
-                <View style={styles.apptBannerMeta}>
-                  <Ionicons name="calendar-outline" size={13} color="#94A3B8" />
-                  <Text style={styles.apptBannerMetaText}>
-                    {new Date(nextAppt.scheduledAt).toLocaleDateString(undefined, {
-                      weekday: 'short', month: 'short', day: 'numeric',
-                    })}
-                  </Text>
-                  <View style={styles.apptBannerDot} />
-                  <Ionicons name="time-outline" size={13} color="#94A3B8" />
-                  <Text style={styles.apptBannerMetaText}>
-                    {new Date(nextAppt.scheduledAt).toLocaleTimeString(undefined, {
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
+                <Text style={styles.apptDocSpec}>{nextAppt.doctor?.specialization || 'General Physician'}</Text>
+                <Text style={styles.apptTimeText}>
+                  {new Date(nextAppt.scheduledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} •{' '}
+                  {new Date(nextAppt.scheduledAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                </Text>
               </View>
             </View>
 
             <TouchableOpacity
-              style={styles.joinBtn}
-              activeOpacity={0.85}
+              style={styles.joinConsultBtn}
               onPress={() => navigation.navigate('VideoConsultation', {
                 appointmentId: nextAppt.id,
-                doctorName: `Dr. ${nextAppt.doctor?.firstName} ${nextAppt.doctor?.lastName}`
+                doctorName: `Dr. ${nextAppt.doctor?.firstName} ${nextAppt.doctor?.lastName}`,
               })}
+              activeOpacity={0.88}
             >
-              <Ionicons name="videocam" size={16} color="#fff" />
-              <Text style={styles.joinBtnText}>Join Consultation</Text>
+              <Ionicons name="videocam" size={16} color="#FFFFFF" />
+              <Text style={styles.joinConsultBtnText}>Join Video Consultation</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          /* No Appointment → Book CTA */
+        ) : null}
+
+        {/* ── Compact Health Snapshot (Uncluttered Vitals Pill) ─────────────── */}
+        <View style={styles.vitalsSnapshotCard}>
+          <View style={styles.vitalsSnapshotHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Ionicons name="pulse" size={16} color="#0F6E6E" />
+              <Text style={styles.vitalsSnapshotTitle}>My Vitals Snapshot</Text>
+            </View>
+            <TouchableOpacity onPress={handleOpenVitalsEdit} activeOpacity={0.75}>
+              <Text style={styles.vitalsEditLink}>Log Vitals</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.vitalsPillRow}>
+            <View style={styles.vitalMiniPill}>
+              <Ionicons name="heart" size={13} color="#EF4444" />
+              <Text style={styles.vitalMiniVal}>{healthSummary?.bloodPressure || '120/80'}</Text>
+              <Text style={styles.vitalMiniUnit}>BP</Text>
+            </View>
+            <View style={styles.vitalMiniPill}>
+              <Ionicons name="pulse" size={13} color="#3B82F6" />
+              <Text style={styles.vitalMiniVal}>{healthSummary?.heartRate || 72}</Text>
+              <Text style={styles.vitalMiniUnit}>bpm</Text>
+            </View>
+            <View style={styles.vitalMiniPill}>
+              <Ionicons name="thermometer" size={13} color="#10B981" />
+              <Text style={styles.vitalMiniVal}>{healthSummary?.temperature || 36.6}°</Text>
+              <Text style={styles.vitalMiniUnit}>Temp</Text>
+            </View>
+            <View style={styles.vitalMiniPill}>
+              <Ionicons name="calculator" size={13} color="#F59E0B" />
+              <Text style={styles.vitalMiniVal}>{bmi}</Text>
+              <Text style={styles.vitalMiniUnit}>BMI</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Essential Services Grid (4 Clean Items + See All Button) ──────── */}
+        <View style={styles.servicesSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Essential Services</Text>
+            <TouchableOpacity onPress={() => setIsSeeAllServicesOpen(true)} activeOpacity={0.7}>
+              <Text style={styles.seeAllText}>See All (12+)</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 4 Focused Cards */}
+          <View style={styles.fourGrid}>
+            <TouchableOpacity
+              style={styles.fourGridCard}
+              onPress={() => navigation.navigate('Pharmacy')}
+              activeOpacity={0.78}
+            >
+              <View style={[styles.fourGridIconWrap, { backgroundColor: '#E0F2FE' }]}>
+                <Ionicons name="bandage" size={22} color="#0284C7" />
+              </View>
+              <Text style={styles.fourGridTitle}>Pharmacy</Text>
+              <Text style={styles.fourGridDesc}>Meds & Refills</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.fourGridCard}
+              onPress={() => navigation.navigate('BloodDonors')}
+              activeOpacity={0.78}
+            >
+              <View style={[styles.fourGridIconWrap, { backgroundColor: '#FEE2E2' }]}>
+                <Ionicons name="water" size={22} color="#DC2626" />
+              </View>
+              <Text style={styles.fourGridTitle}>Blood Services</Text>
+              <Text style={styles.fourGridDesc}>Hospital Network</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.fourGridCard}
+              onPress={() => navigation.navigate('PatientRecords')}
+              activeOpacity={0.78}
+            >
+              <View style={[styles.fourGridIconWrap, { backgroundColor: '#CCFBF1' }]}>
+                <Ionicons name="document-text" size={22} color="#0D9488" />
+              </View>
+              <Text style={styles.fourGridTitle}>Health Records</Text>
+              <Text style={styles.fourGridDesc}>EHR & Lab Reports</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.fourGridCard}
+              onPress={() => navigation.navigate('AIHealthInsights')}
+              activeOpacity={0.78}
+            >
+              <View style={[styles.fourGridIconWrap, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="analytics" size={22} color="#7C3AED" />
+              </View>
+              <Text style={styles.fourGridTitle}>AI Health</Text>
+              <Text style={styles.fourGridDesc}>Insights & Advice</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* "See All Services" Full Directory Bar */}
           <TouchableOpacity
-            style={styles.bookCta}
-            activeOpacity={0.88}
-            onPress={() => navigation.navigate('BookAppointment')}
+            style={styles.seeAllBarBtn}
+            onPress={() => setIsSeeAllServicesOpen(true)}
+            activeOpacity={0.85}
           >
-            <View>
-              <Text style={styles.bookCtaTitle}>No upcoming consultation</Text>
-              <Text style={styles.bookCtaSubtitle}>Book a slot with a specialist today</Text>
-            </View>
-            <View style={styles.bookCtaBtn}>
-              <Text style={styles.bookCtaBtnText}>Book Now</Text>
-            </View>
+            <Ionicons name="grid-outline" size={16} color="#0F6E6E" />
+            <Text style={styles.seeAllBarText}>View All Services & Tools</Text>
+            <Ionicons name="chevron-forward" size={16} color="#0F6E6E" style={{ marginLeft: 'auto' }} />
           </TouchableOpacity>
-        )}
-
-        {/* ── My Vitals ─────────────────────────────────────────────── */}
-        {healthSummary && (
-          <View style={styles.section}>
-            <View style={styles.sectionRow}>
-              <View>
-                <Text style={styles.sectionTitle}>My Vitals</Text>
-                <Text style={styles.vitalsUpdated}>
-                  Updated {healthSummary.lastUpdated ? new Date(healthSummary.lastUpdated).toLocaleDateString() : '—'}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                {/* Edit vitals */}
-                <TouchableOpacity
-                  style={styles.vitalActionBtn}
-                  onPress={handleOpenVitalsEdit}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons name="create-outline" size={14} color={Colors.secondary[600]} />
-                  <Text style={styles.vitalActionBtnText}>Edit</Text>
-                </TouchableOpacity>
-                {/* Sync — navigates to Wearable Sync coming-soon screen */}
-                <TouchableOpacity
-                  style={[styles.vitalActionBtn, styles.vitalSyncBtn]}
-                  onPress={() => navigation.navigate('WearableSync')}
-                  activeOpacity={0.75}
-                >
-                  <Ionicons name="sync-outline" size={14} color="#7C3AED" />
-                  <Text style={[styles.vitalActionBtnText, { color: '#7C3AED' }]}>Sync</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            <View style={styles.vitalsGrid}>
-              <View style={[styles.vitalCard, { borderLeftColor: '#EF4444' }]}>
-                <View style={styles.vitalHeader}>
-                  <Ionicons name="heart" size={18} color="#EF4444" />
-                  <Text style={styles.vitalLabel}>BP</Text>
-                </View>
-                <Text style={styles.vitalValue}>{healthSummary.bloodPressure}</Text>
-                <Text style={styles.vitalUnit}>mmHg</Text>
-              </View>
-              <View style={[styles.vitalCard, { borderLeftColor: '#3B82F6' }]}>
-                <View style={styles.vitalHeader}>
-                  <Ionicons name="pulse" size={18} color="#3B82F6" />
-                  <Text style={styles.vitalLabel}>HR</Text>
-                </View>
-                <Text style={styles.vitalValue}>{healthSummary.heartRate}</Text>
-                <Text style={styles.vitalUnit}>bpm</Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.vitalCard, { borderLeftColor: '#10B981' }]}
-                onPress={() => {
-                  const currentTemp = localTemp !== null ? localTemp : (healthSummary.temperature || 36.6);
-                  setInputTemp(currentTemp != null ? currentTemp.toString() : '');
-                  setIsEditTempOpen(true);
-                }}
-                activeOpacity={0.8}
-              >
-                <View style={styles.vitalHeader}>
-                  <Ionicons name="thermometer" size={18} color="#10B981" />
-                  <Text style={styles.vitalLabel}>Temp</Text>
-                  <Ionicons name="create-outline" size={13} color="#94A3B8" style={{ marginLeft: 'auto' }} />
-                </View>
-                <Text style={styles.vitalValue}>{localTemp !== null ? localTemp : (healthSummary.temperature || 36.6)}</Text>
-                <Text style={styles.vitalUnit}>°C</Text>
-              </TouchableOpacity>
-              <View style={[styles.vitalCard, { borderLeftColor: '#F59E0B' }]}>
-                <View style={styles.vitalHeader}>
-                  <Ionicons name="calculator" size={18} color="#F59E0B" />
-                  <Text style={styles.vitalLabel}>BMI</Text>
-                </View>
-                <Text style={styles.vitalValue}>{bmi}</Text>
-                <Text style={[styles.vitalUnit, { color: bmiColor, fontWeight: 'bold' }]}>{bmiCategory}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ── Quick Actions ─────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Quick Access</Text>
-            <TouchableOpacity onPress={() => setIsSeeAllQuickAccessOpen(true)} activeOpacity={0.7}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 12, marginTop: 10 }}>
-            {mainQuickActions.map((item) => (
-              <TouchableOpacity
-                key={item.label}
-                style={{
-                  flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 12,
-                  alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', ...Shadows.sm
-                }}
-                onPress={item.action}
-                activeOpacity={0.75}
-              >
-                <View style={{
-                  width: 44, height: 44, borderRadius: 22, backgroundColor: item.bg,
-                  alignItems: 'center', justifyContent: 'center', marginBottom: 8
-                }}>
-                  <Ionicons name={item.icon as any} size={22} color={item.color} />
-                </View>
-                <Text style={{ fontSize: 12.5, fontWeight: FontWeight.bold, color: '#0F172A', textAlign: 'center' }}>
-                  {item.label}
-                </Text>
-                <Text style={{ fontSize: 10, color: '#64748B', textAlign: 'center', marginTop: 2 }} numberOfLines={1}>
-                  {item.desc}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
         </View>
-
-        {/* ── AI Health Insights Banner ──────────────────────────────── */}
-        <TouchableOpacity
-          style={{
-            marginHorizontal: 0,
-            borderRadius: 16,
-            overflow: 'hidden',
-            backgroundColor: '#0C1A2E',
-            padding: Spacing[4],
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: Spacing[3],
-            ...Shadows.md,
-          }}
-          activeOpacity={0.88}
-          onPress={() => navigation.navigate('AIHealthInsights')}
-        >
-          <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(6,182,212,0.15)', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="analytics" size={24} color={Colors.patient} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: FontSize.base, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>
-              AI Health Insights
-            </Text>
-            <Text style={{ fontSize: FontSize.xs, color: '#94A3B8', marginTop: 2, lineHeight: 16 }}>
-              Personalized analysis of your vitals, records and medication history
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={Colors.patient} />
-        </TouchableOpacity>
-
-        {/* ── Specialities ─────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Specialities</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Specialists')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.specRow}>
-            {SPECIALITIES.map((s) => (
-              <TouchableOpacity
-                key={s.id}
-                style={styles.specChip}
-                activeOpacity={0.75}
-                onPress={() => navigation.navigate('Specialists', { specialty: s.name })}
-              >
-                <View style={[styles.specIcon, { backgroundColor: s.bg }]}>
-                  <Ionicons name={s.icon as any} size={22} color={s.color} />
-                </View>
-                <Text style={styles.specLabel}>{s.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* ── Top Doctors ───────────────────────────────────────────────── */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Top Doctors</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Specialists')}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.docRow}>
-            {FEATURED_DOCTORS.map((doc) => (
-              <TouchableOpacity
-                key={doc.id}
-                style={styles.docCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate('DoctorProfile', { doctorId: doc.id })}
-              >
-                <View style={styles.docAvatarWrap}>
-                  <Avatar name={doc.name} uri={doc.avatar} size="lg" />
-                  <View style={[styles.availDot, { backgroundColor: doc.available ? '#10B981' : '#94A3B8' }]} />
-                </View>
-                <Text style={styles.docName} numberOfLines={1}>{doc.name}</Text>
-                <Text style={styles.docSpec}>{doc.spec}</Text>
-                <View style={styles.docRatingRow}>
-                  <Ionicons name="star" size={12} color="#F59E0B" />
-                  <Text style={styles.docRating}>{doc.rating}</Text>
-                  <Text style={styles.docPatients}>· {doc.patients.toLocaleString()} pts</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* ── Recent Prescriptions ─────────────────────────────────────── */}
-        {recentPrescriptions?.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Recent Prescriptions</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('PrescriptionHistory')}>
-                <Text style={styles.seeAll}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            {recentPrescriptions.slice(0, 2).map((presc: any) => (
-              <TouchableOpacity
-                key={presc.id}
-                style={styles.prescCard}
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('PrescriptionHistory', { prescriptionId: presc.id })}
-              >
-                <View style={styles.prescIconBg}>
-                  <Ionicons name="medkit" size={18} color={Colors.secondary[600]} />
-                </View>
-                <View style={styles.prescInfo}>
-                  <Text style={styles.prescDiagnosis} numberOfLines={1}>{presc.diagnosis}</Text>
-                  <Text style={styles.prescMeds} numberOfLines={1}>
-                    {presc.medications?.map((m: any) => m.name).join(', ')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={Colors.neutral[400]} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
       </ScrollView>
 
-      {/* Edit Temperature Modal */}
-      <AppModal
-        visible={isEditTempOpen}
-        onClose={() => setIsEditTempOpen(false)}
-        title="Update Temperature"
-        contentStyle={{ alignSelf: 'center' }}
-        footer={
-          <View style={{ flexDirection: 'row', gap: Spacing[3] }}>
-            <Button
-              variant="outline"
-              label="Cancel"
-              onPress={() => setIsEditTempOpen(false)}
-              style={{ flex: 1 }}
-            />
-            <Button
-              variant="primary"
-              label="Save"
-              onPress={handleSaveTemp}
-              style={{ flex: 1 }}
-            />
-          </View>
-        }
+      {/* ── Modal: See All Services (Comprehensive, Uncluttered Directory) ─── */}
+      <Modal
+        visible={isSeeAllServicesOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsSeeAllServicesOpen(false)}
       >
-        <View style={{ padding: Spacing[4], gap: Spacing[4] }}>
-          <Text style={{ fontSize: FontSize.sm, color: Colors.text.secondary }}>
-            Enter your current body temperature in Celsius (°C).
-          </Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: Colors.surface,
-            borderWidth: 1.5,
-            borderColor: Colors.border,
-            borderRadius: 12,
-            height: 52,
-            paddingHorizontal: Spacing[3],
-          }}>
-            <TextInput
-              placeholder="e.g. 36.6"
-              value={inputTemp}
-              onChangeText={setInputTemp}
-              keyboardType="numeric"
-              autoFocus={true}
-              style={{
-                flex: 1,
-                fontSize: FontSize.base,
-                color: Colors.text.primary,
-                paddingVertical: 0,
-              }}
-            />
-          </View>
-        </View>
-      </AppModal>
-
-      {/* Vitals Input Modal */}
-      <AppModal
-        visible={isEditVitalsOpen}
-        onClose={() => setIsEditVitalsOpen(false)}
-        title="Check & Measure Vitals"
-        footer={
-          <View style={{ flexDirection: 'row', gap: Spacing[3], width: '100%' }}>
-            <Button
-              variant="outline"
-              label="Cancel"
-              onPress={() => setIsEditVitalsOpen(false)}
-              style={{ flex: 1 }}
-            />
-            <Button
-              variant="primary"
-              label="Save Vitals"
-              onPress={handleSaveVitals}
-              style={{ flex: 1 }}
-            />
-          </View>
-        }
-      >
-        <View style={{ padding: Spacing[4], gap: Spacing[4] }}>
-          <Text style={{ fontSize: FontSize.sm, color: Colors.text.secondary }}>
-            Measure and enter your current vitals below to update your medical record.
-          </Text>
-
-          <Input
-            label="Blood Pressure (mmHg)"
-            placeholder="e.g. 120/80"
-            value={inputBP}
-            onChangeText={setInputBP}
-            leftIcon="heart-outline"
-          />
-
-          <Input
-            label="Heart Rate (bpm)"
-            placeholder="e.g. 72"
-            value={inputHR}
-            onChangeText={setInputHR}
-            keyboardType="numeric"
-            leftIcon="pulse-outline"
-          />
-
-          <Input
-            label="Body Temperature (°C)"
-            placeholder="e.g. 36.6"
-            value={inputTempField}
-            onChangeText={setInputTempField}
-            keyboardType="numeric"
-            leftIcon="thermometer-outline"
-          />
-        </View>
-      </AppModal>
-
-      {/* ── See All Quick Access Modal ─────────────────────────────────────── */}
-      <AppModal
-        visible={isSeeAllQuickAccessOpen}
-        onClose={() => setIsSeeAllQuickAccessOpen(false)}
-        title="All Quick Access Features"
-      >
-        <View style={{ padding: Spacing[4], gap: 12 }}>
-          <Text style={{ fontSize: 12, color: Colors.text.secondary, marginBottom: 4 }}>
-            Select a medical feature to navigate directly:
-          </Text>
-
-          <View style={{ gap: 8 }}>
-            {allQuickActions.map((act) => (
-              <TouchableOpacity
-                key={act.label}
-                style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 12,
-                  backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12,
-                  borderWidth: 1, borderColor: '#E2E8F0'
-                }}
-                onPress={act.action}
-                activeOpacity={0.75}
-              >
-                <View style={{
-                  width: 40, height: 40, borderRadius: 20, backgroundColor: act.bg,
-                  alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <Ionicons name={act.icon as any} size={20} color={act.color} />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13.5, fontWeight: FontWeight.bold, color: '#0F172A' }}>
-                    {act.label}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: '#64748B', marginTop: 1 }}>
-                    {act.desc}
-                  </Text>
-                </View>
-
-                <Ionicons name="chevron-forward" size={16} color="#94A3B8" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </AppModal>
-
-      {/* ── Filter / Specialty Modal ─────────────────────────────────────── */}
-      <AppModal
-        visible={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        title="Filter by Specialty"
-      >
-        <View style={{ padding: Spacing[4] }}>
-          <Text style={{ fontSize: FontSize.sm, color: Colors.text.secondary, marginBottom: Spacing[4] }}>
-            Pick a specialty to browse matching doctors.
-          </Text>
-
-          {/* All Doctors shortcut */}
-          <TouchableOpacity
-            style={styles.filterRow}
-            activeOpacity={0.75}
-            onPress={() => {
-              setIsFilterOpen(false);
-              navigation.navigate('BookAppointment');
-            }}
-          >
-            <View style={[styles.filterIcon, { backgroundColor: '#F1F5F9' }]}>
-              <Ionicons name="people" size={18} color="#64748B" />
-            </View>
-            <Text style={styles.filterLabel}>All Doctors</Text>
-            <Ionicons name="chevron-forward" size={16} color={Colors.text.secondary} />
-          </TouchableOpacity>
-
-          {SPECIALITIES.map((sp) => (
-            <TouchableOpacity
-              key={sp.id}
-              style={styles.filterRow}
-              activeOpacity={0.75}
-              onPress={() => {
-                setIsFilterOpen(false);
-                navigation.navigate('Specialists', { specialty: sp.name });
-              }}
-            >
-              <View style={[styles.filterIcon, { backgroundColor: sp.bg }]}>
-                <Ionicons name={sp.icon as any} size={18} color={sp.color} />
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>All Services & Tools</Text>
+                <Text style={styles.modalSub}>Everything in OminiPulse organized clearly</Text>
               </View>
-              <Text style={styles.filterLabel}>{sp.name}</Text>
-              <Ionicons name="chevron-forward" size={16} color={Colors.text.secondary} />
-            </TouchableOpacity>
-          ))}
+              <TouchableOpacity onPress={() => setIsSeeAllServicesOpen(false)}>
+                <Ionicons name="close-circle" size={26} color={Colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30, gap: 18 }}>
+              {serviceCategories.map((cat, idx) => (
+                <View key={idx}>
+                  <Text style={styles.categoryHeading}>{cat.title}</Text>
+                  <View style={styles.categoryCardList}>
+                    {cat.items.map((item, itemIdx) => (
+                      <TouchableOpacity
+                        key={itemIdx}
+                        style={styles.categoryItemRow}
+                        onPress={item.action}
+                        activeOpacity={0.75}
+                      >
+                        <View style={[styles.categoryItemIcon, { backgroundColor: item.bg }]}>
+                          <Ionicons name={item.icon as any} size={20} color={item.color} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.categoryItemLabel}>{item.label}</Text>
+                          <Text style={styles.categoryItemDesc}>{item.desc}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
         </View>
-      </AppModal>
+      </Modal>
+
+      {/* ── Modal: Log / Edit Vitals ───────────────────────────────────────── */}
+      <Modal
+        visible={isEditVitalsOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsEditVitalsOpen(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Your Vitals</Text>
+              <TouchableOpacity onPress={() => setIsEditVitalsOpen(false)}>
+                <Ionicons name="close" size={24} color={Colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={styles.inputLabel}>Blood Pressure (mmHg)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={inputBP}
+                  onChangeText={setInputBP}
+                  placeholder="e.g. 120/80"
+                />
+              </View>
+
+              <View>
+                <Text style={styles.inputLabel}>Heart Rate (bpm)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={inputHR}
+                  onChangeText={setInputHR}
+                  keyboardType="numeric"
+                  placeholder="e.g. 72"
+                />
+              </View>
+
+              <View>
+                <Text style={styles.inputLabel}>Temperature (°C)</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={inputTemp}
+                  onChangeText={setInputTemp}
+                  keyboardType="numeric"
+                  placeholder="e.g. 36.6"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={styles.saveVitalsBtn}
+                onPress={handleSaveVitals}
+                activeOpacity={0.88}
+              >
+                <Text style={styles.saveVitalsBtnText}>Save Vitals</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const TEAL = '#0EA5E9';
-const DARK = '#0F172A';
-
 const styles = StyleSheet.create({
-
-  // ── Layout
   safeArea: {
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-
-
-  // ── Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing[5],
-    paddingVertical: Spacing[4],
+    paddingHorizontal: Spacing[4],
+    paddingVertical: Spacing[3],
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#F1F5F9',
   },
-  headerLeft: {
+  headerUser: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing[3],
+    gap: 12,
   },
-  greetLabel: {
-    fontSize: FontSize.xs,
+  greetingSub: {
+    fontSize: 11.5,
     color: Colors.text.secondary,
-    fontWeight: FontWeight.medium,
   },
-  greetName: {
-    fontSize: FontSize.base,
+  greetingName: {
+    fontSize: 16,
     fontWeight: FontWeight.bold,
-    color: DARK,
-    marginTop: 1,
+    color: Colors.text.primary,
   },
-  notifBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  headerRightActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconCircleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notifDot: {
+  badgeDot: {
     position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: '#EF4444',
-    borderWidth: 1.5,
-    borderColor: '#F1F5F9',
   },
-  msgBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#F1F5F9',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  msgDot: {
-    position: 'absolute',
-    top: 9,
-    right: 9,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
-    borderWidth: 1.5,
-    borderColor: '#F1F5F9',
-  },
-
-  // ── Scroll
-  scroll: {
-    paddingHorizontal: Spacing[4],
-    paddingTop: Spacing[5],
-    paddingBottom: Spacing[10],
-    gap: Spacing[6],
-  },
-
-  // ── Upcoming Appointment Banner
-  apptBanner: {
-    backgroundColor: DARK,
-    borderRadius: 20,
-    padding: Spacing[5],
-    overflow: 'hidden',
-    ...Shadows.md,
-  },
-  apptBannerGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(14, 165, 233, 0.12)',
-  },
-  apptBannerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing[4],
-  },
-  apptBannerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  apptBannerBadgeText: {
-    fontSize: 10,
-    fontWeight: FontWeight.bold,
-    color: '#38BDF8',
-    letterSpacing: 0.5,
-  },
-  apptBannerSeeAll: {
-    fontSize: FontSize.xs,
-    color: '#64748B',
-    fontWeight: FontWeight.medium,
-  },
-  apptBannerBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  scrollBody: {
+    padding: Spacing[4],
+    paddingBottom: 40,
     gap: Spacing[4],
-    marginBottom: Spacing[4],
   },
-  apptBannerInfo: {
+  heroSection: {
+    gap: 10,
+  },
+  heroTitle: {
+    fontSize: 14.5,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  heroGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  heroCard: {
     flex: 1,
-    gap: 4,
-  },
-  apptBannerDoc: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-  apptBannerSpec: {
-    fontSize: FontSize.xs,
-    color: '#94A3B8',
-    fontWeight: FontWeight.medium,
-  },
-  apptBannerMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 4,
-  },
-  apptBannerMetaText: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
-  apptBannerDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: '#475569',
-  },
-  joinBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing[2],
-    backgroundColor: TEAL,
-    paddingVertical: 13,
     borderRadius: 14,
-  },
-  joinBtnText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: '#FFFFFF',
-  },
-
-  // ── Book CTA (fallback when no appointment)
-  bookCta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.secondary[600],
-    borderRadius: 16,
-    paddingVertical: Spacing[4],
-    paddingHorizontal: Spacing[5],
+    padding: 12,
+    alignItems: 'flex-start',
     ...Shadows.sm,
   },
-  bookCtaTitle: {
-    fontSize: FontSize.sm,
+  heroCardIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  heroCardTitle: {
+    fontSize: 12,
     fontWeight: FontWeight.bold,
     color: '#FFFFFF',
-    marginBottom: 2,
+    lineHeight: 16,
   },
-  bookCtaSubtitle: {
-    fontSize: FontSize.xs,
-    color: 'rgba(255,255,255,0.7)',
+  heroCardSub: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.85)',
+    marginTop: 2,
+    lineHeight: 13,
   },
-  bookCtaBtn: {
+  apptCard: {
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: Spacing[4],
-    paddingVertical: Spacing[2],
+    borderRadius: 16,
+    padding: Spacing[4],
+    borderWidth: 1,
+    borderColor: '#E0F2FE',
+    ...Shadows.sm,
+    gap: 12,
+  },
+  apptCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  apptBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  apptBadgeText: {
+    fontSize: 10,
+    fontWeight: FontWeight.bold,
+    color: '#0284C7',
+  },
+  viewApptsLink: {
+    fontSize: 11.5,
+    fontWeight: FontWeight.semiBold,
+    color: '#0F6E6E',
+  },
+  apptDoctorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  apptDocName: {
+    fontSize: 14,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  apptDocSpec: {
+    fontSize: 11.5,
+    color: Colors.text.secondary,
+    marginTop: 1,
+  },
+  apptTimeText: {
+    fontSize: 11,
+    color: '#0284C7',
+    fontWeight: FontWeight.medium,
+    marginTop: 3,
+  },
+  joinConsultBtn: {
+    backgroundColor: '#0F6E6E',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
     borderRadius: 10,
   },
-  bookCtaBtnText: {
-    fontSize: FontSize.xs,
+  joinConsultBtnText: {
+    fontSize: 12.5,
     fontWeight: FontWeight.bold,
-    color: Colors.secondary[600],
+    color: '#FFFFFF',
   },
-
-  // ── Sections
-  section: {
-    gap: Spacing[3],
+  vitalsSnapshotCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: Spacing[3],
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...Shadows.sm,
+    gap: 10,
   },
-  sectionRow: {
+  vitalsSnapshotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  vitalsSnapshotTitle: {
+    fontSize: 13,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  vitalsEditLink: {
+    fontSize: 11.5,
+    fontWeight: FontWeight.semiBold,
+    color: '#0F6E6E',
+  },
+  vitalsPillRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  vitalMiniPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  vitalMiniVal: {
+    fontSize: 11.5,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  vitalMiniUnit: {
+    fontSize: 9.5,
+    color: Colors.text.secondary,
+  },
+  servicesSection: {
+    gap: 10,
+  },
+  sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   sectionTitle: {
-    fontSize: FontSize.base,
+    fontSize: 14,
     fontWeight: FontWeight.bold,
-    color: DARK,
+    color: Colors.text.primary,
   },
-  seeAll: {
-    fontSize: FontSize.sm,
+  seeAllText: {
+    fontSize: 12,
     fontWeight: FontWeight.semiBold,
-    color: TEAL,
+    color: '#0F6E6E',
   },
-
-  // ── Quick Actions Grid
-  actionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionItem: {
-    alignItems: 'center',
-    gap: Spacing[2],
-    flex: 1,
-  },
-  actionIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.sm,
-  },
-  actionLabel: {
-    fontSize: 11,
-    fontWeight: FontWeight.semiBold,
-    color: '#475569',
-    textAlign: 'center',
-  },
-
-  // ── Specialities
-  specRow: {
-    gap: Spacing[3],
-    paddingBottom: 4,
-  },
-  specChip: {
-    alignItems: 'center',
-    gap: Spacing[2],
-    width: 68,
-  },
-  specIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadows.sm,
-  },
-  specLabel: {
-    fontSize: 11,
-    fontWeight: FontWeight.medium,
-    color: '#475569',
-    textAlign: 'center',
-  },
-
-  // ── Doctor Cards
-  docRow: {
-    gap: Spacing[3],
-    paddingBottom: 4,
-  },
-  docCard: {
-    width: 152,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: Spacing[4],
-    alignItems: 'center',
-    gap: Spacing[1],
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.sm,
-  },
-  docAvatarWrap: {
-    position: 'relative',
-    marginBottom: Spacing[2],
-  },
-  availDot: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  docName: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: DARK,
-    textAlign: 'center',
-  },
-  docSpec: {
-    fontSize: 11,
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  docRatingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    marginTop: 2,
-  },
-  docRating: {
-    fontSize: 11,
-    fontWeight: FontWeight.bold,
-    color: '#92400E',
-  },
-  docPatients: {
-    fontSize: 10,
-    color: '#94A3B8',
-  },
-  docBookBtn: {
-    marginTop: Spacing[2],
-    backgroundColor: '#EFF6FF',
-    paddingVertical: 7,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  docBookBtnText: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.bold,
-    color: '#2563EB',
-  },
-
-  // ── Prescriptions
-  prescCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: Spacing[4],
-    gap: Spacing[3],
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.xs,
-  },
-  prescIconBg: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    backgroundColor: Colors.secondary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  prescInfo: {
-    flex: 1,
-    gap: 3,
-  },
-  prescDiagnosis: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.bold,
-    color: DARK,
-  },
-  prescMeds: {
-    fontSize: FontSize.xs,
-    color: '#64748B',
-  },
-  vitalsGrid: {
+  fourGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing[3],
-    marginTop: Spacing[1],
+    gap: 10,
   },
-  vitalCard: {
-    flex: 1,
-    minWidth: '45%',
+  fourGridCard: {
+    width: '48.3%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: Spacing[3],
-    borderLeftWidth: 4,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...Shadows.xs,
-    gap: 2,
+    borderColor: '#F1F5F9',
+    ...Shadows.sm,
   },
-  vitalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  vitalLabel: {
-    fontSize: 11,
-    fontWeight: FontWeight.medium,
-    color: '#64748B',
-  },
-  vitalValue: {
-    fontSize: FontSize.lg,
-    fontWeight: FontWeight.bold,
-    color: DARK,
-    marginTop: 4,
-  },
-  vitalUnit: {
-    fontSize: 10,
-    color: '#94A3B8',
-  },
-  vitalsUpdated: {
-    fontSize: 11,
-    color: '#64748B',
-    fontWeight: FontWeight.medium,
-  },
-  vitalActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: Colors.secondary[50] ?? '#EFF6FF',
-    borderWidth: 1,
-    borderColor: Colors.secondary[100] ?? '#BFDBFE',
-  },
-  vitalSyncBtn: {
-    backgroundColor: '#F5F3FF',
-    borderColor: '#DDD6FE',
-  },
-  vitalActionBtnText: {
-    fontSize: 12,
-    fontWeight: FontWeight.bold,
-    color: Colors.secondary[600],
-  },
-
-  // ── Filter Modal
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: Spacing[3],
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    gap: Spacing[3],
-  },
-  filterIcon: {
+  fourGridIconWrap: {
     width: 38,
     height: 38,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 8,
   },
-  filterLabel: {
+  fourGridTitle: {
+    fontSize: 12.5,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  fourGridDesc: {
+    fontSize: 10.5,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  seeAllBarBtn: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
+  },
+  seeAllBarText: {
+    fontSize: 12.5,
+    fontWeight: FontWeight.semiBold,
+    color: '#0F6E6E',
+  },
+  modalBackdrop: {
     flex: 1,
-    fontSize: FontSize.base,
-    color: '#1E2A2A',
-    fontWeight: FontWeight.medium,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: Spacing[4],
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  modalSub: {
+    fontSize: 11.5,
+    color: Colors.text.secondary,
+    marginTop: 2,
+  },
+  categoryHeading: {
+    fontSize: 12,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  categoryCardList: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  categoryItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  categoryItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  categoryItemLabel: {
+    fontSize: 13,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
+  },
+  categoryItemDesc: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    marginTop: 1,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: FontWeight.semiBold,
+    color: Colors.text.primary,
+    marginBottom: 4,
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    fontSize: 13,
+    color: Colors.text.primary,
+  },
+  saveVitalsBtn: {
+    backgroundColor: '#0F6E6E',
+    paddingVertical: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  saveVitalsBtnText: {
+    fontSize: 13,
+    fontWeight: FontWeight.bold,
+    color: '#FFFFFF',
   },
 });

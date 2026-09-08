@@ -1,52 +1,45 @@
 # 🚀 OminiPulse: Next Stages Architecture, Backend Design, Wearable Sync & AI Engine Roadmap
 
 > **Authoritative Technical Handover & Implementation Blueprint**  
-> **Target Version**: OminiPulse v2.0  
-> **Architectural Scope**: Mobile (React Native/Expo), Web Admin (Next.js/React), Backend API (NestJS/PostgreSQL), Smartwatch Sync (HealthKit/Health Connect), Payment Gateways (Paystack/Flutterwave), True AI Engine (CDS, Voice SOAP, Sentinel Vitals Monitoring).
+> **Target Version**: OminiPulse v2.2 (Enterprise Health & Hospital Operating System Edition)  
+> **Architectural Scope**: Mobile (React Native/Expo), Web Admin & Hospital Portal (Next.js/React), Backend API (NestJS/PostgreSQL), Smartwatch Sync (HealthKit/Health Connect), Payment Gateways (Paystack/Flutterwave), True AI Engine (CDS, Voice SOAP, Sentinel Vitals Monitoring), Hospital Management System (Wards, Pharmacy, Diagnostics Lab, Transfusion).
 
 ---
 
-## ❄️ MVP Feature Freezes (Effective August 2026)
+## ❄️ MVP Feature Freezes & Evolution Tracker
 
-The following features were frozen before MVP launch to reduce scope, maintenance overhead, and launch risk. Each has a documented MVP replacement strategy. All frozen screens and stores are preserved in the codebase and marked for Phase 2 re-activation.
+The following table tracks initial feature freezes and their subsequent implementation status:
 
-| # | Feature | Reason Frozen | MVP Replacement | Phase |
+| # | Feature | Reason Frozen Initially | Status / Current Architecture | Phase |
 |---|---------|---------------|-----------------|-------|
-| 1 | **Smartwatch Sync** (BLE / HealthKit / Health Connect) | Low wearable penetration in target market; high SDK maintenance overhead | `WearableSyncScreen` replaced with manual vitals entry CTA pointing to Chronic Care Tracker | Phase 2 |
-| 2 | **GPS Blood Donor & ICU Locator** | Requires active network ops and constant hospital DB updates to be useful | `BloodDonors` entry point removed from home quick-actions and `See All` modal. Screen still navigable via deep link. | Phase 2 |
-| 3 | **Deepgram Voice-to-SOAP Generator** | High API latency/cost per call; poor recognition of Nigerian accents and medical slang | Admin SOAP tab retains structured S/O/A/P text inputs. A freeze notice banner is shown above the notes form. | Phase 2 |
-| 4 | **Cryptographic XOR-Fold NDPA Exporter** | Over-engineered for launch; standard PDF export is legally sufficient for NDPA data portability | `PatientProfileScreen` "My Data & Privacy" section gains a **Download My Data (PDF)** action that requests an email export | Phase 2 |
-| 5 | **6-Tier Admin RBAC** | Managing 6 permission tiers adds backend logic bloat before having active users | Collapsed to 2 roles: `admin` (full access) and `doctor` (workspace only). `isAdmin: boolean` flag on the `Admin` type effectively represents the split. | Phase 2 |
-| 6 | **Pharmacy Radar & Direct Checkout** | Managing pharmacy inventory APIs and drug-fulfillment logistics delays launch | `PharmacyScreen` replaced with MDCN-stamped PDF e-prescription download + static list of nearby pharmacies | Phase 2 |
-
-### Files Changed by Freeze
-
-```
-src/screens/patient/WearableSyncScreen.tsx          — Freeze #1: replaced
-src/screens/patient/PharmacyScreen.tsx              — Freeze #6: replaced
-src/screens/patient/PatientHomeScreen.tsx           — Freeze #2: BloodDonors removed from quick-actions
-src/screens/patient/PatientProfileScreen.tsx        — Freeze #4: "Download My Data (PDF)" added; Wearable entry removed
-admin/src/types/index.ts                            — Freeze #5: AdminRole collapsed to 'admin' | 'doctor'
-admin/src/store/permissionStore.ts                  — Freeze #5: ROLE_PERMISSIONS map updated
-admin/src/store/authStore.ts                        — Freeze #5: MOCK_ADMINS reduced to 2 entries
-admin/src/app/dashboard/security/page.tsx           — Freeze #5: mock admin roles + invite form options updated
-admin/src/app/dashboard/doctor-portal/page.tsx      — Freeze #3: Voice-to-SOAP freeze notice added to SOAP tab
-```
+| 1 | **Smartwatch Sync** (BLE / HealthKit / Health Connect) | Low wearable penetration in target market; high SDK maintenance overhead | `WearableSyncScreen` replaced with manual vitals entry CTA pointing to Chronic Care Tracker. Universal wearable architecture ready for Phase 2 native bridge. | Phase 2 |
+| 2 | **GPS Blood Donor & ICU Locator** | Requires active network ops and constant hospital DB updates to be useful | `BloodDonors` entry point accessible via deep link & Emergency Mode ("Request Blood Now"). Strictly adheres to ethical non-commercial facilitation (`Donor ➔ Hospital Blood Bank ➔ Patient`). | Completed in v2.0 |
+| 3 | **Deepgram Voice-to-SOAP Generator** | High API latency/cost per call; poor recognition of Nigerian accents and medical slang | Admin SOAP tab retains structured S/O/A/P text inputs with freeze notice. Plug-and-play `.env` keys ready for Deepgram Nova-2 Medical activation. | Phase 2 |
+| 4 | **Cryptographic XOR-Fold NDPA Exporter** | Over-engineered for launch; standard PDF export is legally sufficient for NDPA data portability | `PatientProfileScreen` "My Data & Privacy" section includes **Download My Data (PDF/ZIP)** action per NDPA Article 26. | Completed in v2.0 |
+| 5 | **Admin & Hospital RBAC** | Managing granular tiers added backend logic bloat in early prototyping | **GRADUATED & FULLY EXPANDED**: Upgraded from 2 roles to a robust **8-tier multi-department clinical matrix** (`admin`, `doctor`, `hospital_admin`, `nurse`, `receptionist`, `blood_officer`, `pharmacist`, `lab_technician`) with dedicated workspaces. | Completed in v2.2 |
+| 6 | **Pharmacy Radar & Direct Checkout** | Managing external pharmacy inventory APIs and drug-fulfillment logistics delays launch | External consumer delivery replaced with **Internal Hospital Pharmacy & Dispensary** module with stock formulary, batch expiration tracking, and 1-click ward dispensing. | Completed in v2.2 |
 
 ---
 
 ## 🧭 Executive Summary & Handover Context
 
-OminiPulse is an all-in-one e-Health platform built for the African market (starting with Nigeria), providing digital telehealth consultations, e-prescriptions, GPS pharmacy/hospital directories, blood donor matching, and electronic health record (EHR) management.
-
-This document serves as the **master technical blueprint** for the next development phases, providing a step-by-step roadmap for engineers and AI agents continuing work on the codebase.
+OminiPulse is an all-in-one e-Health platform built for the African market (starting with Nigeria), providing digital telehealth consultations, e-prescriptions, GPS pharmacy/hospital directories, blood donor matching, electronic health record (EHR) management, and a complete **Hospital Operating System (HMS)** for inpatient facility management.
 
 ```mermaid
 graph TD
     subgraph Mobile & Web Applications
-        PA[Patient Mobile App]
-        DA[Doctor Mobile App]
-        ADM[Admin Web Console]
+        PA[Patient Mobile App - Free Reg]
+        DA[Doctor Mobile App - Free Reg / Sets Fee]
+        HSP[Hospital Operating System - Enterprise Portal]
+        ADM[Platform Super Admin Web Console]
+    end
+
+    subgraph Hospital Internal Clinical Departments
+        WRD[Wards & Beds Management - 18 Beds / 6 Wards]
+        PHM[Hospital Pharmacy & Medication Formulary]
+        LAB[Clinical Pathology & Diagnostics Laboratory]
+        BLD[Transfusion Blood Bank Unit]
+        REC[Patient Intake & Front Desk Reception]
     end
 
     subgraph Wearable Sensors & IoT
@@ -74,7 +67,13 @@ graph TD
     GHC --> PA
     PA <--> API
     DA <--> API
+    HSP <--> API
     ADM <--> API
+    HSP --> WRD
+    HSP --> PHM
+    HSP --> LAB
+    HSP --> BLD
+    HSP --> REC
     API <--> DB
     API <--> RED
     API <--> PAY
@@ -85,7 +84,7 @@ graph TD
 
 ---
 
-## 🏛️ Stage-by-Stage Implementation Roadmap
+## 🏛️ Stage-by-Stage Implementation Matrix
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -99,11 +98,14 @@ graph TD
 │ Stage 2       │ Production Backend API & Payments │ NestJS API, PostgreSQL DB, Redis,  │
 │               │                                   │ Paystack/Flutterwave Split Payments│
 ├───────────────┼───────────────────────────────────┼────────────────────────────────────┤
+│ Stage 2.5     │ Hospital Operating System (HMS)   │ Inpatient Wards/Beds, Internal     │
+│               │ Multi-Department Clinical Portal  │ Pharmacy, Diagnostic Lab, Billing  │
+├───────────────┼───────────────────────────────────┼────────────────────────────────────┤
 │ Stage 3       │ Smartwatch / Wearable Health Sync │ HealthKit & Health Connect bridges,│
 │               │                                   │ real-time vitals streaming         │
 ├───────────────┼───────────────────────────────────┼────────────────────────────────────┤
 │ Stage 4       │ Cross-Feature Closed-Loop Audit   │ End-to-end data pipeline across    │
-│               │                                   │ Patient, Doctor, and Admin apps    │
+│               │                                   │ Patient, Doctor, Hospital & Admin  │
 ├───────────────┼───────────────────────────────────┼────────────────────────────────────┤
 │ Stage 5       │ Top 3 Medical AI Engine           │ Clinical CDS, Voice SOAP notes,    │
 │               │                                   │ Smart Vitals Anomaly Sentinel      │
@@ -112,17 +114,67 @@ graph TD
 
 ---
 
+## 🏥 Stage 2.5: Hospital Multi-Department Operating System (HMS)
+
+### 1. Inpatient Wards & Bed Availability Matrix
+- **Floor Mapping**: 18 licensed beds across 6 hospital wards:
+  - **Intensive Care Unit (ICU)** (3 beds) — Critical invasive monitoring
+  - **Emergency Resuscitation** (3 beds) — Rapid trauma triage
+  - **Male Surgical Ward** (3 beds) — Post-operative recovery
+  - **Female Medical Ward** (3 beds) — General internal medicine
+  - **Pediatrics & Neonatal** (3 beds) — Specialized infant care
+  - **Maternity & Labor** (3 beds) — Obstetric care
+- **Bed Lifecycle States**:
+  - `available`: Disinfected, sanitized, ready for immediate intake
+  - `occupied`: Currently assigned to an admitted patient
+  - `cleaning_required`: Patient discharged or transferred; awaiting housekeeping disinfection
+  - `maintenance`: Physical or electrical servicing
+- **Workflows**: Quick admission modal, inter-ward bed transfer with automated housekeeping status update, 1-click discharge & sanitization verification.
+
+### 2. Hospital Pharmacy Dispensary & Drug Formulary
+- **Prescription Queue**: Linked to inpatient charts and doctor consultations with 1-click dispensing status updates (`pending` ➔ `dispensed`).
+- **Medication Formulary Inventory**: Real-time stock levels, re-order thresholds, unit prices (₦), batch codes, and expiration dates.
+- **Stock Management**: "Add Medication Stock" modal with batch registration, low-stock visual chips, and batch expiration alerts.
+
+### 3. Clinical Diagnostics & Pathology Laboratory
+- **Specimen Pipeline**: Tracking sample intake (Whole Blood, Serum, Plasma, Urine, Swabs) from collection to analysis.
+- **Result Verification**: "Enter Results" modal allowing Medical Laboratory Scientists to input quantitative values, standard reference ranges, and clinical pathology observations.
+- **Digital Pathology Report Generator**: Full verified report modal with electronic signature sign-off (`MLS. Emeka Nnamdi`) and 1-click **"Print Official Lab Slip"** action.
+
+### 4. Enterprise Hospital Billing & Institutional Revenue
+- **Annual Enterprise Contract**: Subscription management for institutional hospital licenses (Tier 2 Annual Contract: ₦1,200,000/yr).
+- **Revenue Disbursements**: Automatic 85/15 split reconciliation (85% net facility payout / 15% platform infrastructure maintenance).
+- **FIRS-Compliant Invoices**: Official tax invoices and 1-click printable PDF receipts.
+- **Institutional Billing Desk**: Undisclosed hospital pricing model with a direct enterprise sales desk modal (`partnerships@ominipulse.ai` / `+234 800 OMINI PULSE`).
+
+### 5. Zero-Browser-Alert Modern UI Standard
+- 100% of native browser `alert(...)` popups have been removed and replaced with custom in-app modals:
+  - Diagnostic Pathology Report Modal
+  - Institutional Billing Desk Modal
+  - Official Invoices & PDF Receipts Modal
+  - Bed Capacity & Sanitation Notice Modal
+  - Forensic Evidence Inspection Modal
+  - App Store QR Download Modal
+
+---
+
 ## 💳 Stage 2: Backend Architecture & Payment Gateway Integration
 
 ### 1. Technology Stack Selection
-- **Framework**: NestJS (TypeScript) or Express with TS for robust modular dependency injection.
+- **Framework**: NestJS (TypeScript) with modular dependency injection.
 - **Database**: PostgreSQL 16+ with Prisma ORM for type-safe schema migrations.
 - **Cache & Queue**: Redis + BullMQ for handling push notifications, SMS alerts, and background vitals polling.
-- **Real-Time Communication**: Socket.io / WebSockets for consultation messaging and WebRTC signaling (Agora / Twilio / Mediasoup).
+- **Real-Time Communication**: Socket.io / WebSockets for consultation messaging and WebRTC signaling.
 - **Payment Gateway Integration**: Paystack & Flutterwave Split Payments API.
 
-### 2. Payment Gateway Architecture & Automated Split Payouts
-OminiPulse processes all consultation transactions in Nigerian Naira (`₦`) with automated fee splitting:
+### 2. Commercial Pricing & Commission Architecture
+- **Patients**: 100% Free registration. Patients only pay consultation fees when booking appointments.
+- **Doctors**: 100% Free registration and MDCN verification. Doctors independently configure their consultation fees (e.g., ₦15,000).
+- **Escrow & Split**: Platform fee is held in escrow until consultation concludes. On session completion:
+  - 90% disbursed to Doctor Verified Bank Account.
+  - 10% disbursed to OminiPulse Platform Revenue Account.
+  - If doctor fails to attend, 100% is refunded to patient and doctor account is flagged for review.
+- **Hospitals**: Custom enterprise annual contract based on bed capacity and modules (contact institutional sales desk).
 
 ```mermaid
 sequenceDiagram
@@ -133,22 +185,22 @@ sequenceDiagram
     participant W as OminiPulse Platform Wallet
 
     P->>API: Initiate Booking (₦15,000)
-    API->>PG: Create Split Transaction (10% Subaccount: Platform, 90% Subaccount: Doctor)
+    API->>PG: Create Split Transaction (10% Platform, 90% Doctor)
     PG-->>P: Render Checkout (Cards, USSD, Bank Transfer)
     P->>PG: Pay ₦15,000
     PG-->>API: Webhook (charge.success)
     API->>API: Hold 90% (₦13,500) in Escrow until Consultation Complete
-    alt Consultation Completed
+    alt Consultation Completed Successfully
         API->>PG: Trigger Instant Payout / Transfer
         PG-->>D: Credit Doctor Bank Account (₦13,500)
         PG-->>W: Credit Platform Wallet (₦1,500)
+    else Doctor Non-Performance
+        API->>PG: Initiate 100% Refund to Patient
+        API->>API: Flag Doctor Account for Suspension
     end
 ```
 
-- **Supported Payment Channels**: Debit Cards (Verve, Mastercard, Visa), USSD codes (*737#, *919#, etc.), Direct Bank Transfer, Apple Pay, Google Pay.
-- **Webhooks Handled**: `charge.success`, `transfer.success`, `transfer.failed`, `refund.processed`.
-
-### 3. Database Schema ERD (Prisma Definition)
+### 3. Extended Database Schema ERD (Prisma Definition)
 
 ```prisma
 datasource db {
@@ -163,139 +215,88 @@ generator client {
 enum Role {
   PATIENT
   DOCTOR
+  HOSPITAL_ADMIN
+  NURSE
+  RECEPTIONIST
+  BLOOD_OFFICER
+  PHARMACIST
+  LAB_TECHNICIAN
   ADMIN
 }
 
-enum AppointmentStatus {
-  PENDING
-  CONFIRMED
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+enum BedStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING_REQUIRED
+  MAINTENANCE
 }
 
-enum MalpracticeStatus {
-  PENDING
-  UNDER_INVESTIGATION
-  RESOLVED_GUILTY
-  RESOLVED_DISMISSED
+enum LabOrderStatus {
+  ORDERED
+  SAMPLE_COLLECTED
+  ANALYZING
+  RESULTS_READY
 }
 
-model User {
-  id            String          @id @default(uuid())
-  email         String          @unique
-  passwordHash  String
-  role          Role
-  firstName     String
-  lastName      String
-  phone         String?
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  
-  patientProfile PatientProfile?
-  doctorProfile  DoctorProfile?
-  reportsMade    Report[]        @relation("ReporterRelation")
-  reportsAgainst Report[]        @relation("AccusedRelation")
+model HospitalFacility {
+  id              String           @id @default(uuid())
+  name            String
+  licenseNumber   String           @unique
+  city            String
+  state           String
+  licensedBeds    Int              @default(18)
+  annualFeeNgn    Float
+  contractStatus  String           @default("active")
+  beds            HospitalBed[]
+  medications     MedicationItem[]
+  labOrders       LabOrder[]
+  staff           User[]
 }
 
-model PatientProfile {
-  id             String          @id @default(uuid())
-  userId         String          @unique
-  user           User            @relation(fields: [userId], references: [id])
-  dateOfBirth    DateTime?
-  heightCm       Float?
-  weightKg       Float?
-  bloodGroup     String?
-  genotype       String?
-  emergencyPhone String?
-  appointments   Appointment[]
-  prescriptions  Prescription[]
-  vitalsLogs     VitalsLog[]
-  wearableLogs   WearableLog[]
+model HospitalBed {
+  id              String           @id @default(uuid())
+  hospitalId      String
+  hospital        HospitalFacility @relation(fields: [hospitalId], references: [id])
+  bedNumber       String
+  ward            String
+  room            String
+  status          BedStatus        @default(AVAILABLE)
+  currentPatient  String?
+  diagnosis       String?
+  assignedNurse   String?
+  admissionDate   DateTime?
 }
 
-model DoctorProfile {
-  id               String        @id @default(uuid())
-  userId           String        @unique
-  user             User          @relation(fields: [userId], references: [id])
-  licenseNo        String        @unique
-  specialty        String
-  hospital         String?
-  yearsExp         Int           @default(0)
-  consultationFeeNgn Float       @default(15000)
-  bankName         String?
-  accountNumber    String?
-  accountName      String?
-  isVerified       Boolean       @default(false)
-  appointments     Appointment[]
-  prescriptions    Prescription[]
+model MedicationItem {
+  id              String           @id @default(uuid())
+  hospitalId      String
+  hospital        HospitalFacility @relation(fields: [hospitalId], references: [id])
+  name            String
+  category        String
+  dosageForm      String
+  currentStock    Int
+  minStockLevel   Int              @default(20)
+  unitPriceNgn    Float
+  batchNumber     String
+  expirationDate  DateTime
 }
 
-model Appointment {
-  id             String            @id @default(uuid())
-  patientId      String
-  patient        PatientProfile    @relation(fields: [patientId], references: [id])
-  doctorId       String
-  doctor         DoctorProfile     @relation(fields: [doctorId], references: [id])
-  scheduledAt    DateTime
-  status         AppointmentStatus @default(PENDING)
-  grossFeeNgn    Float
-  platformFeeNgn Float            // 10% Platform fee
-  netFeeNgn      Float            // 90% Doctor payout
-  paymentRef     String?          // Paystack / Flutterwave Transaction Reference
-  notes          String?
-  prescription   Prescription?
-  createdAt      DateTime          @default(now())
-}
-
-model Prescription {
-  id            String         @id @default(uuid())
-  appointmentId String         @unique
-  appointment   Appointment    @relation(fields: [appointmentId], references: [id])
-  patientId     String
-  patient       PatientProfile @relation(fields: [patientId], references: [id])
-  doctorId      String
-  doctor        DoctorProfile  @relation(fields: [doctorId], references: [id])
-  medications   Json           // Array of { drugName, dosage, frequency, duration }
-  qrCodeUrl     String?
-  createdAt     DateTime       @default(now())
-}
-
-model VitalsLog {
-  id            String         @id @default(uuid())
-  patientId     String
-  patient       PatientProfile @relation(fields: [patientId], references: [id])
-  systolicBp    Int?
-  diastolicBp   Int?
-  heartRate     Int?
-  bloodGlucose  Float?
-  temperatureC  Float?
-  loggedAt      DateTime       @default(now())
-}
-
-model WearableLog {
-  id            String         @id @default(uuid())
-  patientId     String
-  patient       PatientProfile @relation(fields: [patientId], references: [id])
-  source        String         // "AppleHealthKit" | "GoogleHealthConnect" | "GalaxyWatch"
-  heartRateBpm  Int?
-  oxygenSatSpO2 Float?
-  stepCount     Int?
-  sleepHours    Float?
-  ecgReading    String?
-  syncedAt      DateTime       @default(now())
-}
-
-model Report {
-  id          String            @id @default(uuid())
-  reporterId  String
-  reporter    User              @relation("ReporterRelation", fields: [reporterId], references: [id])
-  accusedId   String
-  accused     User              @relation("AccusedRelation", fields: [accusedId], references: [id])
-  reason      String
-  evidenceUrl String?
-  status      MalpracticeStatus @default(PENDING)
-  createdAt   DateTime          @default(now())
+model LabOrder {
+  id              String           @id @default(uuid())
+  hospitalId      String
+  hospital        HospitalFacility @relation(fields: [hospitalId], references: [id])
+  orderNumber     String           @unique
+  patientName     String
+  patientId       String
+  testName        String
+  testCategory    String
+  sampleType      String
+  status          LabOrderStatus   @default(ORDERED)
+  resultsSummary  String?
+  normalRange     String?
+  findings        String?
+  technicianName  String?
+  verifiedAt      DateTime?
 }
 ```
 
@@ -303,12 +304,10 @@ model Report {
 
 ## ⌚ Stage 3: Smartwatch & Wearable Device Integration Architecture
 
-To connect Apple Watch (iOS) and Samsung Galaxy Watch / Wear OS (Android) to OminiPulse without forcing users to buy custom hardware, we integrate via native OS Health Bridges.
-
 ```mermaid
 sequenceDiagram
-    participant SW as Smartwatch (Sensors)
-    participant HK as HealthKit / Health Connect
+    participant SW as Smartwatch (Apple Watch / Galaxy Watch)
+    participant HK as HealthKit / Google Health Connect
     participant RN as OminiPulse Mobile App
     participant API as OminiPulse Backend
     participant AI as Smart Vitals Sentinel
@@ -327,22 +326,18 @@ sequenceDiagram
 
 ## 🔗 Stage 4: Cross-Feature Closed-Loop Data Flow Audit
 
-The following table maps every feature where data is entered and where it MUST automatically flow across Patient, Doctor, and Admin interfaces:
-
-| Data Source (Input Feature) | Output Feature 1 (Patient) | Output Feature 2 (Doctor) | Output Feature 3 (Admin) |
+| Data Source (Input Feature) | Output Feature 1 (Patient) | Output Feature 2 (Doctor) | Output Feature 3 (Hospital / Admin) |
 |---|---|---|---|
-| **Doctor Sets Fee (₦15,000)** | Displays on Patient Doctor Profile & Appointment Booking | Doctor Profile & Income Breakdown | Financial Commission Ledger (10% platform fee) |
-| **Doctor Sets Bank Account** | Hidden for privacy | Disburses 90% net earnings upon consultation completion | Verified payout ledger |
-| **Smartwatch Vitals Sync** | Displays on Patient Health Dashboard & Vitals History | Live Overlay on Video Call Screen during appointment | AI Sentinel Anomaly Feed |
-| **Doctor Writes E-Prescription** | Appears in Patient Records & 1-Tap GPS Pharmacy Order | Appears in Patient Consultation History | Compliance Audit Log |
-| **Patient Incident Report** | Confirmation & Status Tracker | Notification of Investigation Notice | Admin Incident Resolution Console (Suspend/Ban/MDCN Report) |
-| **Patient Ratings & Review** | Displayed on Doctor Profile for all patients | Feedback stats on Doctor Dashboard | Moderation Queue |
+| **Doctor Sets Fee (₦15,000)** | Displays on Patient Booking screen | Doctor Profile & Income Breakdown | Financial Commission Ledger (10% platform fee) |
+| **Nurse Admits Inpatient** | Patient EHR Inpatient Bed Card | Attending Doctor Rounds Ward List | Ward Floor Occupancy KPI Matrix |
+| **Doctor Prescribes Drug** | Patient Prescription Slip & Refills | Consultation SOAP History | Hospital Pharmacy Dispensary Queue |
+| **Doctor Orders Lab Test** | Patient Lab Slip & Test Status | Doctor Patient Diagnostics Tab | Hospital Lab Orders & Results Queue |
+| **Lab Scientist Verifies Result** | Patient Lab Results & Notification | Live Doctor Chart Notification | Hospital Lab Archive & Audit Trail |
+| **Patient Incident Report** | Confirmation & Status Tracker | Notification of Inquiry Notice | Admin Disciplinary Resolution Console |
 
 ---
 
 ## 🤖 Stage 5: Top 3 Medical AI Engine Technologies
-
-OminiPulse is built as a **True AI-Powered Healthcare Engine**—not just a basic chatbot wrapper. Below are the **Top 3 Recommended AI Technologies** for OminiPulse:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -350,66 +345,25 @@ OminiPulse is built as a **True AI-Powered Healthcare Engine**—not just a basi
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                        │
 │  [1. Google Med-PaLM 2 / Gemini 1.5 Pro (Clinical Domain Fine-Tuned)]                 │
-│  • Clinical Decision Support (CDS) for Doctors                                         │
+│  • Clinical Decision Support (CDS) for Doctors & Nurses                                │
 │  • Differential Diagnosis Generation & Drug Interaction Safety Checks                  │
-│  • Patient Symptom Checker & EHR Summarization                                         │
+│  • Patient Symptom Checker, 3D Body Symptom Navigator, & EHR Summarization             │
 │                                                                                        │
 │  [2. Deepgram Nova-2 Medical / OpenAI Whisper Medical Speech Engine]                   │
-│  • Ambient Voice-to-Text Clinical Transcription                                        │
-│  • Real-Time Consultation Video Speech Analysis                                        │
-│  • Automated Medical SOAP Note Generation (Subjective, Objective, Plan)                │
+│  • Ambient Voice-to-Text Clinical Consultation Transcription                           │
+│  • Automated Medical SOAP Note Generation (Subjective, Objective, Assessment, Plan)    │
 │                                                                                        │
 │  [3. TensorFlow Lite / PyTorch Mobile Edge AI Engine]                                  │
 │  • On-Device Real-Time Smartwatch Sensor Anomaly Detection                             │
 │  • Background Tachycardia, AFib & Hypoxia Alert Sentinel                               │
-│  • Automated Emergency SOS GPS Dispatch Trigger                                        │
+│  • Automated Emergency SOS GPS Hospital Navigator Trigger                              │
 │                                                                                        │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1. Google Med-PaLM 2 / Gemini 1.5 Pro (Clinical Domain Fine-Tuned)
-- **Primary Use**: Clinical Decision Support (CDS) for Doctors & Patient Symptom Intelligence.
-- **Function**: Prior to a consultation, the AI engine processes the patient’s past medical history, genotype, blood group, current medications, and smartwatch vitals stream.
-- **Output for Doctor**: Displays a confidential **AI Clinical Brief** on the doctor’s screen before the video call:
-  - *Primary Risk Flags*: e.g. "Patient has elevated resting HR (102 BPM) over last 7 days + history of hypertension."
-  - *Drug Interaction Warning*: e.g. "Prescribing Drug X while patient is on Drug Y increases risk of arrhythmia."
-  - *Suggested Differential Diagnoses*: 3 evidence-based diagnostic possibilities.
-
-### 2. Deepgram Nova-2 Medical / OpenAI Whisper Medical Speech Model
-- **Primary Use**: Ambient Voice Transcription & Automatic SOAP Note Generation.
-- **Function**: During video/audio consultations, ambient speech-to-text processes the conversation in real time.
-- **Output**: Automatically synthesizes the consultation into standard medical **SOAP format**:
-  - **S (Subjective)**: Patient’s chief complaint ("Headache for 3 days, worse in morning").
-  - **O (Objective)**: Observed symptoms & smartwatch vitals.
-  - **A (Assessment)**: Diagnosis formulated during call.
-  - **P (Plan)**: E-prescription medications & recommended lab tests.
-- **Doctor Benefit**: Saves doctors 5–10 minutes of manual typing per consultation.
-
-### 3. TensorFlow Lite / PyTorch Mobile Edge AI Engine
-- **Primary Use**: Smart Vitals Anomaly Sentinel (Background Watch Monitoring).
-- **Function**: Operates as an on-device lightweight background monitoring daemon checking incoming smartwatch data.
-- **Alert Triggers**:
-  - *Severe Tachycardia*: Resting Heart Rate > 140 BPM for > 5 minutes.
-  - *Sudden Hypoxia*: Blood Oxygen (SpO2) drops below 90%.
-  - *Arrhythmia/AFib*: Irregular ECG pattern detected by watch sensors.
-- **Action**: Instantly sends push notifications to patient, alerts primary doctor, and triggers the **Emergency SOS GPS Hospital Navigator**.
-
-### 4. Admin-Side AI Governance & Verification Engine
-- **Automated MDCN License & NIMC ID OCR Verification**:
-  - Scans doctor credentials (MDCN certificates, MBBS diplomas, government IDs) using AI Vision OCR + regex parsing.
-  - Automatically matches Folio numbers against official regulatory databases and flags suspicious documents for human Admin review.
-- **AI Fraud & Prescription Drug Abuse Detector**:
-  - Monitors all generated E-Prescriptions across the platform for controlled substance abuse, over-prescribing patterns, or suspicious doctor-patient billing cycles.
-  - Instantly alerts Admins and locks high-risk accounts pending investigation.
-- **Outbreak & Epidemic Surveillance Radar**:
-  - Aggregates anonymized patient symptom logs by LGA (Local Government Area) across Nigeria.
-  - Detects early clusters of infectious symptoms (e.g. Lassa Fever, Cholera, Flu) and alerts partner hospital directors and health authorities.
-
 ---
 
-## 🔑 Plug-and-Play AI API Key Configuration (Pending Activation)
-
-All AI features for Doctor, Patient, and Admin portals are built with a **Plug-and-Play Architecture**. When you add your API keys into `.env` / environment variables, the system automatically activates the AI features across mobile and web interfaces:
+## 🔑 Plug-and-Play AI API Key Configuration
 
 ```env
 # ─── OMINIPULSE AI ENGINE CONFIGURATION (.env) ─────────────────────────────────
@@ -427,46 +381,37 @@ OPENAI_API_KEY=your_openai_api_key_here
 AI_VISION_API_KEY=your_ocr_vision_api_key_here
 ```
 
-When `GEMINI_API_KEY` or `OPENAI_API_KEY` is provided:
-1. **Doctor App**: Shows live AI Clinical Briefs, Drug Interaction Warnings, and Ambient SOAP Note generation during consultations.
-2. **Admin App**: Activates automated MDCN credential OCR scanning, Fraud/Prescription Abuse Radar, and Outbreak Analytics.
-3. **Patient App**: Activates 24/7 AI Health Assistant and smart symptom checking.
-
 ---
 
-## 📝 Developer & Agent Implementation Progress & Next Steps Checklist
+## 📝 Developer & Agent Implementation Progress Checklist
 
-### ✅ Completed Milestones (OminiPulse v2.0.0)
+### ✅ Completed Milestones (OminiPulse v2.2.0)
 
-- [x] **NDPA 2023 Regulatory Compliance**: Full platform replacement of HIPAA with NDPA 2023. Integrated NDPA Article 26 Data Portability export (PDF/ZIP) and per-record privacy controls.
-- [x] **Doctor MDCN Expiry & Verification System**: MDCN license expiration enforcement with a 30-day grace period, 5 mandatory credentials verification modal (MDCN license, NIN ID, Specialty Cert, Employment Letter, Passport Photo), and indefinite suspension lockout screen.
-- [x] **OminiPulse Escrow Payment Model**: Pay-per-consultation commission model with escrow holding until session completion. Doctor non-performance triggers immediate account suspension and a 100% patient refund.
-- [x] **Blood Donor Network & Emergency Mode ("Request Blood Now")**:
-  - Emergency Mode with blood group compatibility matching (`O-` universal, etc.) and GPS proximity ranking.
-  - Urgent push notification & SMS alert broadcast dispatch to verified donors.
-  - Accredited hospital transfusion center directory & emergency hotlines (112, OminiPulse Desk).
-  - **Ethical Non-Commercial Blood Facilitation Policy**: Strictly enforces `Voluntary Donor ➔ Accredited Hospital / Blood Bank ➔ Patient`. Direct blood buying/selling is strictly prohibited.
-  - Mandatory lab report upload during registration with Admin verification modal.
-- [x] **AI Assistant & Health Insights Suite**:
-  - Top 3 doctor routing with ratings and verified patient feedback.
-  - Guided symptom checker triage with legal medical disclaimer banner.
-  - AI Health Insights Screen (`AIHealthInsightsScreen.tsx`) for vitals analysis, BP risk evaluation, and lifestyle recommendations.
-  - AI Document Summarization (OCR scan for prescriptions and lab reports).
-  - 7-Day Medication Adherence Tracker in `MedicationRemindersScreen.tsx`.
-  - AI Chronic Disease Monitoring in `ChronicDiseaseScreen.tsx` (Hypertension, Diabetes, Asthma, Pregnancy).
-- [x] **Universal Wearable Inclusivity**: Support for Apple Watch, Redmi (via Google Health Connect), Huawei Health, Bluetooth BLE medical monitors, and manual vitals logging fallback.
+- [x] **Hospital Multi-Department Operating System (HMS)**:
+  - 18 licensed beds mapped across 6 wards with full admission, transfer, and sanitation tracking.
+  - Hospital Pharmacy Dispensary with prescription queue and stock formulary expiration alerts.
+  - Clinical Pathology Laboratory with specimen pipeline, verified results entry, and printable diagnostic slips.
+  - Enterprise Billing with FIRS-compliant invoices, automated revenue split disbursements, and sales desk modals.
+- [x] **8-Tier Role-Based Access Control (RBAC)**: Dedicated sidebars, credentials, and auto-routing for `admin`, `doctor`, `hospital_admin`, `nurse`, `receptionist`, `blood_officer`, `pharmacist`, and `lab_technician`.
+- [x] **Zero-Browser-Alert UI Architecture**: 100% of native browser alerts replaced with custom in-app modals.
+- [x] **Commercial Model Transparency**: Free Patient & Doctor onboarding, custom doctor consultation fee setting, escrow payout hold, and undisclosed institutional pricing.
+- [x] **3D Anatomical Body Navigator & Social Proof**: Interactive 3D model and verified patient testimonials on landing page.
+- [x] **NDPA 2023 Regulatory Compliance**: Full platform replacement of HIPAA with NDPA 2023 Article 26 export and audit logging.
+- [x] **Doctor MDCN Expiry & Verification System**: 5-credential audit modal with 30-day renewal grace period.
+- [x] **Blood Donor Network & Emergency Mode ("Request Blood Now")**: Non-commercial ethical matching (`Donor ➔ Hospital Blood Bank ➔ Patient`).
+- [x] **AI Assistant & Health Insights Suite**: Gemini 1.5 Pro symptom guidance, vitals analysis, OCR document summarization, and chronic care tracking.
 
 ---
 
 ### 🚀 Upcoming Backend & Production Integration Checklist
 
-- [ ] **Step 1**: Connect mobile state management (Zustand/React Query) to NestJS production API endpoints.
-- [ ] **Step 2**: Deploy NestJS API backend with PostgreSQL database migrations and Paystack/Flutterwave Automated Split Payment webhooks.
-- [ ] **Step 3**: Install `react-native-health` (iOS) and `react-native-health-connect` (Android) native modules for background smartwatch syncing.
-- [ ] **Step 4**: Plug in `GEMINI_API_KEY` / `OPENAI_API_KEY` in `.env` to activate live Gemini clinical copilot & Admin MDCN OCR engine.
-- [ ] **Step 5**: Integrate Deepgram Nova-2 Medical for real-time ambient voice consultation SOAP note generation.
-- [ ] **Step 6**: Perform end-to-end load testing on Emergency Mode SMS broadcast queue and WebRTC consultation video rooms.
+- [ ] **Step 1**: Connect mobile and web state management (Zustand/React Query) to NestJS production API endpoints.
+- [ ] **Step 2**: Deploy NestJS API backend with PostgreSQL database migrations including HospitalFacility, HospitalBed, MedicationItem, and LabOrder models.
+- [ ] **Step 3**: Configure Paystack & Flutterwave Automated Split Payment webhooks for Doctor payouts (90/10) and Hospital revenue disbursements (85/15).
+- [ ] **Step 4**: Install `react-native-health` (iOS) and `react-native-health-connect` (Android) native modules for background smartwatch syncing.
+- [ ] **Step 5**: Plug in `GEMINI_API_KEY` / `OPENAI_API_KEY` in production `.env` to activate live Gemini clinical copilot & Admin MDCN OCR engine.
+- [ ] **Step 6**: Integrate Deepgram Nova-2 Medical for real-time ambient voice consultation SOAP note generation.
 
 ---
 
-*This document is saved in both the project repository root (`/NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md`) and the artifacts directory for session continuity.*
+*This document is saved in the repository root (`/NEXT_STAGES_ROADMAP_AND_ARCHITECTURE.md`) and the artifacts directory for session continuity.*

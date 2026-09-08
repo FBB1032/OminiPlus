@@ -8,12 +8,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Linking,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { useMedicalRecords } from '../../hooks/usePatient';
-import { Card, SkeletonList, EmptyState, ErrorState, Button, MedicalRecordsHeader } from '../../components';
+import { Card, SkeletonList, EmptyState, ErrorState, Button, MedicalRecordsHeader, HeartbeatRefreshControl } from '../../components';
 import { useRecordVisibilityStore } from '../../store/recordVisibilityStore';
+import { useMedicalRecordsStore } from '../../store/medicalRecordsStore';
 import { useToast } from '../../hooks/useAuth';
 import { Alert } from 'react-native';
 
@@ -30,14 +33,22 @@ export default function MedicalRecordsScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [visibilityStoreReady, setVisibilityStoreReady] = useState(false);
 
-  const { success: showToastSuccess } = useToast();
+  // Upload Modal State
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newType, setNewType] = useState('lab_result');
+  const [newDoctor, setNewDoctor] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+
+  const { success: showToastSuccess, error: showToastError } = useToast();
   const { visibilities, loadVisibilities, toggleVisibility } = useRecordVisibilityStore();
+  const { customRecords, loadCustomRecords, addRecord } = useMedicalRecordsStore();
 
   React.useEffect(() => {
     let cancelled = false;
     const init = async () => {
       try {
-        await loadVisibilities();
+        await Promise.all([loadVisibilities(), loadCustomRecords()]);
       } finally {
         if (!cancelled) setVisibilityStoreReady(true);
       }
@@ -55,14 +66,41 @@ export default function MedicalRecordsScreen() {
     }
   };
 
+  const handleSaveRecord = async () => {
+    if (!newTitle.trim() || !newDescription.trim()) {
+      showToastError('Missing Details', 'Please provide a title and document notes.');
+      return;
+    }
+
+    await addRecord({
+      patientId: 'p-1',
+      title: newTitle.trim(),
+      type: newType as any,
+      description: newDescription.trim(),
+      date: new Date().toISOString(),
+      doctorName: newDoctor.trim() || 'Attending Specialist',
+      attachmentUrl: 'https://ominipulse.health/records/sample.pdf',
+    });
+
+    setNewTitle('');
+    setNewDoctor('');
+    setNewDescription('');
+    setIsUploadModalOpen(false);
+    showToastSuccess('Record Added', 'Medical document added to your health record.');
+  };
+
+  // Combine server records with patient's custom uploaded records
+  const allRecords = React.useMemo(() => {
+    const serverRecords = recordsResponse?.data || [];
+    return [...customRecords, ...serverRecords];
+  }, [recordsResponse, customRecords]);
+
   // Filter items locally based on type
   const filteredRecords = React.useMemo(() => {
-    if (!recordsResponse || !recordsResponse.data) return [];
-    
-    return recordsResponse.data.filter((record) => {
+    return allRecords.filter((record) => {
       return selectedType ? record.type === selectedType : true;
     });
-  }, [recordsResponse, selectedType]);
+  }, [allRecords, selectedType]);
 
   const getRecordIcon = (type: string) => {
     switch (type) {
@@ -224,6 +262,29 @@ export default function MedicalRecordsScreen() {
         <Ionicons name="chevron-forward" size={16} color="#22D3EE" />
       </TouchableOpacity>
 
+      {/* Upload Action Bar */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[4], marginBottom: Spacing[2] }}>
+        <Text style={{ fontSize: FontSize.sm, fontWeight: FontWeight.bold, color: Colors.text.primary }}>
+          Records Directory ({allRecords.length})
+        </Text>
+        <TouchableOpacity
+          onPress={() => setIsUploadModalOpen(true)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            backgroundColor: Colors.primary[600],
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 8,
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="cloud-upload-outline" size={14} color="#FFFFFF" />
+          <Text style={{ fontSize: 12, fontWeight: FontWeight.bold, color: '#FFFFFF' }}>Upload Record</Text>
+        </TouchableOpacity>
+      </View>
+
       {/* Filter Tabs */}
       <View style={styles.filterWrapper}>
         <FlatList
@@ -271,11 +332,110 @@ export default function MedicalRecordsScreen() {
           renderItem={renderRecordItem}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={_isLoading}
-          onRefresh={refetch}
+          refreshControl={<HeartbeatRefreshControl refreshing={_isLoading} onRefresh={refetch} />}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Upload Record Modal */}
+      <Modal
+        visible={isUploadModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsUploadModalOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <View>
+                <Text style={{ fontSize: 17, fontWeight: 'bold', color: Colors.text.primary }}>Upload Medical Record</Text>
+                <Text style={{ fontSize: 12, color: Colors.text.secondary }}>Attach lab test, diagnosis, or pathology result</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsUploadModalOpen(false)}>
+                <Ionicons name="close" size={24} color={Colors.text.primary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ gap: 12 }}>
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 }}>Document Title *</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 10, fontSize: 13 }}
+                  placeholder="e.g. Complete Blood Count (CBC) Report"
+                  value={newTitle}
+                  onChangeText={setNewTitle}
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 }}>Doctor / Clinic Name</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 10, fontSize: 13 }}
+                  placeholder="e.g. Dr. Babajide Alabi / LUTH Lab"
+                  value={newDoctor}
+                  onChangeText={setNewDoctor}
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 }}>Record Type</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {[
+                    { label: 'Lab Result', value: 'lab_result' },
+                    { label: 'Diagnosis', value: 'diagnosis' },
+                    { label: 'Imaging/Scan', value: 'imaging' },
+                    { label: 'Vaccination', value: 'vaccination' },
+                  ].map((t) => (
+                    <TouchableOpacity
+                      key={t.value}
+                      onPress={() => setNewType(t.value)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                        backgroundColor: newType === t.value ? Colors.primary[600] : '#F1F5F9',
+                      }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: 'bold', color: newType === t.value ? '#FFFFFF' : Colors.text.secondary }}>
+                        {t.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 12, fontWeight: 'bold', color: Colors.text.primary, marginBottom: 4 }}>Clinical Notes & Findings *</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 8, padding: 10, fontSize: 13, height: 75, textAlignVertical: 'top' }}
+                  placeholder="e.g. Hemoglobin 14.2 g/dL, WBC normal. Recommended follow-up in 3 months."
+                  value={newDescription}
+                  onChangeText={setNewDescription}
+                  multiline
+                />
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={{
+                  backgroundColor: Colors.primary[600],
+                  paddingVertical: 12,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  flexDirection: 'row',
+                  justifyContent: 'center',
+                  gap: 8,
+                  marginTop: 8,
+                }}
+                onPress={handleSaveRecord}
+              >
+                <Ionicons name="cloud-upload" size={18} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 }}>Save & Attach to Health Record</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

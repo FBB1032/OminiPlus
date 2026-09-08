@@ -12,7 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { usePatientAppointments, useCancelAppointment } from '../../hooks/usePatient';
-import { Avatar, SkeletonList, EmptyState, ErrorState } from '../../components';
+import { Avatar, SkeletonList, EmptyState, ErrorState, HeartbeatRefreshControl } from '../../components';
 import { useToast } from '../../hooks/useAuth';
 
 type TabType = 'upcoming' | 'history';
@@ -247,8 +247,7 @@ export default function PatientAppointmentsScreen({ navigation }: any) {
           renderItem={renderAppointmentItem}
           contentContainerStyle={styles.listContainer}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          refreshing={_isLoading}
-          onRefresh={refetch}
+          refreshControl={<HeartbeatRefreshControl refreshing={_isLoading} onRefresh={refetch} />}
           showsVerticalScrollIndicator={false}
         />
       )}

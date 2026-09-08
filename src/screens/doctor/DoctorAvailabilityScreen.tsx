@@ -334,7 +334,7 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
         <Text style={styles.liveStatusSubtitle}>Patients see this on doctor listing and booking screens.</Text>
         <View style={styles.liveStatusRow}>
           {([
-            { key: 'available', label: 'Available Now', dotColor: '#10B981', bg: '#ECFDF5', border: '#A7F3D0', textColor: '#065F46' },
+            { key: 'available', label: 'Available Now', dotColor: '#0F6E6E', bg: '#E6F4F4', border: '#99D4D4', textColor: '#0F6E6E' },
             { key: 'busy', label: 'Busy', dotColor: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A', textColor: '#92400E' },
             { key: 'offline', label: 'Offline', dotColor: '#64748B', bg: '#F8FAFC', border: '#E2E8F0', textColor: '#475569' },
           ] as const).map(({ key, label, dotColor, bg, border, textColor }) => (
@@ -466,7 +466,7 @@ export default function DoctorAvailabilityScreen({ navigation }: any) {
                       <Text style={styles.slotsCount}>
                         {slots > 0
                           ? `${slots} appointment slot${slots !== 1 ? 's' : ''} available`
-                          : '⚠ End time must be after start time'}
+                          : 'End time must be after start time'}
                       </Text>
                     );
                   })()}

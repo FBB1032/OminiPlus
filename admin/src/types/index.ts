@@ -11,12 +11,16 @@
 //   'admin'  — full platform access (replaces super_admin + all specialist admins)
 //   'doctor' — doctor workspace access only (isAdmin: false)
 
-export type AdminRole = 'admin' | 'doctor';
+export type AdminRole = 'admin' | 'doctor' | 'hospital_admin' | 'nurse' | 'receptionist' | 'blood_officer' | 'pharmacist' | 'lab_technician';
 
 export type Permission =
   | 'dashboard.view'
+  | 'hospital_portal.view' | 'hospital_portal.manage'
   | 'doctor_portal.view' | 'doctor_portal.manage'
   | 'doctors.view' | 'doctors.verify' | 'doctors.suspend'
+  | 'patients.view' | 'patients.manage'
+  | 'payments.view' | 'payments.manage'
+  | 'billing.view' | 'billing.manage'
   | 'hospitals.view' | 'hospitals.onboard' | 'hospitals.manage'
   | 'pharmacies.view' | 'pharmacies.onboard' | 'pharmacies.manage'
   | 'blood_donors.view' | 'blood_donors.manage'
@@ -87,7 +91,37 @@ export interface Patient {
   avatarUrl?: string;
   dateOfBirth?: string;
   age?: number;
+  gender?: 'male' | 'female' | 'other';
+  bloodGroup?: string;
+  genotype?: string;
+  totalAppointments?: number;
+  lastVisitAt?: string;
   isActive: boolean;
+  createdAt: string;
+}
+
+export type PaymentStatus = 'completed' | 'escrowed' | 'pending' | 'refunded' | 'failed';
+export type PaymentMethod = 'card' | 'bank_transfer' | 'ussd' | 'wallet';
+
+export interface PaymentTransaction {
+  id: string;
+  reference: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;
+  appointmentId: string;
+  serviceType: string;
+  amount: number;
+  currency: string;
+  platformFee: number;
+  doctorPayout: number;
+  status: PaymentStatus;
+  method: PaymentMethod;
+  escrowReleased: boolean;
+  escrowReleasedAt?: string;
+  refundReason?: string;
+  refundedAt?: string;
   createdAt: string;
 }
 
@@ -104,6 +138,83 @@ export interface Hospital {
   doctorCount?: number;
   createdAt: string;
   logoUrl?: string;
+}
+
+// ─── Hospital Portal & Multi-Role Staff Models ──────────────────────────────
+
+export type HospitalStaffRole = 'hospital_admin' | 'doctor' | 'nurse' | 'receptionist' | 'blood_officer' | 'pharmacist' | 'lab_technician';
+
+export interface HospitalStaffMember {
+  id: string;
+  name: string;
+  role: HospitalStaffRole;
+  email: string;
+  phone: string;
+  department: string;
+  isActive: boolean;
+  avatarUrl?: string;
+}
+
+export interface HospitalDoctor {
+  id: string;
+  name: string;
+  specialization: string;
+  department: string;
+  licenseNo: string;
+  isMdcnVerified: boolean; // Platform admin MDCN verification status
+  facilityStatus: 'active' | 'on_call' | 'on_leave' | 'suspended';
+  availabilityDays: string[];
+  shifts: string;
+  syncWithMobileApp: boolean; // Indicates real-time sync with mobile edition for video/calls
+  phone: string;
+}
+
+export type BloodRequestUrgency = 'routine' | 'urgent' | 'emergency';
+export type BloodRequestStatus =
+  | 'pending_hospital_confirmation'
+  | 'hospital_confirmed'
+  | 'ominipulse_verified'
+  | 'donors_notified'
+  | 'screening_scheduled'
+  | 'fulfilled'
+  | 'closed';
+
+export interface HospitalBloodRequest {
+  id: string;
+  patientRef: string;
+  patientName: string;
+  bloodGroup: string;
+  unitsNeeded: number;
+  unitsCollected: number;
+  urgency: BloodRequestUrgency;
+  requiredBy: string;
+  status: BloodRequestStatus;
+  hospitalNotes?: string;
+  requestedBy: string;
+  hospitalConfirmedAt?: string;
+  ominipulseVerifiedAt?: string;
+  createdAt: string;
+}
+
+export interface HospitalEmergencyRequest {
+  id: string;
+  type: 'blood_critical' | 'icu_bed' | 'emergency_admission' | 'trauma_surge';
+  title: string;
+  details: string;
+  severity: 'critical' | 'high' | 'moderate';
+  availableSlots?: number;
+  status: 'active' | 'managed' | 'resolved';
+  createdAt: string;
+}
+
+export interface HospitalAuditEntry {
+  id: string;
+  timestamp: string;
+  staffName: string;
+  staffRole: HospitalStaffRole;
+  action: string;
+  target: string;
+  ipAddress?: string;
 }
 
 export interface Pharmacy {
@@ -256,3 +367,82 @@ export interface BloodRequest {
   status: 'urgent' | 'fulfilled' | 'cancelled';
   createdAt: string;
 }
+
+// ─── Hospital Ward & Bed Management ─────────────────────────────────────────
+export type HospitalWardType = 'icu' | 'male_surgical' | 'female_medical' | 'pediatric' | 'maternity' | 'emergency';
+export type HospitalBedStatus = 'available' | 'occupied' | 'cleaning_required' | 'maintenance';
+
+export interface HospitalBed {
+  id: string;
+  bedNumber: string;
+  ward: HospitalWardType;
+  wardLabel: string;
+  status: HospitalBedStatus;
+  currentPatientId?: string;
+  currentPatientName?: string;
+  patientAge?: number;
+  patientGender?: 'Male' | 'Female';
+  admissionDate?: string;
+  attendingDoctor?: string;
+  diagnosis?: string;
+  assignedNurse?: string;
+  lastCleanedAt?: string;
+}
+
+// ─── Hospital Internal Pharmacy & Dispensary ────────────────────────────────
+export type MedicationStockStatus = 'in_stock' | 'low_stock' | 'out_of_stock' | 'expiring_soon';
+
+export interface HospitalMedicationItem {
+  id: string;
+  name: string;
+  category: 'Antibiotics' | 'Analgesics' | 'IV Fluids' | 'Cardiovascular' | 'Consumables' | 'Emergency';
+  dosageForm: string;
+  batchNumber: string;
+  stockQuantity: number;
+  minimumThreshold: number;
+  unitPrice: number;
+  expiryDate: string;
+  status: MedicationStockStatus;
+}
+
+export interface HospitalPrescriptionOrder {
+  id: string;
+  prescriptionNumber: string;
+  patientId: string;
+  patientName: string;
+  doctorName: string;
+  department: string;
+  prescribedAt: string;
+  medications: {
+    drugName: string;
+    dosage: string;
+    duration: string;
+    instructions: string;
+  }[];
+  status: 'pending' | 'dispensed' | 'cancelled';
+  dispensedBy?: string;
+  dispensedAt?: string;
+}
+
+// ─── Hospital Laboratory & Diagnostics ──────────────────────────────────────
+export type LabOrderStatus = 'sample_pending' | 'sample_collected' | 'in_testing' | 'results_ready' | 'verified';
+
+export interface HospitalLabOrder {
+  id: string;
+  orderNumber: string;
+  patientId: string;
+  patientName: string;
+  doctorName: string;
+  testName: string;
+  testCategory: 'Hematology' | 'Parasitology' | 'Biochemistry' | 'Microbiology' | 'Urinalysis';
+  sampleType: 'Blood' | 'Urine' | 'Stool' | 'Swab' | 'CSF';
+  urgency: 'routine' | 'urgent' | 'stat_emergency';
+  orderedAt: string;
+  status: LabOrderStatus;
+  resultsSummary?: string;
+  normalRange?: string;
+  findings?: string;
+  technicianName?: string;
+  verifiedAt?: string;
+}
+

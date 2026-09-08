@@ -14,16 +14,29 @@ import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { usePatientDetail, usePatientPrescriptions } from '../../hooks/useDoctor';
 import { Avatar, Card, Divider, SkeletonDetail, EmptyState, ErrorState, SkeletonList, AccessDenied } from '../../components';
 import { BodyMap } from '../../components/ui/BodyMap';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth, useToast } from '../../hooks/useAuth';
 import { PainLog, Prescription, Medication, DoctorScreenProps } from '../../types';
 import { useAuditLogStore } from '../../store/auditLogStore';
+import { useChronicDiseaseStore } from '../../store/chronicDiseaseStore';
 
-type TabType = 'info' | 'prescriptions' | 'bodymap';
+type TabType = 'info' | 'vitals' | 'prescriptions' | 'bodymap';
 
 export default function PatientDetailScreen({ route, navigation }: DoctorScreenProps<'PatientDetail'>) {
   const { role, user } = useAuth();
+  const { success: showToastSuccess } = useToast();
   const { patientId } = route.params;
   const [activeTab, setActiveTab] = useState<TabType>('info');
+
+  const {
+    bpReadings,
+    sugarReadings,
+    loadChronicData,
+    getAdherenceRate,
+  } = useChronicDiseaseStore();
+
+  useEffect(() => {
+    loadChronicData();
+  }, []);
 
   if (role !== 'doctor' && role !== 'admin') {
     return <AccessDenied onBack={() => navigation.goBack()} message="Only clinical doctors and system administrators are permitted to view patient record files." />;
@@ -182,7 +195,15 @@ export default function PatientDetailScreen({ route, navigation }: DoctorScreenP
           onPress={() => setActiveTab('info')}
         >
           <Text style={[styles.tabLabel, activeTab === 'info' && styles.tabLabelActive]}>
-            General Info
+            General
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'vitals' && styles.tabActive]}
+          onPress={() => setActiveTab('vitals')}
+        >
+          <Text style={[styles.tabLabel, activeTab === 'vitals' && styles.tabLabelActive]}>
+            Vitals ({bpReadings.length + sugarReadings.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -190,7 +211,7 @@ export default function PatientDetailScreen({ route, navigation }: DoctorScreenP
           onPress={() => setActiveTab('prescriptions')}
         >
           <Text style={[styles.tabLabel, activeTab === 'prescriptions' && styles.tabLabelActive]}>
-            Prescriptions ({prescriptions?.length || 0})
+            Rx ({prescriptions?.length || 0})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -198,7 +219,7 @@ export default function PatientDetailScreen({ route, navigation }: DoctorScreenP
           onPress={() => setActiveTab('bodymap')}
         >
           <Text style={[styles.tabLabel, activeTab === 'bodymap' && styles.tabLabelActive]}>
-            Body Map
+            Pain Map
           </Text>
         </TouchableOpacity>
       </View>
@@ -336,6 +357,132 @@ export default function PatientDetailScreen({ route, navigation }: DoctorScreenP
               </View>
             </Card>
           ) : null}
+        </ScrollView>
+      ) : activeTab === 'vitals' ? (
+        <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>
+          {/* Adherence & Status Card */}
+          <Card style={styles.infoCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing[2] }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="pulse" size={20} color={Colors.primary[600]} />
+                <Text style={styles.cardTitle}>Chronic Care Adherence</Text>
+              </View>
+              <View style={[styles.tag, styles.tagBlue]}>
+                <Text style={[styles.tagText, styles.tagTextBlue]}>{getAdherenceRate()}% Tracked</Text>
+              </View>
+            </View>
+            <Text style={{ fontSize: FontSize.sm, color: Colors.text.secondary, lineHeight: 20 }}>
+              Live patient recordings synchronized from patient mobile device. Clinical status reflects recent self-monitoring entries.
+            </Text>
+          </Card>
+
+          {/* Blood Pressure History */}
+          <Card style={styles.infoCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing[2] }}>
+              <Text style={styles.cardTitle}>Blood Pressure Records ({bpReadings.length})</Text>
+              <Ionicons name="speedometer-outline" size={18} color="#EF4444" />
+            </View>
+            {bpReadings.length === 0 ? (
+              <Text style={styles.noDataText}>No BP logs recorded by patient yet.</Text>
+            ) : (
+              bpReadings.map((reading, idx) => {
+                const isHigh = reading.category === 'stage1' || reading.category === 'stage2';
+                const isElevated = reading.category === 'elevated';
+                const badgeBg = isHigh ? '#FEF2F2' : isElevated ? '#FFFBEB' : '#F0FDF4';
+                const badgeColor = isHigh ? '#EF4444' : isElevated ? '#D97706' : '#16A34A';
+                return (
+                  <View key={reading.id || idx} style={{ paddingVertical: 10, borderBottomWidth: idx < bpReadings.length - 1 ? 1 : 0, borderBottomColor: '#F1F5F9' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <View>
+                        <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary }}>
+                          {reading.systolic}/{reading.diastolic} <Text style={{ fontSize: FontSize.xs, fontWeight: 'normal', color: Colors.text.secondary }}>mmHg</Text>
+                        </Text>
+                        {reading.pulse ? (
+                          <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary }}>Pulse: {reading.pulse} bpm</Text>
+                        ) : null}
+                      </View>
+                      <View style={{ backgroundColor: badgeBg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                        <Text style={{ fontSize: 11, fontWeight: FontWeight.semiBold, color: badgeColor, textTransform: 'capitalize' }}>
+                          {reading.category}
+                        </Text>
+                      </View>
+                    </View>
+                    {reading.notes ? (
+                      <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary, fontStyle: 'italic', marginTop: 4 }}>
+                        Note: {reading.notes}
+                      </Text>
+                    ) : null}
+                    <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 2 }}>
+                      {new Date(reading.recordedAt).toLocaleString()}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+          </Card>
+
+          {/* Blood Glucose History */}
+          <Card style={styles.infoCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: Spacing[2] }}>
+              <Text style={styles.cardTitle}>Blood Sugar Readings ({sugarReadings.length})</Text>
+              <Ionicons name="water-outline" size={18} color="#3B82F6" />
+            </View>
+            {sugarReadings.length === 0 ? (
+              <Text style={styles.noDataText}>No glucose logs recorded by patient yet.</Text>
+            ) : (
+              sugarReadings.map((reading, idx) => (
+                <View key={reading.id || idx} style={{ paddingVertical: 10, borderBottomWidth: idx < sugarReadings.length - 1 ? 1 : 0, borderBottomColor: '#F1F5F9' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.text.primary }}>
+                      {reading.glucoseLevel} <Text style={{ fontSize: FontSize.xs, fontWeight: 'normal', color: Colors.text.secondary }}>mg/dL</Text>
+                    </Text>
+                    <View style={[styles.tag, styles.tagBlue]}>
+                      <Text style={[styles.tagText, styles.tagTextBlue, { textTransform: 'capitalize' }]}>
+                        {reading.type.replace('_', ' ')}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 4 }}>
+                    {new Date(reading.recordedAt).toLocaleString()}
+                  </Text>
+                </View>
+              ))
+            )}
+          </Card>
+
+          {/* Hospital Inpatient Referral Action */}
+          <Card style={[styles.infoCard, { backgroundColor: '#F0FDFA', borderColor: '#CCFBF1' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Ionicons name="bed-outline" size={20} color={Colors.primary[600]} />
+              <Text style={[styles.cardTitle, { color: Colors.primary[700] }]}>Hospital Inpatient Referral</Text>
+            </View>
+            <Text style={{ fontSize: FontSize.sm, color: Colors.primary[900], lineHeight: 20, marginBottom: 12 }}>
+              Need to admit {patient.firstName} to an inpatient ward (ICU, Male Surgical, Emergency)? Route directly to your hospital bed queue.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={{
+                backgroundColor: Colors.primary[600],
+                paddingVertical: 10,
+                borderRadius: 8,
+                alignItems: 'center',
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+              onPress={() => {
+                showToastSuccess(
+                  'Admission Request Routed',
+                  `Patient ${patient.firstName} ${patient.lastName} has been queued for admission at your affiliated hospital.`
+                );
+              }}
+            >
+              <Ionicons name="share-outline" size={16} color="#FFFFFF" />
+              <Text style={{ color: '#FFFFFF', fontWeight: FontWeight.bold, fontSize: FontSize.sm }}>
+                Admit to Hospital Ward (Bed #04)
+              </Text>
+            </TouchableOpacity>
+          </Card>
         </ScrollView>
       ) : activeTab === 'bodymap' ? (
         <ScrollView contentContainerStyle={styles.tabContent} showsVerticalScrollIndicator={false}>

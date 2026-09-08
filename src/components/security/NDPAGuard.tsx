@@ -25,7 +25,7 @@ export const NDPAGuard = ({ children }: NDPAGuardProps) => {
   const addToast = useUIStore((s) => s.addToast);
 
   const [isCovered, setIsCovered] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const backgroundTimeRef = useRef<number | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
 
@@ -139,7 +139,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   privacyCover: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: Colors.background,
     alignItems: 'center',
     justifyContent: 'center',

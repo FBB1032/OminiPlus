@@ -1,270 +1,455 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Eye, EyeOff, Mail, Lock, Shield, Server, Activity, Users2, ShieldCheck } from 'lucide-react';
-import { useAuthStore, MOCK_ADMINS } from '@/store/authStore';
-import { ROLE_LABELS, ROLE_COLORS } from '@/store/permissionStore';
+import Image from 'next/image';
+import {
+  Monitor, Download, ShieldCheck, ArrowLeft, CheckCircle2,
+  Lock, Smartphone, ArrowRight, Laptop, Sparkles, ExternalLink, HelpCircle
+} from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import type { AdminRole } from '@/types';
 
-const loginSchema = z.object({
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-type LoginForm = z.infer<typeof loginSchema>;
+type OSType = 'windows' | 'mac' | 'linux';
 
-const ROLES: AdminRole[] = ['admin', 'doctor'];
+interface OSConfig {
+  id: OSType;
+  name: string;
+  file: string;
+  badge: string;
+  label: string;
+  shortName: string;
+  arch: string;
+  size: string;
+  icon: typeof Monitor;
+}
 
-export default function LoginPage() {
-  const router = useRouter();
-  const setAdmin = useAuthStore(s => s.setAdmin);
-  const [showPassword, setShowPassword] = useState(false);
-  const [serverError, setServerError] = useState('');
-  const [selectedRole, setSelectedRole] = useState<AdminRole>('admin');
+const OS_CONFIGS: Record<OSType, OSConfig> = {
+  windows: {
+    id: 'windows',
+    name: 'Windows',
+    file: 'OminiPulse-Setup-2.2.0.exe',
+    badge: 'Windows 10 & 11 (64-bit)',
+    label: 'Download OminiPulse for Windows (.exe)',
+    shortName: 'Windows (.exe)',
+    arch: 'x64 / ARM64 Windows Installer',
+    size: '84.2 MB',
+    icon: Monitor,
+  },
+  mac: {
+    id: 'mac',
+    name: 'macOS',
+    file: 'OminiPulse-2.2.0.dmg',
+    badge: 'macOS 12+ (Universal)',
+    label: 'Download OminiPulse for macOS (.dmg)',
+    shortName: 'macOS (.dmg)',
+    arch: 'Apple Silicon (M1–M4) & Intel',
+    size: '88.7 MB',
+    icon: Laptop,
+  },
+  linux: {
+    id: 'linux',
+    name: 'Linux',
+    file: 'OminiPulse-2.2.0.AppImage',
+    badge: 'Universal AppImage & Debian',
+    label: 'Download OminiPulse for Linux (.AppImage)',
+    shortName: 'Linux (.AppImage)',
+    arch: 'Ubuntu, Debian, Fedora (x86_64)',
+    size: '91.5 MB',
+    icon: Monitor,
+  },
+};
 
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'admin@ominipulse.ai', password: 'admin123' },
-  });
+export default function PublicWebLoginGatePage() {
+  const [downloadStarted, setDownloadStarted] = useState<string | null>(null);
+  const [selectedOS, setSelectedOS] = useState<OSType>('windows');
 
-  const onSubmit = async (data: LoginForm) => {
-    setServerError('');
-    await new Promise(r => setTimeout(r, 800));
-    if ((data.email === 'admin@ominipulse.ai' || data.email === 'doctor@ominipulse.ai') && data.password === 'admin123') {
-      const admin = MOCK_ADMINS[selectedRole];
-      setAdmin(admin, `mock-jwt-token-${selectedRole}`);
-      if (selectedRole === 'doctor') {
-        router.push('/dashboard/doctor-portal');
-      } else {
-        router.push('/dashboard');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const osParam = params.get('os')?.toLowerCase();
+
+      if (osParam === 'mac' || osParam === 'macos' || osParam === 'darwin') {
+        setSelectedOS('mac');
+        return;
       }
-    } else {
-      setServerError('Invalid email or password.');
+      if (osParam === 'linux') {
+        setSelectedOS('linux');
+        return;
+      }
+      if (osParam === 'windows' || osParam === 'win') {
+        setSelectedOS('windows');
+        return;
+      }
+
+      // Auto-detect from user agent if no query param
+      const ua = window.navigator.userAgent.toLowerCase();
+      if (ua.includes('mac')) setSelectedOS('mac');
+      else if (ua.includes('linux')) setSelectedOS('linux');
+      else setSelectedOS('windows');
+    }
+  }, []);
+
+  const switchOS = (os: OSType) => {
+    setSelectedOS(os);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('os', os);
+      window.history.replaceState({}, '', url.toString());
     }
   };
 
+  const handleDownload = (platform: string, filename: string) => {
+    setDownloadStarted(platform);
+    // Trigger simulated native installer download
+    const link = document.createElement('a');
+    link.href = `https://github.com/FBB1032/OminiPlus/releases/download/v2.2.0/${filename}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    // Fallback notification
+    setTimeout(() => {
+      alert(`OminiPulse Desktop App (${platform}) installer download initiated: ${filename}\n\nOnce installed, launch the application to sign into your Doctor, Hospital, or Admin workspace.`);
+      setDownloadStarted(null);
+    }, 400);
+  };
+
+  const currentOS = OS_CONFIGS[selectedOS];
+  const otherOSes = (['windows', 'mac', 'linux'] as const).filter((os) => os !== selectedOS);
+
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#FFFFFF', fontFamily: 'Inter, sans-serif' }}>
-      
-      {/* Left Column: Visual Brand Banner (Desktop only) */}
-      <div style={{
-        flex: 1.2,
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-        padding: '64px',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        position: 'relative',
-        overflow: 'hidden',
-        color: '#FFFFFF',
-      }} className="hidden lg:flex">
-        
-        {/* Decorative Grid Lines */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px)',
-          backgroundSize: '30px 30px',
-          maskImage: 'radial-gradient(circle at center, black, transparent 80%)',
-          pointerEvents: 'none'
-        }} />
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(180deg, #f8fafc 0%, #f0fdfa 100%)',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 20px',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      color: '#0f172a'
+    }}>
 
-        {/* Brand Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 10 }}>
-          <Image
-            src="/logo.png"
-            alt="Omini Pulse"
-            width={340}
-            height={72}
-            style={{ objectFit: 'contain', height: 'auto', width: 340 }}
-          />
-        </div>
-
-        {/* Feature Teasers */}
-        <div style={{ position: 'relative', zIndex: 10, maxWidth: 540 }}>
-          <span style={{
-            background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', border: '1px solid rgba(37, 99, 235, 0.25)',
-            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 100,
-            textTransform: 'uppercase', letterSpacing: '0.05em'
-          }}>
-            Enterprise Dashboard
-          </span>
-          <h1 style={{ fontSize: 36, fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.03em', margin: '16px 0 20px 0' }}>
-            Unified administrative systems for modern healthcare networks.
-          </h1>
-          <p style={{ fontSize: 15, color: '#94a3b8', lineHeight: 1.6 }}>
-            Verify credentials, audit NDPA-compliant patient operations, and supervise platform analytics with state-of-the-art role-based permissions.
-          </p>
-
-          <div style={{ display: 'flex', gap: 24, marginTop: 40 }}>
-            {[
-              { label: 'Operational Uptime', value: '99.98%', icon: Server },
-              { label: 'Verified Providers', value: '1,800+', icon: Users2 },
-              { label: 'System Vitals', value: 'Healthy', icon: Activity },
-            ].map((stat, idx) => (
-              <div key={idx} style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <stat.icon size={15} style={{ color: '#3b82f6' }} />
-                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{stat.label}</span>
-                </div>
-                <p style={{ fontSize: 18, fontWeight: 700 }}>{stat.value}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Portal Info Footer */}
-        <div style={{ position: 'relative', zIndex: 10, fontSize: 12, color: '#64748b' }}>
-          Omini Pulse Platform Console v2.4 · Encrypted via AES-256
-        </div>
-      </div>
-
-      {/* Right Column: Login Card Container */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        padding: '40px',
-        background: '#f8fafc',
-      }}>
-        <div style={{ width: '100%', maxWidth: 480, margin: '0 auto' }}>
-          
-          {/* Logo on small screens */}
-          <div className="flex lg:hidden flex-col items-center mb-8">
-            <Image
-              src="/logo.png"
-              alt="Omini Pulse"
-              width={300}
-              height={64}
-              style={{ objectFit: 'contain', height: 'auto', width: 300 }}
-            />
-            <p style={{ fontSize: 13, color: '#64748b', marginTop: 8 }}>Secure Console Sign In</p>
-          </div>
-
-          {/* Form Card */}
-          <div style={{
+      {/* Top Header Link back to Home */}
+      <div style={{ position: 'absolute', top: 24, left: 32 }}>
+        <Link
+          href="/"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            color: '#64748b',
+            fontSize: 13.5,
+            fontWeight: 600,
+            textDecoration: 'none',
+            padding: '8px 14px',
+            borderRadius: 8,
             background: '#ffffff',
             border: '1px solid #e2e8f0',
-            borderRadius: 20,
-            padding: 32,
-            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.02), 0 8px 10px -6px rgba(0,0,0,0.02)'
+            boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+          }}
+        >
+          <ArrowLeft size={16} /> Back to Public Website
+        </Link>
+      </div>
+
+      {/* Center Gate Card */}
+      <div style={{
+        maxWidth: 580,
+        width: '100%',
+        background: '#ffffff',
+        border: '1.5px solid #e2e8f0',
+        borderRadius: 24,
+        padding: '44px 38px',
+        boxShadow: '0 20px 45px rgba(15,110,110,0.08), 0 4px 16px rgba(0,0,0,0.02)',
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 22
+      }}>
+
+        {/* Brand Logo */}
+        <Link href="/" style={{ textDecoration: 'none' }}>
+          <Image
+            src="/logo.png"
+            alt="OminiPulse"
+            width={180}
+            height={50}
+            style={{ height: 46, width: 'auto', objectFit: 'contain' }}
+            priority
+          />
+        </Link>
+
+        {/* Animated Desktop Graphic Icon */}
+        <div style={{
+          position: 'relative',
+          width: 90,
+          height: 90,
+          borderRadius: 24,
+          background: 'linear-gradient(135deg, #e6f4f4 0%, #ccfbf1 100%)',
+          color: '#0f6e6e',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: '2px solid #99f6e4',
+          boxShadow: '0 10px 25px rgba(15,110,110,0.18)'
+        }}>
+          <Monitor size={46} strokeWidth={1.8} />
+          <span style={{
+            position: 'absolute',
+            bottom: -4,
+            right: -4,
+            width: 26,
+            height: 26,
+            borderRadius: '50%',
+            background: '#0f6e6e',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 14,
+            border: '2px solid #ffffff'
           }}>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginBottom: 6 }}>Welcome Back</h2>
-            <p style={{ fontSize: 13.5, color: '#64748b', marginBottom: 24 }}>Enter your credentials to manage platform operations</p>
+            <Lock size={13} />
+          </span>
+        </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              
-              {/* Role Selection Matrix */}
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
-                  Console Role Profile
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {ROLES.map((role) => {
-                    const rc = ROLE_COLORS[role];
-                    const active = selectedRole === role;
-                    return (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => setSelectedRole(role)}
-                        style={{
-                          padding: '8px 6px',
-                          borderRadius: 8,
-                          fontSize: 11,
-                          fontWeight: active ? 600 : 500,
-                          border: active ? `1.5px solid ${rc.color}` : '1.5px solid #e2e8f0',
-                          background: active ? rc.bg : '#ffffff',
-                          color: active ? rc.color : '#64748b',
-                          cursor: 'pointer',
-                          transition: 'all 120ms',
-                          textAlign: 'center',
-                        }}
-                      >
-                        {ROLE_LABELS[role].split(' ')[0]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+        {/* Title & Core Requirement Message */}
+        <div>
+          <h1 style={{
+            fontSize: 24,
+            fontWeight: 800,
+            color: '#0f172a',
+            letterSpacing: '-0.02em',
+            margin: '0 0 10px'
+          }}>
+            OminiPulse Desktop App Required
+          </h1>
+          <p style={{
+            fontSize: 14.5,
+            color: '#475569',
+            lineHeight: 1.6,
+            margin: 0,
+            maxWidth: 480
+          }}>
+            Doctor, Hospital, and Admin accounts are managed through the <strong>OminiPulse Desktop App</strong>.
+            Download the desktop application to continue.
+          </p>
+        </div>
 
-              {/* Email */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Corporate Email</label>
-                <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                    <Mail size={16} />
-                  </div>
-                  <input
-                    {...register('email')}
-                    type="email"
-                    placeholder="admin@ominipulse.ai"
-                    className="input"
-                    style={{ paddingLeft: 38, height: 42 }}
-                  />
-                </div>
-                {errors.email && <p style={{ fontSize: 11.5, color: '#ef4444', marginTop: 2 }}>{errors.email.message}</p>}
-              </div>
+        {/* OS Selector Tabs */}
+        <div style={{
+          display: 'flex',
+          background: '#f1f5f9',
+          padding: 4,
+          borderRadius: 12,
+          gap: 4,
+          border: '1px solid #e2e8f0',
+          width: '100%',
+          boxSizing: 'border-box'
+        }}>
+          {(['windows', 'mac', 'linux'] as const).map((osKey) => {
+            const cfg = OS_CONFIGS[osKey];
+            const isSelected = selectedOS === osKey;
+            return (
+              <button
+                key={osKey}
+                type="button"
+                onClick={() => switchOS(osKey)}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: 9,
+                  border: isSelected ? '1px solid #cbd5e1' : '1px solid transparent',
+                  background: isSelected ? '#ffffff' : 'transparent',
+                  color: isSelected ? '#0f172a' : '#64748b',
+                  fontSize: 13,
+                  fontWeight: isSelected ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                  transition: 'all 150ms ease'
+                }}
+              >
+                {osKey === 'mac' ? <Laptop size={14} /> : <Monitor size={14} />}
+                <span>{cfg.name}</span>
+              </button>
+            );
+          })}
+        </div>
 
-              {/* Password */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>Security Password</label>
-                <div style={{ position: 'relative' }}>
-                  <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}>
-                    <Lock size={16} />
-                  </div>
-                  <input
-                    {...register('password')}
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
-                    className="input"
-                    style={{ paddingLeft: 38, paddingRight: 40, height: 42 }}
-                  />
+        {/* Primary Download CTA Button (Dynamically updates to selected OS) */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => handleDownload(currentOS.name, currentOS.file)}
+            disabled={downloadStarted !== null}
+            style={{
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 4,
+              background: currentOS.id === 'mac'
+                ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+                : currentOS.id === 'linux'
+                ? 'linear-gradient(135deg, #1e293b 0%, #334155 100%)'
+                : 'linear-gradient(135deg, #0f6e6e 0%, #0d9488 100%)',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: 14,
+              padding: '16px 20px',
+              fontSize: 15.5,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 8px 20px rgba(15,23,42,0.16)',
+              transition: 'transform 120ms ease, background 200ms ease'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+              <Download size={19} />
+              <span>{currentOS.label}</span>
+            </div>
+            <span style={{ fontSize: 12, opacity: 0.85, fontWeight: 500 }}>
+              {currentOS.badge} · {currentOS.size} · Official Release
+            </span>
+          </button>
+
+          {/* Dynamic "Also available for" with clickable OS switchers */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 10,
+            fontSize: 12.5,
+            color: '#64748b',
+            marginTop: 4,
+            flexWrap: 'wrap'
+          }}>
+            <span>Also available for:</span>
+            {otherOSes.map((osKey, idx) => {
+              const cfg = OS_CONFIGS[osKey];
+              return (
+                <span key={osKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(p => !p)}
+                    onClick={() => switchOS(osKey)}
+                    title={`Switch download to ${cfg.name}`}
                     style={{
-                      position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
-                      border: 'none', background: 'transparent', color: '#94a3b8', cursor: 'pointer'
+                      background: 'none',
+                      border: 'none',
+                      color: '#0f6e6e',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                      fontSize: 12.5,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      textDecoration: 'underline'
                     }}
                   >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {osKey === 'mac' ? <Laptop size={13} /> : <Monitor size={13} />}
+                    <span>{cfg.shortName}</span>
                   </button>
-                </div>
-                {errors.password && <p style={{ fontSize: 11.5, color: '#ef4444', marginTop: 2 }}>{errors.password.message}</p>}
-              </div>
-
-              {serverError && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', padding: 10, borderRadius: 8 }}>
-                  <p style={{ fontSize: 12, color: '#b91c1c', fontWeight: 550 }}>{serverError}</p>
-                </div>
-              )}
-
-              <Button
-                type="submit"
-                isLoading={isSubmitting}
-                style={{ width: '100%', height: 42, fontSize: 14, fontWeight: 650, marginTop: 8 }}
-              >
-                Sign In as {ROLE_LABELS[selectedRole]}
-              </Button>
-            </form>
-
-            <div style={{
-              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12,
-              marginTop: 16, fontSize: 12, color: '#64748b', textAlign: 'center'
-            }}>
-              Demo Details: <strong style={{ color: '#1e293b' }}>admin@ominipulse.ai</strong> password: <strong style={{ color: '#1e293b' }}>admin123</strong>
-            </div>
-
+                  {idx < otherOSes.length - 1 && <span style={{ color: '#cbd5e1' }}>•</span>}
+                </span>
+              );
+            })}
           </div>
         </div>
+
+        {/* Feature Highlights of the Desktop App */}
+        <div style={{
+          width: '100%',
+          background: '#f8fafc',
+          borderRadius: 14,
+          padding: '16px 18px',
+          border: '1px solid #e2e8f0',
+          textAlign: 'left'
+        }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 10px' }}>
+            Why use the Desktop Application?
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12, color: '#475569' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <CheckCircle2 size={15} color="#059669" />
+              <span>Full Inpatient Bed Matrix</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <CheckCircle2 size={15} color="#059669" />
+              <span>MDCN Digital Rx Signing</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <CheckCircle2 size={15} color="#059669" />
+              <span>HD Video Telehealth Station</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+              <CheckCircle2 size={15} color="#059669" />
+              <span>Encrypted NDPA Vault</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Patient Mobile App Callout */}
+        <div style={{
+          width: '100%',
+          borderTop: '1px solid #e2e8f0',
+          paddingTop: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10
+        }}>
+          <div style={{ textAlign: 'left' }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Smartphone size={14} color="#0f6e6e" /> Are you a Patient?
+            </span>
+            <span style={{ fontSize: 11.5, color: '#64748b' }}>
+              Book appointments and talk to doctors via the Mobile App
+            </span>
+          </div>
+
+          <Link
+            href="/#mobile-apps"
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: '#0f6e6e',
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            Get Mobile App <ArrowRight size={13} />
+          </Link>
+        </div>
+
       </div>
+
+      {/* Footer Security Badges */}
+      <div style={{
+        marginTop: 24,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        fontSize: 12,
+        color: '#64748b'
+      }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <ShieldCheck size={14} color="#0f6e6e" /> MDCN Certified Guidelines
+        </span>
+        <span>•</span>
+        <span>NDPA 2023 Compliant</span>
+        <span>•</span>
+        <span>Version 2.2.0</span>
+      </div>
+
     </div>
   );
 }

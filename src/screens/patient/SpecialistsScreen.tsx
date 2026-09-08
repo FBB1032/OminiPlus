@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, FontSize, FontWeight, Spacing, Shadows, BorderRadius } from '../../theme';
+import { HospitalBadge } from '../../components';
 
 const MIN_CONSULT_FEE = 2000;
 export type FormatTiers = { chat: number; audio: number; video: number };
@@ -238,7 +239,7 @@ export default function SpecialistsScreen({ route, navigation }: any) {
                 {/* Avatar */}
                 <View style={s.avatarWrap}>
                   <Image source={{ uri: doc.avatar }} style={s.avatar} />
-                  <View style={[s.onlineDot, { backgroundColor: doc.available ? '#10B981' : '#94A3B8' }]} />
+                  <View style={[s.onlineDot, { backgroundColor: doc.available ? '#0F6E6E' : '#94A3B8' }]} />
                 </View>
 
                 {/* Info column */}
@@ -255,9 +256,13 @@ export default function SpecialistsScreen({ route, navigation }: any) {
                   </View>
 
                   <Text style={s.docSpec}>{doc.spec}</Text>
-                  <View style={s.hospitalRow}>
-                    <Ionicons name="location-outline" size={11} color="#94A3B8" />
-                    <Text style={s.docHospital} numberOfLines={1}>{doc.hospital}</Text>
+                  <View style={{ marginTop: 2, marginBottom: 2 }}>
+                    <HospitalBadge
+                      hospitalName={doc.hospital}
+                      isIndependent={!doc.hospital || doc.hospital.toLowerCase().includes('independent')}
+                      isVerified={doc.mdcnVerified}
+                      size="sm"
+                    />
                   </View>
 
                   {/* Stats row */}
@@ -281,8 +286,8 @@ export default function SpecialistsScreen({ route, navigation }: any) {
 
                 {/* Availability pill */}
                 <View style={[s.availBadge, doc.available ? s.availBadgeOn : s.availBadgeOff]}>
-                  <View style={[s.availDot, { backgroundColor: doc.available ? '#10B981' : '#94A3B8' }]} />
-                  <Text style={[s.availText, { color: doc.available ? '#166534' : '#64748B' }]}>
+                  <View style={[s.availDot, { backgroundColor: doc.available ? '#0F6E6E' : '#94A3B8' }]} />
+                  <Text style={[s.availText, { color: doc.available ? '#0F6E6E' : '#64748B' }]}>
                     {doc.available ? 'Available' : 'Busy'}
                   </Text>
                 </View>
@@ -449,7 +454,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4,
     borderRadius: 20, flexShrink: 0, alignSelf: 'flex-start',
   },
-  availBadgeOn:  { backgroundColor: '#DCFCE7' },
+  availBadgeOn:  { backgroundColor: '#E6F4F4' },
   availBadgeOff: { backgroundColor: '#F1F5F9' },
   availDot:  { width: 7, height: 7, borderRadius: 4 },
   availText: { fontSize: 11, fontWeight: FontWeight.bold },

@@ -107,8 +107,8 @@ export default function ConsentManagementScreen({ navigation }: any) {
 
               <View style={styles.cardFooter}>
                 <View style={styles.statusPill}>
-                  <View style={[styles.statusDot, { backgroundColor: isGranted ? '#10B981' : '#94A3B8' }]} />
-                  <Text style={[styles.statusText, { color: isGranted ? '#065F46' : Colors.neutral[600] }]}>
+                  <View style={[styles.statusDot, { backgroundColor: isGranted ? '#0F6E6E' : '#94A3B8' }]} />
+                  <Text style={[styles.statusText, { color: isGranted ? '#0F6E6E' : Colors.neutral[600] }]}>
                     {isGranted ? 'Active Access Granted' : 'Access Revoked'}
                   </Text>
                 </View>

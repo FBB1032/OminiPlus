@@ -67,8 +67,8 @@ export function RoleLegalModal({ visible, onClose, role, onAccept }: RoleLegalMo
           {doc.sections.map((section, sIdx) => (
             <View key={sIdx} style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <View style={[styles.iconCircle, { backgroundColor: isPatient ? '#EFF6FF' : '#F0FDF4' }]}>
-                  <Ionicons name={section.icon as any} size={18} color={isPatient ? '#2563EB' : '#059669'} />
+                <View style={[styles.iconCircle, { backgroundColor: isPatient ? '#EFF6FF' : '#E6F4F4' }]}>
+                  <Ionicons name={section.icon as any} size={18} color={isPatient ? '#2563EB' : '#0F6E6E'} />
                 </View>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
@@ -76,7 +76,7 @@ export function RoleLegalModal({ visible, onClose, role, onAccept }: RoleLegalMo
               <View style={styles.bulletsList}>
                 {section.content.map((point, pIdx) => (
                   <View key={pIdx} style={styles.bulletRow}>
-                    <View style={[styles.bulletDot, { backgroundColor: isPatient ? '#2563EB' : '#059669' }]} />
+                    <View style={[styles.bulletDot, { backgroundColor: isPatient ? '#2563EB' : '#0F6E6E' }]} />
                     <Text style={styles.bulletText}>{point}</Text>
                   </View>
                 ))}

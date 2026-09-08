@@ -7,13 +7,15 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
-import { Avatar, Card, Divider, AppModal, Input, Button } from '../../components';
+import { Avatar, Card, Divider, AppModal, Input, Button, HospitalBadge } from '../../components';
 import { useToast } from '../../hooks/useAuth';
+import { useHospitalStore } from '../../store/hospitalStore';
 
 export default function DoctorProfileScreen({ navigation }: any) {
   const { user } = useAuth();
@@ -119,6 +121,57 @@ export default function DoctorProfileScreen({ navigation }: any) {
     ]);
   };
 
+  // Hospital Affiliation State
+  const doctorId = user?.id || 'current_doctor';
+  const affiliation = useHospitalStore((s) => s.getDoctorAffiliation(doctorId));
+  const { verifyAndLinkDoctorCode, disconnectHospital, inviteCodes } = useHospitalStore();
+  const [isHospitalModalOpen, setIsHospitalModalOpen] = useState(false);
+  const [hospitalCodeInput, setHospitalCodeInput] = useState('');
+
+  // Preview matching code
+  const matchingInvite = React.useMemo(() => {
+    const clean = hospitalCodeInput.trim().replace(/\D/g, '');
+    if (clean.length === 6) {
+      return inviteCodes.find((c) => c.code === clean && !c.isUsed);
+    }
+    return null;
+  }, [hospitalCodeInput, inviteCodes]);
+
+  const handleConnectHospital = () => {
+    const clean = hospitalCodeInput.trim().replace(/\D/g, '');
+    if (clean.length !== 6) {
+      showError('Invalid Code', 'Please enter a valid 6-digit hospital code.');
+      return;
+    }
+
+    const res = verifyAndLinkDoctorCode(clean, doctorId);
+    if (res.success) {
+      setIsHospitalModalOpen(false);
+      setHospitalCodeInput('');
+      showSuccess('Connected to Hospital', res.message);
+    } else {
+      showError('Connection Failed', res.message);
+    }
+  };
+
+  const handleDisconnectHospital = () => {
+    Alert.alert(
+      'Disconnect Hospital',
+      `Are you sure you want to disconnect from ${affiliation?.hospitalName}? You will revert to independent practice status.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: () => {
+            disconnectHospital(doctorId);
+            showSuccess('Disconnected', 'You are now set as an Independent Specialist.');
+          },
+        },
+      ]
+    );
+  };
+
   const actionItems = [
     {
       icon: 'calendar-outline',
@@ -129,6 +182,17 @@ export default function DoctorProfileScreen({ navigation }: any) {
       icon: 'person-outline',
       label: 'Edit Profile',
       onPress: () => navigation.navigate('ProfileEdit'),
+    },
+    {
+      icon: 'business-outline',
+      label: 'Hospital Staff Portal',
+      badge: affiliation ? 'Affiliated' : undefined,
+      onPress: () => navigation.navigate('HospitalPortal'),
+    },
+    {
+      icon: 'shield-checkmark-outline',
+      label: 'Platform Admin - Hospitals',
+      onPress: () => navigation.navigate('PlatformAdminHospital'),
     },
     {
       icon: 'key-outline',
@@ -285,6 +349,74 @@ export default function DoctorProfileScreen({ navigation }: any) {
                 </View>
               </>
             ) : null}
+          </View>
+        </View>
+
+        {/* Hospital Affiliation Section */}
+        <View style={styles.sectionContainer}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[2] }}>
+            <Text style={styles.sectionTitle}>Hospital Affiliation</Text>
+            {affiliation ? (
+              <TouchableOpacity onPress={handleDisconnectHospital} activeOpacity={0.7}>
+                <Text style={{ fontSize: FontSize.xs, color: Colors.error.main, fontWeight: FontWeight.medium }}>
+                  Disconnect
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+          <View style={styles.infoCard}>
+            {affiliation ? (
+              <View style={{ gap: Spacing[2] }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <HospitalBadge hospitalName={affiliation.hospitalName} size="md" isVerified />
+                  <View style={styles.activeTag}>
+                    <Ionicons name="checkmark-circle-outline" size={13} color="#0F6E6E" />
+                    <Text style={styles.activeTagText}>Affiliated</Text>
+                  </View>
+                </View>
+
+                <View style={{ marginTop: 4 }}>
+                  <Text style={styles.hospitalMetaLabel}>Department</Text>
+                  <Text style={styles.hospitalMetaValue}>{affiliation.department}</Text>
+                </View>
+
+                <View>
+                  <Text style={styles.hospitalMetaLabel}>Hospital Address</Text>
+                  <Text style={styles.hospitalMetaValue}>{affiliation.hospitalAddress}</Text>
+                </View>
+
+                <View style={styles.hospitalSyncNotice}>
+                  <Ionicons name="information-circle-outline" size={16} color="#0F6E6E" />
+                  <Text style={styles.hospitalSyncText}>
+                    Hospital patient records and department queue are synced with your doctor workspace.
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={{ gap: Spacing[2] }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <HospitalBadge isIndependent size="md" />
+                  <View style={styles.independentTag}>
+                    <Ionicons name="shield-outline" size={13} color="#4338CA" />
+                    <Text style={styles.independentTagText}>Verified Credentials</Text>
+                  </View>
+                </View>
+                <Text style={styles.independentDesc}>
+                  You are currently practicing independently. Connect with your hospital anytime using the 6-digit code issued by your hospital administration.
+                </Text>
+                <TouchableOpacity
+                  style={styles.connectHospitalBtn}
+                  onPress={() => {
+                    setHospitalCodeInput('');
+                    setIsHospitalModalOpen(true);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="business-outline" size={16} color="#FFFFFF" />
+                  <Text style={styles.connectHospitalBtnText}>Connect with 6-Digit Code</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
 
@@ -605,6 +737,94 @@ export default function DoctorProfileScreen({ navigation }: any) {
             />
           </View>
           <Text style={styles.bioCharCount}>{bioInput.length} / 500 characters</Text>
+        </ScrollView>
+      </AppModal>
+
+      {/* 6-Digit Hospital Connection Modal */}
+      <AppModal
+        visible={isHospitalModalOpen}
+        onClose={() => setIsHospitalModalOpen(false)}
+        title="Connect to Hospital"
+        contentStyle={{ alignSelf: 'center' }}
+        footer={
+          <View style={{ flexDirection: 'row', gap: Spacing[3] }}>
+            <Button
+              variant="outline"
+              label="Cancel"
+              onPress={() => setIsHospitalModalOpen(false)}
+              style={{ flex: 1 }}
+            />
+            <Button
+              variant="primary"
+              label="Confirm & Connect"
+              disabled={hospitalCodeInput.trim().replace(/\D/g, '').length !== 6}
+              onPress={handleConnectHospital}
+              style={{ flex: 1 }}
+            />
+          </View>
+        }
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.modalBody}
+        >
+          <View style={styles.hospitalModalHeader}>
+            <Ionicons name="business-outline" size={28} color="#0F6E6E" />
+            <Text style={styles.hospitalModalTitle}>Enter 6-Digit Hospital Code</Text>
+            <Text style={styles.hospitalModalSub}>
+              Ask your hospital administrator for your temporary 6-digit affiliation code.
+            </Text>
+          </View>
+
+          <Input
+            label="6-Digit Affiliation Code"
+            hint="Enter the 6 numbers e.g. 492817"
+            value={hospitalCodeInput}
+            onChangeText={(text) => setHospitalCodeInput(text.replace(/\D/g, '').slice(0, 6))}
+            keyboardType="numeric"
+            maxLength={6}
+            leftIcon="keypad-outline"
+            style={styles.codeLargeInput}
+            autoFocus
+          />
+
+          {matchingInvite ? (
+            <View style={styles.invitePreviewCard}>
+              <View style={styles.invitePreviewHeader}>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#0F6E6E" />
+                <Text style={styles.invitePreviewStatus}>Valid Hospital Code Found</Text>
+              </View>
+              <Text style={styles.inviteHospitalName}>{matchingInvite.hospitalName}</Text>
+              <Text style={styles.inviteDeptText}>Department: {matchingInvite.department}</Text>
+              <Text style={styles.inviteAdminText}>Issued by: {matchingInvite.generatedByAdminName}</Text>
+            </View>
+          ) : hospitalCodeInput.trim().replace(/\D/g, '').length === 6 ? (
+            <View style={styles.inviteInvalidCard}>
+              <Ionicons name="alert-circle-outline" size={18} color={Colors.error.main} />
+              <Text style={styles.inviteInvalidText}>
+                No active hospital invitation found for code {hospitalCodeInput}. Please verify with your admin.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.demoCodesCard}>
+              <Text style={styles.demoCodesTitle}>Sample Hospital Codes for Testing:</Text>
+              <TouchableOpacity
+                onPress={() => setHospitalCodeInput('492817')}
+                style={styles.demoCodeItem}
+              >
+                <Text style={styles.demoCodeNumber}>492817</Text>
+                <Text style={styles.demoCodeLabel}>Evercare Hospital Lekki (Cardiology)</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setHospitalCodeInput('715392')}
+                style={styles.demoCodeItem}
+              >
+                <Text style={styles.demoCodeNumber}>715392</Text>
+                <Text style={styles.demoCodeLabel}>LUTH (Cardiology)</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       </AppModal>
     </SafeAreaView>
@@ -1019,5 +1239,193 @@ const styles = StyleSheet.create({
     color: Colors.text.secondary,
     lineHeight: 15,
     marginTop: 2,
+  },
+  activeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E6F4F4',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#B2DFDB',
+  },
+  activeTagText: {
+    fontSize: FontSize.xs,
+    color: '#0F6E6E',
+    fontWeight: FontWeight.medium,
+  },
+  independentTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  independentTagText: {
+    fontSize: FontSize.xs,
+    color: '#4338CA',
+    fontWeight: FontWeight.medium,
+  },
+  hospitalMetaLabel: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    fontWeight: FontWeight.medium,
+    marginBottom: 1,
+  },
+  hospitalMetaValue: {
+    fontSize: FontSize.sm,
+    color: Colors.text.primary,
+    fontWeight: FontWeight.semiBold,
+  },
+  hospitalSyncNotice: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#F0FDFA',
+    padding: Spacing[3],
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    marginTop: 4,
+  },
+  hospitalSyncText: {
+    fontSize: 12,
+    color: '#0F6E6E',
+    flex: 1,
+    lineHeight: 16,
+  },
+  independentDesc: {
+    fontSize: FontSize.sm,
+    color: Colors.text.secondary,
+    lineHeight: 18,
+  },
+  connectHospitalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0F6E6E',
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  connectHospitalBtnText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semiBold,
+  },
+  hospitalModalHeader: {
+    alignItems: 'center',
+    marginBottom: Spacing[4],
+  },
+  hospitalModalTitle: {
+    fontSize: FontSize.md,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+    marginTop: Spacing[2],
+  },
+  hospitalModalSub: {
+    fontSize: FontSize.xs,
+    color: Colors.text.secondary,
+    textAlign: 'center',
+    marginTop: 4,
+    paddingHorizontal: Spacing[3],
+  },
+  codeLargeInput: {
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+    textAlign: 'center',
+    letterSpacing: 4,
+  },
+  invitePreviewCard: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#99F6E4',
+    borderRadius: 8,
+    padding: Spacing[3],
+    marginTop: Spacing[3],
+    gap: 3,
+  },
+  invitePreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  invitePreviewStatus: {
+    fontSize: 12,
+    color: '#0F6E6E',
+    fontWeight: FontWeight.bold,
+  },
+  inviteHospitalName: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.primary,
+  },
+  inviteDeptText: {
+    fontSize: 12,
+    color: Colors.text.secondary,
+  },
+  inviteAdminText: {
+    fontSize: 11,
+    color: Colors.neutral[400],
+  },
+  inviteInvalidCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 8,
+    padding: Spacing[3],
+    marginTop: Spacing[3],
+  },
+  inviteInvalidText: {
+    fontSize: 12,
+    color: Colors.error.main,
+    flex: 1,
+  },
+  demoCodesCard: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: Spacing[3],
+    marginTop: Spacing[3],
+    gap: Spacing[2],
+  },
+  demoCodesTitle: {
+    fontSize: 11,
+    fontWeight: FontWeight.bold,
+    color: Colors.text.secondary,
+    textTransform: 'uppercase',
+  },
+  demoCodeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  demoCodeNumber: {
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontWeight: FontWeight.bold,
+    color: '#0F6E6E',
+    backgroundColor: '#E6F4F4',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  demoCodeLabel: {
+    fontSize: 11,
+    color: Colors.text.secondary,
+    flex: 1,
   },
 });

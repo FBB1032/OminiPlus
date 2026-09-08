@@ -20,6 +20,8 @@ export { SkeletonBox, SkeletonCard, SkeletonList, SkeletonDashboard, SkeletonDet
 export { ToastProvider } from './feedback/Toast';
 export { AccessDenied } from './feedback/AccessDenied';
 export { LoadingOverlay } from './feedback/LoadingOverlay';
+export { HeartbeatLoader } from './feedback/HeartbeatLoader';
+export { HeartbeatRefreshControl, HeartbeatRefreshHeader, HeartbeatScrollView } from './feedback/HeartbeatRefreshControl';
 export { FormInput } from './forms/FormInput';
 export { OTPInput } from './forms/OTPInput';
 export { FormSelect } from './forms/FormSelect';
@@ -32,6 +34,7 @@ export { NDPAGuard } from './security/NDPAGuard';
 export { BodyMap } from './ui/BodyMap';
 export { AIDisclaimerBanner } from './common/AIDisclaimerBanner';
 export { DoctorStatusBadge } from './common/DoctorStatusBadge';
+export { HospitalBadge } from './common/HospitalBadge';
 export { ConsentModal } from './consent/ConsentModal';
 export { SocialLoginButtons } from './auth/SocialLoginButtons';
 export { MedicalRecordsHeader } from './medical-records/MedicalRecordsHeader';

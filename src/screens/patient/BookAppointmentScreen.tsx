@@ -19,6 +19,7 @@ import { bookAppointmentSchema } from '../../utils/validators';
 import {
   Avatar,
   Card,
+  HospitalBadge,
   StepIndicator,
   Input,
   Button,
@@ -48,7 +49,8 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
   );
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [appointmentType, setAppointmentType] = useState<'in_person' | 'video' | 'phone'>('in_person');
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState(route.params?.prefilledReason || '');
+  const [selectedSpecialization, setSelectedSpecialization] = useState<string | null>(route.params?.specialization || null);
   const [reasonError, setReasonError] = useState<string | null>(null);
   const [doctorSearch, setDoctorSearch] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
@@ -118,11 +120,16 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
     if (!doctorsResponse?.data) return [];
     return doctorsResponse.data.filter((doc) => {
       const name = `${doc.firstName} ${doc.lastName}`.toLowerCase();
-      const spec = doc.specialization.toLowerCase();
+      const spec = (doc.specialization || '').toLowerCase();
       const search = doctorSearch.toLowerCase();
-      return name.includes(search) || spec.includes(search);
+      const matchesSearch = !search || name.includes(search) || spec.includes(search);
+      const matchesSpec =
+        !selectedSpecialization ||
+        spec.includes(selectedSpecialization.toLowerCase()) ||
+        selectedSpecialization.toLowerCase().includes(spec);
+      return matchesSearch && matchesSpec;
     });
-  }, [doctorsResponse, doctorSearch]);
+  }, [doctorsResponse, doctorSearch, selectedSpecialization]);
 
   // Generate next 7 days for the slot selector
   const nextDays = useMemo(() => {
@@ -338,6 +345,13 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
       <View style={styles.doctorInfo}>
         <Text style={styles.docName}>Dr. {item.firstName} {item.lastName}</Text>
         <Text style={styles.docSpec}>{item.specialization}</Text>
+        <View style={{ marginVertical: 2 }}>
+          <HospitalBadge
+            hospitalName={item.clinicName || item.hospital}
+            isIndependent={!item.clinicName && !item.hospital}
+            size="sm"
+          />
+        </View>
         <View style={styles.ratingRow}>
           <Ionicons name="star" size={14} color="#F59E0B" />
           <Text style={styles.ratingText}>
@@ -392,6 +406,34 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
                 leftIcon="search-outline"
               />
             </View>
+
+            {selectedSpecialization && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  backgroundColor: '#EFF6FF',
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  marginHorizontal: 16,
+                  marginBottom: 10,
+                  borderWidth: 1,
+                  borderColor: '#BFDBFE',
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="filter" size={14} color="#2563EB" />
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#1D4ED8' }}>
+                    Triage Filter: {selectedSpecialization}
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedSpecialization(null)}>
+                  <Text style={{ fontSize: 12, fontWeight: '700', color: '#DC2626' }}>Show All</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {showDoctorsSkeleton ? (
               <SkeletonList />
@@ -618,6 +660,13 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.docName}>Dr. {selectedDoctor.firstName} {selectedDoctor.lastName}</Text>
                 <Text style={styles.docSpec}>{selectedDoctor.specialization}</Text>
+                <View style={{ marginTop: 2 }}>
+                  <HospitalBadge
+                    hospitalName={selectedDoctor.clinicName || selectedDoctor.hospital}
+                    isIndependent={!selectedDoctor.clinicName && !selectedDoctor.hospital}
+                    size="sm"
+                  />
+                </View>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
                 <Text style={{ fontSize: FontSize.xs, color: Colors.text.secondary }}>
