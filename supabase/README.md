@@ -65,7 +65,7 @@ Client integration (already wired in this repo):
 ## 3. Dummy Sign-in Credentials (all platforms)
 
 > These accounts work on **both** the mobile app and the web/desktop app once
-> `seed.sql` + the auth seeding steps below are applied. All demo passwords meet
+> `seed.sql` is applied (it seeds `auth.users` + `profiles` together). All demo passwords meet
 > an 8+ character policy.
 
 ### 3.1 The 6 Platform Admins (web admin console)
@@ -122,64 +122,21 @@ psql "$SUPABASE_DB_URL" -f supabase/seed.sql
 # or: supabase db reset (local) with seed.sql configured as seed file
 ```
 
-### 4.2 Seed the auth users (passwords live in auth.users)
+`seed.sql` can also be pasted straight into the Supabase **SQL editor** — it is
+self-contained. The auth users, identities, and profiles sections are safe to
+re-run (upserts), but re-running duplicates the demo clinical rows (vitals,
+audit logs, notifications, donors, etc.), so run the demo-data section once.
 
-`seed.sql` creates the `profiles` rows with deterministic UUIDs; the matching
-`auth.users` entries must be created once (any order) so passwords work:
+### 4.2 Auth users are seeded by seed.sql itself
 
-```bash
-# helper script using the admin API (run from repo root)
-node scripts/seed-supabase-auth.mjs
-```
+`seed.sql` creates the `auth.users` + `auth.identities` rows (deterministic UUIDs,
+bcrypt-hashed passwords via pgcrypto) **before** inserting the matching
+`public.profiles` rows, because `profiles.id` is a foreign key to
+`auth.users(id)`. No separate auth-seeding step or helper script is needed.
 
-`scripts/seed-supabase-auth.mjs` (create with your project URL + service key in env):
-
-```js
-// Usage: SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/seed-supabase-auth.mjs
-const USERS = [
-  ['11111111-1111-1111-1111-111111111111', 'superadmin@ominipulse.ai',    'OminiAdmin2026!',  'Adaora',  'Obi',     'admin'],
-  ['22222222-2222-2222-2222-222222222222', 'verification@ominipulse.ai', 'VerifyAdmin2026!', 'Ngozi',   'Eze',     'admin'],
-  ['33333333-3333-3333-3333-333333333333', 'support@ominipulse.ai',       'SupportAdmin2026!','Tunde',   'Bakare',  'admin'],
-  ['44444444-4444-4444-4444-444444444444', 'security@ominipulse.ai',      'SecureAdmin2026!', 'Halima',  'Bello',   'admin'],
-  ['55555555-5555-5555-5555-555555555555', 'moderator@ominipulse.ai',     'Moder8Admin2026!', 'Emeka',   'Nnamdi',  'admin'],
-  ['66666666-6666-6666-6666-666666666666', 'hospitalrel@ominipulse.ai',  'PartnerAdmin2026!','Yetunde','Adeyemi', 'admin'],
-  ['77777777-7777-7777-7777-777777777777', 'doctor@ominipulse.ai',        'Doctor2026!',      'Folake',  'Ademola', 'doctor'],
-  ['88888888-8888-8888-8888-888888888888', 'patient@ominipulse.ai',      'Patient2026!',     'Chioma',  'Egwu',    'patient'],
-  ['99999999-9999-9999-9999-999999999999', 'admin@xyzspecialist.ng',     'HospAdmin2026!',   'Ibrahim', 'Sani',    'hospital_admin'],
-  ['aaaaaaa1-1111-4111-8111-aaaaaaaaaaa1', 'nurse@xyzspecialist.ng',     'Nurse2026!',       'Amina',   'Yusuf',   'nurse'],
-  ['aaaaaaa2-2222-4222-8222-aaaaaaaaaaa2', 'pharmacist@xyzspecialist.ng','Pharm2026!',       'Chioma',  'Okonkwo', 'pharmacist'],
-  ['aaaaaaa3-3333-4333-8333-aaaaaaaaaaa3', 'labtech@xyzspecialist.ng',   'LabTech2026!',     'Emeka',   'Nnamdi',  'lab_technician'],
-  ['aaaaaaa4-4444-4444-8444-aaaaaaaaaaa4', 'bloodbank@xyzspecialist.ng', 'BloodBank2026!',   'Musa',    'Garba',   'blood_officer'],
-  ['aaaaaaa5-5555-4555-8555-aaaaaaaaaaa5', 'reception@xyzspecialist.ng', 'Reception2026!',   'Fatima',  'Mohammed','receptionist'],
-];
-
-const admin = await (await import('@supabase/supabase-js')).createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  { auth: { persistSession: false } }
-);
-
-for (const [id, email, password, first, last, role] of USERS) {
-  const { data, error } = await admin.auth.admin.createUser({
-    email, password, email_confirm: true,
-    user_metadata: { first_name: first, last_name: last, role },
-  });
-  // align the auth.users id with the deterministic profile id
-  if (data?.user && data.user.id !== id) {
-    // the trigger already created a profile for the new id; move it
-    await admin.from('profiles').update({ id }).eq('id', data.user.id);
-    // note: if your plan disallows auth id mutation, instead pre-create
-    // users with the deterministic ids via createUser({ ... }) then update.
-  }
-  console.log(email, error ? 'FAILED: ' + error.message : 'OK');
-}
-```
-
-> Alternative without the helper script: create each user from the Supabase
-> dashboard (Authentication → Add user) with the emails + passwords from the
-> tables in §3. The `on_auth_user_created` trigger then links `profiles`
-> automatically; seed.sql rows with matching deterministic UUIDs will simply
-> be reused (`on conflict do nothing`) once the ids align.
+> Note: the SQL editor runs with elevated privileges, which is what allows the
+> direct `auth.users` inserts. If you seed via `psql`/`supabase db reset` with a
+> restricted role, run it as a role that may write to the `auth` schema.
 
 ### 4.3 Deploy edge functions
 
