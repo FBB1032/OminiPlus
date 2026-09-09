@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -11,22 +11,27 @@ import {
   Image,
   Dimensions,
   StatusBar,
-} from 'react-native';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, LoginFormValues } from '../../../utils/validators';
-import { authService } from '../../../services/authService';
-import { Button, FormInput, LoadingOverlay, SocialLoginButtons } from '../../../components';
-import { useToast } from '../../../hooks/useAuth';
-import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../../theme';
-import { Ionicons } from '@expo/vector-icons';
-import { AuthScreenProps } from '../../../types';
+} from "react-native";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, LoginFormValues } from "../../../utils/validators";
+import { authService } from "../../../services/authService";
+import {
+  Button,
+  FormInput,
+  LoadingOverlay,
+  SocialLoginButtons,
+} from "../../../components";
+import { useToast } from "../../../hooks/useAuth";
+import { Colors, Spacing, FontSize, FontWeight, Shadows } from "../../../theme";
+import { Ionicons } from "@expo/vector-icons";
+import { AuthScreenProps } from "../../../types";
 
-const medicalTeamIllustration = require('../../../../assets/images/medical_team.jpg');
+const medicalTeamIllustration = require("../../../../assets/images/medical_team.jpg");
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
-export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
+export default function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   const [loading, setLoading] = useState(false);
   const { error: showToastError, success: showToastSuccess } = useToast();
 
@@ -38,31 +43,38 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
   const handleApplyDemoDoctor = () => {
-    setValue('email', 'doctor@ominipulse.ai');
-    setValue('password', 'admin123');
-    showToastSuccess('Doctor Credentials Applied', 'Dr. Folake Ademola (Cardiologist, MDCN verified)');
+    setValue("email", "doctor@ominipulse.ai");
+    setValue("password", "Doctor2026!");
+    showToastSuccess(
+      "Doctor Credentials Applied",
+      "Dr. Folake Ademola (Cardiologist, MDCN verified)",
+    );
   };
 
   const handleApplyDemoPatient = () => {
-    setValue('email', 'patient@ominipulse.ai');
-    setValue('password', 'admin123');
-    showToastSuccess('Patient Credentials Applied', 'Chioma Egwu (Health records active)');
+    setValue("email", "patient@ominipulse.ai");
+    setValue("password", "Patient2026!");
+    showToastSuccess(
+      "Patient Credentials Applied",
+      "Chioma Egwu (Health records active)",
+    );
   };
 
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     try {
       await authService.login(data);
-      showToastSuccess('Welcome back!', 'Logged in successfully.');
+      showToastSuccess("Welcome back!", "Logged in successfully.");
     } catch (err: any) {
-      const message = err?.response?.data?.message || 'Invalid email or password.';
-      showToastError('Login Failed', message);
+      const message =
+        err?.response?.data?.message || "Invalid email or password.";
+      showToastError("Login Failed", message);
     } finally {
       setLoading(false);
     }
@@ -70,11 +82,15 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0F6E6E" translucent={Platform.OS === 'android'} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#0F6E6E"
+        translucent={Platform.OS === "android"}
+      />
 
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
         >
           <ScrollView
@@ -94,7 +110,9 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
               </View>
               <View style={styles.headerContainer}>
                 <Text style={styles.title}>Welcome Back</Text>
-                <Text style={styles.subtitle}>Sign in to continue your healthcare journey</Text>
+                <Text style={styles.subtitle}>
+                  Sign in to continue your healthcare journey
+                </Text>
               </View>
 
               <View style={styles.inputsBox}>
@@ -122,7 +140,7 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => navigation.navigate('ForgotPassword')}
+                  onPress={() => navigation.navigate("ForgotPassword")}
                   style={styles.forgotContainer}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 >
@@ -133,7 +151,9 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
                 <View style={styles.demoCard}>
                   <View style={styles.demoHeaderRow}>
                     <Ionicons name="flash-outline" size={13} color="#0D9488" />
-                    <Text style={styles.demoCardTitle}>COMPETITION QUICK-FILL</Text>
+                    <Text style={styles.demoCardTitle}>
+                      COMPETITION QUICK-FILL
+                    </Text>
                   </View>
                   <View style={styles.demoButtonsRow}>
                     <TouchableOpacity
@@ -142,7 +162,9 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="medkit" size={13} color="#065F46" />
-                      <Text style={styles.demoDoctorText}>Doctor (Dr. Folake)</Text>
+                      <Text style={styles.demoDoctorText}>
+                        Doctor (Dr. Folake)
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.demoPatientBtn}
@@ -150,11 +172,14 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
                       activeOpacity={0.8}
                     >
                       <Ionicons name="person" size={13} color="#1E40AF" />
-                      <Text style={styles.demoPatientText}>Patient (Chioma)</Text>
+                      <Text style={styles.demoPatientText}>
+                        Patient (Chioma)
+                      </Text>
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.demoSubtitle}>
-                    Doctor login is identical on Phone & Desktop · doctor@ominipulse.ai
+                    Doctor login is identical on Phone & Desktop ·
+                    doctor@ominipulse.ai
                   </Text>
                 </View>
 
@@ -172,21 +197,29 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 
                 {/* Mobile-Only Account Creation Reminder */}
                 <View style={styles.registerNoticeCard}>
-                  <Ionicons name="phone-portrait-outline" size={14} color="#0D9488" style={{ marginRight: 6 }} />
+                  <Ionicons
+                    name="phone-portrait-outline"
+                    size={14}
+                    color="#0D9488"
+                    style={{ marginRight: 6 }}
+                  />
                   <Text style={styles.registerNoticeText}>
-                    Account creation for Doctors & Patients is conducted exclusively on mobile.
+                    Account creation for Doctors & Patients is conducted
+                    exclusively on mobile.
                   </Text>
                 </View>
 
                 {/* Switch to Register */}
                 <View style={styles.footerRow}>
-                  <Text style={styles.footerQuestion}>Don't have an account? </Text>
+                  <Text style={styles.footerQuestion}>
+                    Don't have an account?{" "}
+                  </Text>
                   <TouchableOpacity
                     onPress={() => {
                       if (navigation.canGoBack()) {
                         navigation.goBack();
                       } else {
-                        navigation.navigate('RoleSelection');
+                        navigation.navigate("RoleSelection");
                       }
                     }}
                     activeOpacity={0.7}
@@ -208,11 +241,11 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B5757', // Deep teal — app brand color
+    backgroundColor: "#0B5757", // Deep teal — app brand color
   },
   safeArea: {
     flex: 1,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
+    paddingTop: Platform.OS === "android" ? (StatusBar.currentHeight ?? 24) : 0,
   },
   keyboardView: {
     flex: 1,
@@ -224,16 +257,16 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   formCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 28,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...Shadows.lg,
     elevation: 10,
   },
   illustrationHeader: {
-    backgroundColor: '#44C997',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#44C997",
+    alignItems: "center",
+    justifyContent: "center",
     paddingTop: 20,
     paddingBottom: 0,
     borderTopLeftRadius: 28,
@@ -244,21 +277,21 @@ const styles = StyleSheet.create({
     height: 180,
   },
   headerContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: Spacing[4],
     paddingHorizontal: 22,
     paddingTop: 20,
   },
   title: {
     fontSize: 22,
-    fontWeight: '800',
-    color: '#165A48',
+    fontWeight: "800",
+    color: "#165A48",
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: FontSize.xs,
     color: Colors.text.secondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 4,
   },
   inputsBox: {
@@ -267,7 +300,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   forgotContainer: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginTop: -2,
     marginBottom: 2,
   },
@@ -277,29 +310,29 @@ const styles = StyleSheet.create({
     fontWeight: FontWeight.medium,
   },
   submitBtn: {
-    width: '100%',
+    width: "100%",
     height: 50,
     borderRadius: 16,
-    backgroundColor: '#44C997', // Mint green button
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#44C997", // Mint green button
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 4,
-    shadowColor: '#44C997',
+    shadowColor: "#44C997",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   submitBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: 0.2,
   },
   footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: Spacing[2],
   },
   footerQuestion: {
@@ -308,90 +341,90 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: FontSize.xs,
-    color: '#165A48',
+    color: "#165A48",
     fontWeight: FontWeight.bold,
-    textDecorationLine: 'underline',
+    textDecorationLine: "underline",
   },
   demoCard: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: "#F0FDF4",
     borderWidth: 1,
-    borderColor: '#BBF7D0',
+    borderColor: "#BBF7D0",
     borderRadius: 14,
     padding: 10,
     marginTop: 2,
     marginBottom: 4,
   },
   demoHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 5,
     marginBottom: 8,
   },
   demoCardTitle: {
     fontSize: 10.5,
-    fontWeight: '700',
-    color: '#047857',
+    fontWeight: "700",
+    color: "#047857",
     letterSpacing: 0.5,
   },
   demoButtonsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   demoDoctorBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 5,
-    backgroundColor: '#D1FAE5',
+    backgroundColor: "#D1FAE5",
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: "#A7F3D0",
     borderRadius: 10,
     paddingVertical: 7,
   },
   demoDoctorText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#065F46',
+    fontWeight: "700",
+    color: "#065F46",
   },
   demoPatientBtn: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 5,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: "#EFF6FF",
     borderWidth: 1,
-    borderColor: '#BFDBFE',
+    borderColor: "#BFDBFE",
     borderRadius: 10,
     paddingVertical: 7,
   },
   demoPatientText: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#1E40AF',
+    fontWeight: "700",
+    color: "#1E40AF",
   },
   demoSubtitle: {
     fontSize: 10,
-    color: '#059669',
-    textAlign: 'center',
+    color: "#059669",
+    textAlign: "center",
     marginTop: 6,
   },
   registerNoticeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     borderRadius: 10,
     padding: 10,
     marginTop: 6,
   },
   registerNoticeText: {
     fontSize: 11,
-    color: '#475569',
-    textAlign: 'left',
+    color: "#475569",
+    textAlign: "left",
     lineHeight: 15,
     flex: 1,
   },
