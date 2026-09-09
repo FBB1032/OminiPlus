@@ -124,8 +124,9 @@ psql "$SUPABASE_DB_URL" -f supabase/seed.sql
 
 `seed.sql` can also be pasted straight into the Supabase **SQL editor** — it is
 self-contained. The auth users, identities, and profiles sections are safe to
-re-run (upserts), but re-running duplicates the demo clinical rows (vitals,
-audit logs, notifications, donors, etc.), so run the demo-data section once.
+re-run (upserts that also backfill the non-null token columns GoTrue requires),
+and the one-time demo clinical data (vitals, audit logs, notifications, donors,
+etc.) is guarded by a sentinel check, so re-running never duplicates those rows.
 
 ### 4.2 Auth users are seeded by seed.sql itself
 

@@ -64,36 +64,55 @@ delete from auth.users
     'aaaaaaa4-4444-4444-8444-aaaaaaaaaaa4', 'aaaaaaa5-5555-4555-8555-aaaaaaaaaaa5'
  );
 
+-- GoTrue scans the token columns below as NON-NULL strings. Direct inserts
+-- that omit them leave NULLs, and every auth query on those rows then 500s
+-- with "Database error querying schema" (supabase/auth#1940) — so they are
+-- explicitly seeded as empty strings here.
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, email_change, email_change_confirm_status,
+  confirmation_token, recovery_token,
+  email_change_token_current, email_change_token_new,
+  phone_change, phone_change_token, reauthentication_token,
+  is_sso_user, is_anonymous,
   created_at, updated_at, raw_app_meta_data, raw_user_meta_data
 ) values
   -- 6 platform admins
-  ('00000000-0000-0000-0000-000000000000', '11111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'superadmin@ominipulse.ai',    crypt('OminiAdmin2026!',  gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Adaora","last_name":"Obi","role":"admin"}'),
-  ('00000000-0000-0000-0000-000000000000', '22222222-2222-2222-2222-222222222222', 'authenticated', 'authenticated', 'verification@ominipulse.ai',  crypt('VerifyAdmin2026!',  gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Ngozi","last_name":"Eze","role":"admin"}'),
-  ('00000000-0000-0000-0000-000000000000', '33333333-3333-3333-3333-333333333333', 'authenticated', 'authenticated', 'support@ominipulse.ai',       crypt('SupportAdmin2026!', gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Tunde","last_name":"Bakare","role":"admin"}'),
-  ('00000000-0000-0000-0000-000000000000', '44444444-4444-4444-4444-444444444444', 'authenticated', 'authenticated', 'security@ominipulse.ai',      crypt('SecureAdmin2026!',  gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Halima","last_name":"Bello","role":"admin"}'),
-  ('00000000-0000-0000-0000-000000000000', '55555555-5555-5555-5555-555555555555', 'authenticated', 'authenticated', 'moderator@ominipulse.ai',     crypt('Moder8Admin2026!',  gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Emeka","last_name":"Nnamdi","role":"admin"}'),
-  ('00000000-0000-0000-0000-000000000000', '66666666-6666-6666-6666-666666666666', 'authenticated', 'authenticated', 'hospitalrel@ominipulse.ai',   crypt('PartnerAdmin2026!', gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Yetunde","last_name":"Adeyemi","role":"admin"}'),
+  ('00000000-0000-0000-0000-000000000000', '11111111-1111-1111-1111-111111111111', 'authenticated', 'authenticated', 'superadmin@ominipulse.ai',    crypt('OminiAdmin2026!',  gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Adaora","last_name":"Obi","role":"admin"}'),
+  ('00000000-0000-0000-0000-000000000000', '22222222-2222-2222-2222-222222222222', 'authenticated', 'authenticated', 'verification@ominipulse.ai',  crypt('VerifyAdmin2026!',  gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Ngozi","last_name":"Eze","role":"admin"}'),
+  ('00000000-0000-0000-0000-000000000000', '33333333-3333-3333-3333-333333333333', 'authenticated', 'authenticated', 'support@ominipulse.ai',       crypt('SupportAdmin2026!', gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Tunde","last_name":"Bakare","role":"admin"}'),
+  ('00000000-0000-0000-0000-000000000000', '44444444-4444-4444-4444-444444444444', 'authenticated', 'authenticated', 'security@ominipulse.ai',      crypt('SecureAdmin2026!',  gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Halima","last_name":"Bello","role":"admin"}'),
+  ('00000000-0000-0000-0000-000000000000', '55555555-5555-5555-5555-555555555555', 'authenticated', 'authenticated', 'moderator@ominipulse.ai',     crypt('Moder8Admin2026!',  gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Emeka","last_name":"Nnamdi","role":"admin"}'),
+  ('00000000-0000-0000-0000-000000000000', '66666666-6666-6666-6666-666666666666', 'authenticated', 'authenticated', 'hospitalrel@ominipulse.ai',   crypt('PartnerAdmin2026!', gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Yetunde","last_name":"Adeyemi","role":"admin"}'),
   -- doctor
-  ('00000000-0000-0000-0000-000000000000', '77777777-7777-7777-7777-777777777777', 'authenticated', 'authenticated', 'doctor@ominipulse.ai',        crypt('Doctor2026!',       gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Folake","last_name":"Ademola","role":"doctor"}'),
+  ('00000000-0000-0000-0000-000000000000', '77777777-7777-7777-7777-777777777777', 'authenticated', 'authenticated', 'doctor@ominipulse.ai',        crypt('Doctor2026!',       gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Folake","last_name":"Ademola","role":"doctor"}'),
   -- patient
-  ('00000000-0000-0000-0000-000000000000', '88888888-8888-8888-8888-888888888888', 'authenticated', 'authenticated', 'patient@ominipulse.ai',       crypt('Patient2026!',       gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Chioma","last_name":"Egwu","role":"patient"}'),
+  ('00000000-0000-0000-0000-000000000000', '88888888-8888-8888-8888-888888888888', 'authenticated', 'authenticated', 'patient@ominipulse.ai',       crypt('Patient2026!',       gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Chioma","last_name":"Egwu","role":"patient"}'),
   -- hospital staff
-  ('00000000-0000-0000-0000-000000000000', '99999999-9999-9999-9999-999999999999', 'authenticated', 'authenticated', 'admin@xyzspecialist.ng',      crypt('HospAdmin2026!',     gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Ibrahim","last_name":"Sani","role":"hospital_admin"}'),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-1111-4111-8111-aaaaaaaaaaa1', 'authenticated', 'authenticated', 'nurse@xyzspecialist.ng',      crypt('Nurse2026!',          gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Amina","last_name":"Yusuf","role":"nurse"}'),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa2-2222-4222-8222-aaaaaaaaaaa2', 'authenticated', 'authenticated', 'pharmacist@xyzspecialist.ng', crypt('Pharm2026!',          gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Chioma","last_name":"Okonkwo","role":"pharmacist"}'),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa3-3333-4333-8333-aaaaaaaaaaa3', 'authenticated', 'authenticated', 'labtech@xyzspecialist.ng',   crypt('LabTech2026!',        gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Emeka","last_name":"Nnamdi","role":"lab_technician"}'),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa4-4444-4444-8444-aaaaaaaaaaa4', 'authenticated', 'authenticated', 'bloodbank@xyzspecialist.ng',  crypt('BloodBank2026!',      gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Musa","last_name":"Garba","role":"blood_officer"}'),
-  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa5-5555-4555-8555-aaaaaaaaaaa5', 'authenticated', 'authenticated', 'reception@xyzspecialist.ng',  crypt('Reception2026!',      gen_salt('bf')), now(), '', 0, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Fatima","last_name":"Mohammed","role":"receptionist"}')
+  ('00000000-0000-0000-0000-000000000000', '99999999-9999-9999-9999-999999999999', 'authenticated', 'authenticated', 'admin@xyzspecialist.ng',      crypt('HospAdmin2026!',     gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Ibrahim","last_name":"Sani","role":"hospital_admin"}'),
+  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa1-1111-4111-8111-aaaaaaaaaaa1', 'authenticated', 'authenticated', 'nurse@xyzspecialist.ng',      crypt('Nurse2026!',          gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Amina","last_name":"Yusuf","role":"nurse"}'),
+  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa2-2222-4222-8222-aaaaaaaaaaa2', 'authenticated', 'authenticated', 'pharmacist@xyzspecialist.ng', crypt('Pharm2026!',          gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Chioma","last_name":"Okonkwo","role":"pharmacist"}'),
+  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa3-3333-4333-8333-aaaaaaaaaaa3', 'authenticated', 'authenticated', 'labtech@xyzspecialist.ng',   crypt('LabTech2026!',        gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Emeka","last_name":"Nnamdi","role":"lab_technician"}'),
+  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa4-4444-4444-8444-aaaaaaaaaaa4', 'authenticated', 'authenticated', 'bloodbank@xyzspecialist.ng',  crypt('BloodBank2026!',      gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Musa","last_name":"Garba","role":"blood_officer"}'),
+  ('00000000-0000-0000-0000-000000000000', 'aaaaaaa5-5555-4555-8555-aaaaaaaaaaa5', 'authenticated', 'authenticated', 'reception@xyzspecialist.ng',  crypt('Reception2026!',      gen_salt('bf')), now(), '', 0, '', '', '', '', '', '', '', false, false, now(), now(), '{"provider":"email","providers":["email"]}', '{"first_name":"Fatima","last_name":"Mohammed","role":"receptionist"}')
 on conflict (id) do update
-  set email              = excluded.email,
-      encrypted_password = excluded.encrypted_password,
-      email_confirmed_at = excluded.email_confirmed_at,
-      raw_app_meta_data  = excluded.raw_app_meta_data,
-      raw_user_meta_data = excluded.raw_user_meta_data,
-      updated_at        = now();
+  set email                      = excluded.email,
+      encrypted_password         = excluded.encrypted_password,
+      email_confirmed_at         = excluded.email_confirmed_at,
+      confirmation_token         = '',
+      recovery_token             = '',
+      email_change_token_current = '',
+      email_change_token_new     = '',
+      phone_change              = '',
+      phone_change_token        = '',
+      reauthentication_token     = '',
+      email_change              = '',
+      email_change_confirm_status = 0,
+      is_sso_user               = false,
+      is_anonymous              = false,
+      raw_app_meta_data          = excluded.raw_app_meta_data,
+      raw_user_meta_data         = excluded.raw_user_meta_data,
+      updated_at                = now();
 
 -- Identity rows (required — without them password login fails with
 -- "Identity not found"). provider_id = the user's id for email identities.
@@ -152,6 +171,18 @@ on conflict (id) do update
       is_two_factor_enabled = excluded.is_two_factor_enabled;
 
 -- ─── Hospital ─────────────────────────────────────────────────────────────────
+
+-- Demo clinical data (below) is NOT fully idempotent — several tables have no
+-- unique constraints (vitals, audit logs, notifications, donors, …), so
+-- re-running would duplicate those rows. Guard with a sentinel: the demo
+-- hospital. Re-seeding still heals auth.users + profiles above; only the
+-- one-time demo data is skipped on subsequent runs.
+do $$
+begin
+if exists (select 1 from public.hospitals where id = 'd0000000-0000-4000-8000-000000000001') then
+  raise notice 'Demo clinical data already present — skipping demo-data section (auth users + profiles were still refreshed).';
+  return;
+end if;
 
 insert into public.hospitals (id, name, short_name, license_number, cac_number, address, city, state, emergency_phone, email, website, admin_email, admin_name, partner_status, status, tier, departments, licensed_beds, annual_fee_ngn, is_verified) values (
   'd0000000-0000-4000-8000-000000000001',
@@ -448,5 +479,8 @@ update public.appointments
    set payment_status = 'held'
  where id = 'f0000000-0000-4000-8000-000000000001'
    and payment_status <> 'held';
+
+end
+$$;
 
 commit;

@@ -73,7 +73,9 @@ export default function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
       showToastSuccess("Welcome back!", "Logged in successfully.");
     } catch (err: any) {
       const message =
-        err?.response?.data?.message || "Invalid email or password.";
+        err?.response?.data?.message ||
+        err?.message ||
+        "Invalid email or password.";
       showToastError("Login Failed", message);
     } finally {
       setLoading(false);
