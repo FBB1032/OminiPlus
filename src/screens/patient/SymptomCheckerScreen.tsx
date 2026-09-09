@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { Card, Button, StepIndicator, BodyMap, AppModal } from '../../components';
 import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
+import { aiApi } from '../../api/ai';
 import { BodyPartId } from '../../components/ui/BodyMap';
 import { PainLog } from '../../types';
 
@@ -50,6 +51,22 @@ export default function SymptomCheckerScreen({ navigation }: any) {
   const [tempSeverity, setTempSeverity] = useState<number>(2);
   const [tempNotes, setTempNotes] = useState('');
   const [isSeverityModalOpen, setIsSeverityModalOpen] = useState(false);
+  const [triage, setTriage] = useState<string | null>(null);
+
+  const areaName = (partId: string): string => {
+    const mapping: Record<string, string> = {
+      head: 'Head and neck',
+      neck: 'Neck',
+      chest: 'Chest',
+      abdomen: 'Abdomen',
+      left_arm: 'Left arm',
+      right_arm: 'Right arm',
+      left_leg: 'Left leg',
+      right_leg: 'Right leg',
+      back: 'Back',
+    };
+    return mapping[partId] ?? 'General';
+  };
 
   const handleSelectPart = (partId: BodyPartId) => {
     setActivePart(partId);
@@ -222,6 +239,16 @@ export default function SymptomCheckerScreen({ navigation }: any) {
 
   const handleAnalyzeSymptoms = () => {
     setCurrentStep(2);
+    // Live triage (https://ominipulse.onrender.com/api/ai/triage) — enriches
+    // the local rule-based result; the UI shows the fallback if this fails.
+    const symptoms = painLogs
+      .map((l) => `${areaName(l.bodyPartId)} pain severity ${l.severity}/10${l.notes ? ` (${l.notes})` : ''}`)
+      .concat(selectedSymptoms.map((s) => `Associated symptom: ${s}`))
+      .join('; ');
+    aiApi
+      .triage({ symptoms, duration: notes || undefined })
+      .then((res) => setTriage(res.triage))
+      .catch(() => setTriage(null));
   };
 
   return (
@@ -492,6 +519,13 @@ export default function SymptomCheckerScreen({ navigation }: any) {
               <Text style={styles.diagnosisName}>{result.diagnosis}</Text>
               <Text style={styles.diagnosisDesc}>{result.description}</Text>
             </Card>
+
+            {triage && (
+              <Card style={styles.recommendationCard}>
+                <Text style={styles.recommendationTitle}>AI Triage Assessment</Text>
+                <Text style={styles.recommendationText}>{triage}</Text>
+              </Card>
+            )}
 
             <Card style={styles.recommendationCard}>
               <Text style={styles.recommendationTitle}>Clinical Advisory</Text>

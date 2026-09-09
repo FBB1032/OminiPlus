@@ -961,6 +961,377 @@ routes.push(
   }
 );
 
+// ─── Live-Backend Contract Mocks (https://ominipulse.onrender.com/api) ────────
+// These mirror the deployed Express shapes ({ appointments: [...] } etc.) so the
+// offline fallback in src/api/client.ts keeps working with the live adapters.
+
+const LIVE_APPOINTMENT_ROWS: any[] = ACTIVE_APPOINTMENTS.map((a, i) => ({
+  id: a.id,
+  doctor_id: a.doctor.id,
+  patient_id: a.patient.id,
+  scheduled_at: a.scheduledAt,
+  duration: a.duration,
+  status: a.status,
+  type: a.type,
+  reason: a.reason,
+  payment_status: 'held',
+  cancellation_reason: null,
+  created_at: a.createdAt,
+  doctor: {
+    id: a.doctor.id,
+    specialization: a.doctor.specialization,
+    consultation_fee: a.doctor.consultationFee,
+    profile: { first_name: a.doctor.firstName, last_name: a.doctor.lastName },
+  },
+  patient: {
+    id: a.patient.id,
+    profile: {
+      first_name: a.patient.firstName,
+      last_name: a.patient.lastName,
+      date_of_birth: a.patient.dateOfBirth,
+      gender: a.patient.gender,
+    },
+  },
+  _mockIndex: i,
+}));
+
+const LIVE_DOCTOR_ROWS = [MOCK_DOCTOR_1, MOCK_DOCTOR_2].map((d) => ({
+  id: d.id,
+  profile_id: `u-${d.id}`,
+  specialization: d.specialization,
+  bio: null,
+  experience_years: d.experienceYears,
+  clinic_name: d.clinicName,
+  clinic_address: null,
+  consultation_fee: d.consultationFee,
+  rating: d.rating,
+  review_count: 124,
+  is_available: d.isAvailable,
+  availability_status: 'available',
+  is_mdcn_verified: true,
+  profile: {
+    id: `u-${d.id}`,
+    first_name: d.firstName,
+    last_name: d.lastName,
+    avatar_url: d.avatarUrl,
+  },
+  hospital: null,
+}));
+
+const LIVE_RECORD_ROWS = [
+  {
+    id: 'rec-1',
+    patient_id: 'p-1',
+    type: 'lab_result',
+    title: 'Fasting Blood Glucose Panel',
+    description: '145 mg/dL — above target range. Repeat in 3 months.',
+    date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    doctor_name: 'Dr. Babajide Alabi',
+    attachment_url: null,
+    created_at: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'rec-2',
+    patient_id: 'p-1',
+    type: 'diagnosis',
+    title: 'Type 2 Diabetes Mellitus',
+    description: 'Diagnosed; metformin started, lifestyle modification advised.',
+    date: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    doctor_name: 'Dr. Babajide Alabi',
+    attachment_url: null,
+    created_at: new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'rec-3',
+    patient_id: 'p-1',
+    type: 'vaccination',
+    title: 'Influenza Vaccine',
+    description: 'Annual flu shot administered.',
+    date: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    doctor_name: 'Dr. Chioma Nwachukwu',
+    attachment_url: null,
+    created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
+  },
+];
+
+const LIVE_VITALS_READINGS: any[] = [];
+
+const LIVE_NOTIFICATION_ROWS = [
+  {
+    id: 'notif-1',
+    type: 'appointment_reminder',
+    title: 'Upcoming appointment',
+    body: 'You have a video consultation with Dr. Babajide Alabi tomorrow.',
+    is_read: false,
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'notif-2',
+    type: 'general',
+    title: 'Vitals check reminder',
+    body: 'Remember to log your blood pressure reading today.',
+    is_read: false,
+    created_at: new Date(Date.now() - 3600 * 1000).toISOString(),
+  },
+];
+
+routes.push(
+  // GET /appointments
+  {
+    method: 'get',
+    test: (p) => p === '/appointments',
+    handle: (config) => {
+      const status = config?.params?.status;
+      const upcoming = config?.params?.upcoming === 'true';
+      let rows = LIVE_APPOINTMENT_ROWS;
+      if (status) rows = rows.filter((r) => r.status === status);
+      if (upcoming) {
+        const now = new Date().toISOString();
+        rows = rows.filter((r) => r.scheduled_at >= now);
+      }
+      return { appointments: rows };
+    },
+  },
+  // POST /appointments
+  {
+    method: 'post',
+    test: (p) => p === '/appointments',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      const row = {
+        id: `appt-${Date.now()}`,
+        doctor_id: payload.doctorId,
+        patient_id: payload.patientId,
+        scheduled_at: payload.scheduledAt,
+        duration: 30,
+        status: 'pending',
+        type: payload.type ?? 'video',
+        reason: payload.reason,
+        payment_status: 'held',
+        cancellation_reason: null,
+        created_at: new Date().toISOString(),
+        doctor: LIVE_DOCTOR_ROWS.find((d) => d.id === payload.doctorId) ?? LIVE_DOCTOR_ROWS[0],
+        patient: {
+          id: payload.patientId,
+          profile: { first_name: MOCK_PATIENT_1.firstName, last_name: MOCK_PATIENT_1.lastName },
+        },
+      };
+      LIVE_APPOINTMENT_ROWS.push(row);
+      return { appointment: row };
+    },
+  },
+  // PATCH /appointments/:id
+  {
+    method: 'patch',
+    test: (p) => /^\/appointments\/[^/]+$/.test(p),
+    handle: (config) => {
+      const id = (config.url ?? '').split('/').pop();
+      const payload = parsePayload(config.data);
+      const row = LIVE_APPOINTMENT_ROWS.find((r) => r.id === id);
+      if (row) {
+        row.status = payload.status ?? row.status;
+        if (payload.cancellationReason) row.cancellation_reason = payload.cancellationReason;
+      }
+      return { appointment: row ?? LIVE_APPOINTMENT_ROWS[0] };
+    },
+  },
+  // GET /appointments/slots/:doctorId/:date
+  {
+    method: 'get',
+    test: (p) => /^\/appointments\/slots\/[^/]+\/[^/]+$/.test(p),
+    handle: () => ({
+      slots: ['09:00', '09:30', '10:00', '11:00', '14:00', '14:30', '15:00'],
+    }),
+  },
+  // GET /doctors
+  {
+    method: 'get',
+    test: (p) => p === '/doctors',
+    handle: (config) => {
+      const specialization = config?.params?.specialization;
+      let rows = LIVE_DOCTOR_ROWS;
+      if (specialization) rows = rows.filter((d) => d.specialization === specialization);
+      return { doctors: rows };
+    },
+  },
+  // GET /patients/me
+  {
+    method: 'get',
+    test: (p) => p === '/patients/me',
+    handle: () => ({
+      patient: {
+        id: 'p-1',
+        profile_id: 'doctor-seed-001',
+        date_of_birth: MOCK_PATIENT_1.dateOfBirth,
+        gender: MOCK_PATIENT_1.gender,
+        height_cm: MOCK_PATIENT_1.height,
+        weight_kg: MOCK_PATIENT_1.weight,
+        blood_type: MOCK_PATIENT_1.bloodType,
+        blood_group: MOCK_PATIENT_1.bloodGroup,
+        genotype: MOCK_PATIENT_1.genotype,
+        created_at: '2024-01-15T08:00:00.000Z',
+      },
+    }),
+  },
+  // GET /patients/:id
+  {
+    method: 'get',
+    test: (p) => /^\/patients\/[^/]+$/.test(p),
+    handle: (config) => {
+      const id = (config.url ?? '').split('/').pop();
+      const base = id === 'p-2' ? MOCK_PATIENT_2 : MOCK_PATIENT_1;
+      return {
+        patient: {
+          id: base.id,
+          profile_id: `u-${base.id}`,
+          date_of_birth: base.dateOfBirth,
+          gender: base.gender,
+          height_cm: base.height,
+          weight_kg: base.weight,
+          blood_type: base.bloodType,
+          blood_group: base.bloodGroup,
+          genotype: base.genotype,
+          profile: { first_name: base.firstName, last_name: base.lastName, email: base.email, phone: base.phone },
+          created_at: '2024-01-15T08:00:00.000Z',
+        },
+      };
+    },
+  },
+  // GET /patients/:id/records
+  {
+    method: 'get',
+    test: (p) => /^\/patients\/[^/]+\/records$/.test(p),
+    handle: () => ({ records: LIVE_RECORD_ROWS }),
+  },
+  // GET/POST /vitals
+  {
+    method: 'post',
+    test: (p) => p === '/vitals',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      const row = {
+        id: `v-${Date.now()}`,
+        patient_id: payload.patientId,
+        condition: payload.condition ?? null,
+        reading_type: payload.readingType,
+        systolic: payload.systolic ?? null,
+        diastolic: payload.diastolic ?? null,
+        pulse: payload.pulse ?? null,
+        value: payload.value ?? null,
+        category: payload.category ?? null,
+        notes: payload.notes ?? null,
+        recorded_at: payload.recordedAt ?? new Date().toISOString(),
+      };
+      LIVE_VITALS_READINGS.unshift(row);
+      return {
+        reading: row,
+        sentinelAlerts:
+          Number(payload.systolic) >= 180 || Number(payload.diastolic) >= 120
+            ? [{ severity: 'critical', message: 'Blood pressure is in the crisis range. Seek urgent care.' }]
+            : [],
+      };
+    },
+  },
+  {
+    method: 'get',
+    test: (p) => p === '/vitals',
+    handle: (config) => {
+      const patientId = config?.params?.patientId;
+      const type = config?.params?.type;
+      let rows = LIVE_VITALS_READINGS;
+      if (patientId) rows = rows.filter((r) => r.patient_id === patientId);
+      if (type) rows = rows.filter((r) => r.reading_type === type);
+      return { readings: rows };
+    },
+  },
+  // POST /ai/chat
+  {
+    method: 'post',
+    test: (p) => p === '/ai/chat',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      const messages = (payload.messages as Array<{ role: string; content: string }>) ?? [];
+      const last = messages[messages.length - 1];
+      return {
+        conversationId: (payload.conversationId as string) ?? `conv-${Date.now()}`,
+        reply: `This is a mock AI reply (offline). You said: "${last?.content?.slice(0, 120)}". Please try again when back online for a real response.`,
+        provider: 'mock',
+        model: 'offline-fallback',
+        urgency: 'routine',
+      };
+    },
+  },
+  // POST /ai/triage
+  {
+    method: 'post',
+    test: (p) => p === '/ai/triage',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      return {
+        triage: `Mock triage (offline): review of "${String(payload.symptoms).slice(0, 80)}" suggests a routine consultation.`,
+        urgency: 'routine',
+        advice: ['Monitor your symptoms', 'Stay hydrated', 'See a doctor if symptoms worsen'],
+        provider: 'mock',
+        model: 'offline-fallback',
+      };
+    },
+  },
+  // POST /ai/soap
+  {
+    method: 'post',
+    test: (p) => p === '/ai/soap',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      return {
+        soap: `Subjective: ${String(payload.transcript).slice(0, 400)}\nObjective: mock offline data.\nAssessment: pending live review.\nPlan: mock plan.`,
+        provider: 'mock',
+        model: 'offline-fallback',
+      };
+    },
+  },
+  // POST /ai/cds
+  {
+    method: 'post',
+    test: (p) => p === '/ai/cds',
+    handle: () => ({
+      differentials: ['Mock differential (offline)'],
+      workup: ['Basic panel'],
+      'safety-netting': ['Return if symptoms worsen'],
+      provider: 'mock',
+      model: 'offline-fallback',
+    }),
+  },
+  // GET /auth/me — session shape with notifications
+  {
+    method: 'get',
+    test: (p) => p === '/auth/me',
+    handle: () => ({
+      profile: { id: 'doctor-seed-001', role: 'patient', email: 'patient@ominipulse.ai' },
+      notifications: LIVE_NOTIFICATION_ROWS,
+    }),
+  },
+  // PUT /doctors/me/working-hours
+  {
+    method: 'put',
+    test: (p) => p === '/doctors/me/working-hours',
+    handle: (config) => {
+      const payload = parsePayload(config.data);
+      const entries = (payload.entries as any[]) ?? [];
+      return {
+        workingHours: entries.map((e) => ({
+          id: `wh-${e.day}`,
+          doctor_id: 'd-1',
+          day: e.day,
+          start_time: e.startTime,
+          end_time: e.endTime,
+          is_active: e.isActive ?? true,
+          slot_duration: e.slotDuration ?? 30,
+        })),
+      };
+    },
+  }
+);
+
 // ─── Verified Doctor Seed Account ────────────────────────────────────────────
 // Login: doctor@ominipulse.ai / any password
 // Full MDCN-verified profile, approved, cardiology specialist.

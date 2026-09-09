@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { BPReading, SugarReading, AsthmaReading, PregnancyLog, DoctorFollowUp, ChronicConditionSummary } from '../types/chronic';
 import { storageService } from '../services/storageService';
+import apiClient from '../api/client';
+import { vitalsApi } from '../api/vitals';
+import { logger } from '../utils/logger';
 
 const STORAGE_KEYS = {
   BP_READINGS: 'ominipulse_bp_readings',
@@ -153,6 +156,45 @@ const DEFAULT_FOLLOW_UPS: DoctorFollowUp[] = [
   },
 ];
 
+// Resolves the current user's patient_profile id and pushes a reading to the
+// live backend (https://ominipulse.onrender.com/api/vitals). Fire-and-forget.
+async function syncVitals(payload: {
+  condition: 'hypertension' | 'diabetes' | 'asthma' | 'pregnancy';
+  readingType: string;
+  systolic?: number | null;
+  diastolic?: number | null;
+  pulse?: number | null;
+  value?: number | null;
+  category?: string;
+  notes?: string;
+  recordedAt: string;
+}): Promise<void> {
+  const { getSupabaseClient } = await import('../services/supabaseClient');
+  const supabase = getSupabaseClient();
+  const { data: sessionData } = await supabase.auth.getSession();
+  const userId = sessionData?.session?.user.id;
+  if (!userId) return;
+  const { data: patient } = await supabase
+    .from('patient_profiles')
+    .select('id')
+    .eq('profile_id', userId)
+    .maybeSingle();
+  if (!patient?.id) return;
+
+  await apiClient.post('/vitals', {
+    patientId: patient.id,
+    condition: payload.condition,
+    readingType: payload.readingType,
+    systolic: payload.systolic ?? null,
+    diastolic: payload.diastolic ?? null,
+    pulse: payload.pulse ?? null,
+    value: payload.value ?? null,
+    category: payload.category ?? null,
+    notes: payload.notes ?? null,
+    recordedAt: payload.recordedAt,
+  });
+}
+
 export const useChronicDiseaseStore = create<ChronicDiseaseStore>((set, get) => ({
   bpReadings: DEFAULT_BP_READINGS,
   sugarReadings: DEFAULT_SUGAR_READINGS,
@@ -164,6 +206,31 @@ export const useChronicDiseaseStore = create<ChronicDiseaseStore>((set, get) => 
   loadChronicData: async () => {
     set({ isLoading: true });
     try {
+      // Live backend first (https://ominipulse.onrender.com/api/vitals) —
+      // fall back to cached storage, then built-in demo data.
+      const { getSupabaseClient } = await import('../services/supabaseClient');
+      const supabase = getSupabaseClient();
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData?.session?.user.id;
+      if (userId) {
+        const { data: patient } = await supabase
+          .from('patient_profiles')
+          .select('id')
+          .eq('profile_id', userId)
+          .maybeSingle();
+        if (patient?.id) {
+          const [liveBP, liveSugar] = await Promise.all([
+            vitalsApi.getBloodPressureHistory(patient.id).catch(() => [] as BPReading[]),
+            vitalsApi.getBloodSugarHistory(patient.id).catch(() => [] as SugarReading[]),
+          ]);
+          if (liveBP.length > 0 || liveSugar.length > 0) {
+            set({ bpReadings: liveBP.length ? liveBP : get().bpReadings, sugarReadings: liveSugar.length ? liveSugar : get().sugarReadings });
+            set({ isLoading: false });
+            return;
+          }
+        }
+      }
+
       const [storedBP, storedSugar, storedAsthma, storedPreg, storedFol] = await Promise.all([
         storageService.getObject<BPReading[]>(STORAGE_KEYS.BP_READINGS),
         storageService.getObject<SugarReading[]>(STORAGE_KEYS.SUGAR_READINGS),
@@ -212,6 +279,19 @@ export const useChronicDiseaseStore = create<ChronicDiseaseStore>((set, get) => 
     const updated = [newReading, ...get().bpReadings];
     set({ bpReadings: updated });
     await storageService.setObject(STORAGE_KEYS.BP_READINGS, updated);
+
+    // Best-effort sync to the live backend (sentinel alerts → notifications)
+    void syncVitals({
+      condition: 'hypertension',
+      readingType: 'blood_pressure',
+      systolic,
+      diastolic,
+      pulse: pulse ?? null,
+      category,
+      notes,
+      recordedAt: newReading.recordedAt,
+    }).catch((e) => logger.warn('[chronicStore] vitals sync failed:', e));
+
     return newReading;
   },
 
@@ -237,6 +317,16 @@ export const useChronicDiseaseStore = create<ChronicDiseaseStore>((set, get) => 
     const updated = [newReading, ...get().sugarReadings];
     set({ sugarReadings: updated });
     await storageService.setObject(STORAGE_KEYS.SUGAR_READINGS, updated);
+
+    void syncVitals({
+      condition: 'diabetes',
+      readingType: 'blood_glucose',
+      value: glucoseLevel,
+      category: `${type}/${category}`,
+      notes,
+      recordedAt: newReading.recordedAt,
+    }).catch((e) => logger.warn('[chronicStore] vitals sync failed:', e));
+
     return newReading;
   },
 

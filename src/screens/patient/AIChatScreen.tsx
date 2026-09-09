@@ -20,6 +20,7 @@ import { Colors, Spacing, FontSize, FontWeight, Shadows, BorderRadius } from '..
 import { usePatientHome } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
 import { useChronicDiseaseStore } from '../../store/chronicDiseaseStore';
+import { aiApi } from '../../api/ai';
 import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
 
 const { width } = Dimensions.get('window');
@@ -295,6 +296,7 @@ export default function AIChatScreen({ route, navigation }: any) {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const conversationIdRef = useRef<string | null>(null);
 
   // Symptom Checker State in Chat
   const [symptomFlowState, setSymptomFlowState] = useState<'idle' | 'body_area' | 'severity' | 'associated' | 'results'>('idle');
@@ -750,11 +752,26 @@ export default function AIChatScreen({ route, navigation }: any) {
       flatListRef.current?.scrollToEnd({ animated: true });
     }, 100);
 
-    setTimeout(() => {
-      const aiResponseText = getMedicalResponse(text, vitals);
+    // Live AI assistant (https://ominipulse.onrender.com/api/ai/chat) with
+    // the local rule-based response as offline fallback.
+    const chatHistory = [...messages, userMsg]
+      .filter((m) => !m.customComponent)
+      .slice(-12)
+      .map((m) => ({ role: m.isUser ? ('user' as const) : ('assistant' as const), content: m.text }));
+
+    (async () => {
+      let replyText: string;
+      try {
+        const result = await aiApi.chat(conversationIdRef.current, chatHistory);
+        conversationIdRef.current = result.conversationId;
+        replyText = result.reply;
+      } catch {
+        replyText = getMedicalResponse(text, vitals);
+      }
+
       const aiMsg: Message = {
         id: `msg-${Date.now() + 1}`,
-        text: aiResponseText,
+        text: replyText,
         isUser: false,
         timestamp: new Date(),
       };
@@ -765,7 +782,7 @@ export default function AIChatScreen({ route, navigation }: any) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
-    }, 1800);
+    })();
   };
 
   const handleSuggestionPress = (suggestion: string) => {

@@ -1,15 +1,19 @@
 /**
  * Omini Pulse AI — Axios HTTP Client
  *
+ * Targets the deployed Express backend (https://ominipulse.onrender.com/api)
+ * backed by the unified Supabase (JWT auth + RLS).
+ *
  * Responsibilities:
  *  - Axios instance setup (base URL, timeout, headers)
- *  - Request interceptor: inject Bearer token
- *  - Response interceptor: retry transient errors, refresh JWT on 401,
- *    fall back to mock data when the backend is unreachable
- *  - Normalised AppError on failure
+ *  - Request interceptor: inject Supabase Bearer token
+ *  - Response interceptor: retry transient errors, refresh the Supabase
+ *    session on 401, fall back to mock data when the backend is unreachable
+ *  - Normalised AppError on failure ({ error: { code, message } } envelope)
  *
- * Mock data lives in `./__mocks__/mockData.ts`. To switch to a real backend
- * simply set EXPO_PUBLIC_API_URL to the live URL — no other changes needed.
+ * Mock data lives in `./__mocks__/mockData.ts` and only kicks in after
+ * retries are exhausted on network / server errors, so demo flows keep
+ * working offline.
  */
 
 import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
@@ -23,11 +27,13 @@ import { getMockResponse } from './__mocks__/mockData';
 
 export class AppError extends Error {
   statusCode: number;
+  code?: string;
   errors?: Record<string, string[]>;
 
-  constructor(message: string, statusCode: number, errors?: Record<string, string[]>) {
+  constructor(message: string, statusCode: number, code?: string, errors?: Record<string, string[]>) {
     super(message);
     this.statusCode = statusCode;
+    this.code = code;
     this.errors = errors;
     this.name = 'AppError';
   }
@@ -89,6 +95,36 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// ─── Supabase session refresh (single-flight) ─────────────────────────────────
+
+async function refreshSupabaseSession(): Promise<string> {
+  const { supabaseAuthService } = await import('../services/supabaseAuthService');
+  const auth = await supabaseAuthService.refresh();
+  const { accessToken, refreshToken, expiresAt } = auth.tokens;
+  await Promise.all([
+    secureStoreService.set(STORAGE_KEYS.ACCESS_TOKEN, accessToken),
+    secureStoreService.set(STORAGE_KEYS.REFRESH_TOKEN, refreshToken),
+  ]);
+  try {
+    const { storageService } = await import('../services/storageService');
+    await storageService.set(STORAGE_KEYS.TOKEN_EXPIRY, String(expiresAt));
+  } catch {
+    // non-fatal
+  }
+  return accessToken;
+}
+
+async function handleSessionExpiry() {
+  try {
+    const { useAuthStore } = await import('../store/authStore');
+    const { queryClient } = await import('./queryClient');
+    await useAuthStore.getState().logout();
+    queryClient.clear();
+  } catch (logoutErr) {
+    logger.error('[API] Failed to clean up session after refresh failure:', logoutErr);
+  }
+}
+
 // ─── Response Interceptor: Retry / Refresh / Mock Fallback ───────────────────
 
 apiClient.interceptors.response.use(
@@ -123,7 +159,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // 3. 401 — refresh JWT
+    // 3. 401 — refresh the Supabase session and replay once
     if (error.response?.status === 401 && !config._refreshRetry) {
       if (isRefreshing) {
         // Queue the request until the ongoing refresh completes
@@ -142,46 +178,32 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const refreshToken = await secureStoreService.get(STORAGE_KEYS.REFRESH_TOKEN);
-        if (!refreshToken) throw new Error('No refresh token available');
-
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-        const newAccessToken: string = data.data.tokens.accessToken;
-        const newRefreshToken: string = data.data.tokens.refreshToken;
-
-        await secureStoreService.set(STORAGE_KEYS.ACCESS_TOKEN, newAccessToken);
-        await secureStoreService.set(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
-
-        apiClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+        const newAccessToken = await refreshSupabaseSession();
         processQueue(null, newAccessToken);
         config.headers.Authorization = `Bearer ${newAccessToken}`;
         return apiClient(config);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        // Lazy-import to avoid circular dependency at module load time
-        try {
-          const { useAuthStore } = await import('../store/authStore');
-          const { queryClient } = await import('./queryClient');
-          await useAuthStore.getState().logout();
-          queryClient.clear();
-        } catch (logoutErr) {
-          logger.error('[API] Failed to clean up session after refresh failure:', logoutErr);
-        }
+        await handleSessionExpiry();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
     }
 
-    // 4. Normalise to AppError
+    // 4. Normalise to AppError — the live backend returns
+    //    { error: { code, message } } (zod validation details included on 400)
     const apiErrorData = error.response?.data as
-      | { message?: string; errors?: Record<string, string[]> }
+      | { error?: { code?: string; message?: string }; message?: string; errors?: Record<string, string[]> }
       | undefined;
     const message =
-      apiErrorData?.message ?? error.message ?? 'Something went wrong. Please try again.';
+      apiErrorData?.error?.message ??
+      apiErrorData?.message ??
+      error.message ??
+      'Something went wrong. Please try again.';
     const statusCode = error.response?.status ?? 500;
 
-    return Promise.reject(new AppError(message, statusCode, apiErrorData?.errors));
+    return Promise.reject(new AppError(message, statusCode, apiErrorData?.error?.code, apiErrorData?.errors));
   },
 );
 

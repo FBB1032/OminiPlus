@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
@@ -9,19 +9,56 @@ import {
   Mail, Users, Heart, Activity, Droplet, Star, Clock,
   FileText, AlertCircle, Laptop
 } from 'lucide-react';
+import { API_BASE_URL } from '@/constants';
 
 type RoleModalType = 'select' | 'patient' | 'doctor' | 'hospital' | 'nurse' | null;
 
 export default function LandingPage() {
   const [activeModal, setActiveModal] = useState<RoleModalType>(null);
   const [downloadAppModal, setDownloadAppModal] = useState<{ appName: string; store: 'Google Play' | 'App Store' } | null>(null);
+  // Live backend (https://ominipulse.onrender.com/health) uptime indicator.
+  const [backendUp, setBackendUp] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const healthUrl = API_BASE_URL.replace(/\/api\/?$/, '') + '/health';
+    fetch(healthUrl, { method: 'GET' })
+      .then((r) => {
+        if (!cancelled) setBackendUp(r.ok);
+      })
+      .catch(() => {
+        if (!cancelled) setBackendUp(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const openOnboarding = () => setActiveModal('select');
   const closeModal = () => setActiveModal(null);
 
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', color: '#0f172a', fontFamily: 'Inter, system-ui, sans-serif' }}>
-      
+
+      {/* ── Backend Status Banner ────────────────────────────────────── */}
+      {backendUp !== null && (
+        <div style={{
+          background: backendUp ? '#f0fdf4' : '#fef2f2',
+          borderBottom: `1px solid ${backendUp ? '#bbf7d0' : '#fecaca'}`,
+          padding: '6px 24px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: '50%',
+            background: backendUp ? '#16a34a' : '#dc2626',
+            display: 'inline-block',
+          }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: backendUp ? '#166534' : '#991b1b' }}>
+            {backendUp
+              ? 'All systems operational — Omini Pulse cloud services are live'
+              : 'Cloud services are waking up — first request may take up to a minute'}
+          </span>
+        </div>
+      )}
+
       {/* ── Top Navigation Bar ───────────────────────────────────────── */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 40,

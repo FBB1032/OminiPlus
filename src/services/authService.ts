@@ -12,11 +12,11 @@ export const authService = {
       await useAuthStore.getState().setAuth(user, tokens);
       return { data: { user, tokens }, message: 'Logged in successfully', success: true };
     }
-    const response = await authApi.login(payload);
-    const { user, tokens } = response.data;
+    const auth = await authApi.login(payload);
+    const { user, tokens } = auth;
     console.log('[authService] login resolved:', { user, tokens });
     await useAuthStore.getState().setAuth(user, tokens);
-    return response;
+    return { data: auth, message: 'Logged in successfully', success: true };
   },
 
   async register(payload: RegisterPayload) {
@@ -25,10 +25,10 @@ export const authService = {
       await useAuthStore.getState().setAuth(user, tokens);
       return { data: { user, tokens }, message: 'Registered successfully', success: true };
     }
-    const response = await authApi.register(payload);
-    const { user, tokens } = response.data;
+    const auth = await authApi.register(payload);
+    const { user, tokens } = auth;
     await useAuthStore.getState().setAuth(user, tokens);
-    return response;
+    return { data: auth, message: 'Registered successfully', success: true };
   },
 
   async forgotPassword(payload: ForgotPasswordPayload) {

@@ -6,9 +6,9 @@ import {
   StyleSheet,
   Modal,
   Pressable,
-  SafeAreaView,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Controller, Control, FieldValues, Path, FieldError } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadows } from '../../theme';

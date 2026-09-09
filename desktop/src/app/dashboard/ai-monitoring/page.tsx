@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Bot, AlertTriangle, CheckCircle2, ShieldAlert, Download,
   Sparkles, Activity, Search, ShieldCheck, Lock, Eye, Filter,
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi } from '@/services/api';
 import type { AIFlag } from '@/types';
 
 export interface EnhancedAIFlag extends AIFlag {
@@ -139,7 +140,10 @@ const INITIAL_ENHANCED_FLAGS: EnhancedAIFlag[] = [
 ];
 
 export default function AIMonitoringPage() {
+  // Live AI flags (https://ominipulse.onrender.com/api/admin/ai-flags) with
+  // the built-in demo flags as offline fallback.
   const [flags, setFlags] = useState<EnhancedAIFlag[]>(INITIAL_ENHANCED_FLAGS);
+  const [isLive, setIsLive] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'reviewed' | 'dismissed'>('all');
   const [severityFilter, setSeverityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'safety' | 'prescription' | 'triage' | 'injection' | 'hallucination'>('all');
@@ -150,18 +154,40 @@ export default function AIMonitoringPage() {
   const [isSeeAll, setIsSeeAll] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
+  // Load live flags once; keep the demo set on any failure.
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getAIFlags().then((live) => {
+      if (!cancelled && live && live.length > 0) {
+        setFlags(live.map((f) => ({
+          ...f,
+          category: 'safety',
+          confidenceScore: 90,
+          modelEngine: 'live',
+          flaggedTokens: [],
+          recommendedAction: 'Review the prompt and take action.',
+          mitigationResponse: '',
+        })));
+        setIsLive(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const triggerFeedback = (msg: string) => {
     setFeedbackMsg(msg);
     setTimeout(() => setFeedbackMsg(''), 3500);
   };
 
   const handleUpdateStatus = (flagId: string, nextStatus: 'reviewed' | 'dismissed') => {
+    // Optimistic local update + best-effort sync to the live backend.
     setFlags((prev) =>
       prev.map((f) => (f.id === flagId ? { ...f, status: nextStatus } : f))
     );
     if (selectedFlag && selectedFlag.id === flagId) {
       setSelectedFlag((prev) => (prev ? { ...prev, status: nextStatus } : null));
     }
+    if (isLive) void liveApi.updateAIFlagStatus(flagId, nextStatus);
     triggerFeedback(`Flag ${flagId} status updated to: ${nextStatus.toUpperCase()}`);
   };
 

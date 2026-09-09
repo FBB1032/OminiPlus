@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -15,6 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi } from '@/services/api';
 import type { Hospital, PartnerStatus } from '@/types';
 
 interface VerificationHospital extends Hospital {
@@ -145,7 +146,10 @@ const STATUS_VARIANTS: Record<PartnerStatus, 'success' | 'warning' | 'neutral' |
 
 export default function HospitalsPage() {
   const router = useRouter();
+  // Live partner hospitals (https://ominipulse.onrender.com/api/admin/hospitals)
+  // with the built-in demo roster as offline fallback.
   const [hospitals, setHospitals] = useState<VerificationHospital[]>(INITIAL_HOSPITALS);
+  const [isLive, setIsLive] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PartnerStatus>('all');
   const [selectedHospital, setSelectedHospital] = useState<VerificationHospital | null>(null);
@@ -154,6 +158,19 @@ export default function HospitalsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isSeeAll, setIsSeeAll] = useState(false);
+
+  // Load live hospital directory once; keep the demo roster on any failure.
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getHospitals().then((live) => {
+      if (!cancelled && live && live.length > 0) {
+        // Adapt plain Hospital rows to the verification view shape.
+        setHospitals(live.map((h) => ({ ...h, documentsCount: 0 })));
+        setIsLive(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
   
   // Onboard Modal states
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ScrollText, Search, Download, Globe, Clock, User, ShieldAlert,
   ShieldCheck, Lock, CheckCircle2, AlertTriangle, Info, Filter,
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi } from '@/services/api';
 import type { AuditLog } from '@/types';
 
 export type AuditCategory = 'all' | 'auth' | 'facility' | 'doctor' | 'security' | 'system';
@@ -166,6 +167,10 @@ const MOCK_ENHANCED_LOGS: EnhancedAuditLog[] = [
 ];
 
 export default function AuditLogsPage() {
+  // Live audit trail (https://ominipulse.onrender.com/api/admin/audit-logs)
+  // with the built-in demo trail as offline fallback.
+  const [logs, setLogs] = useState<EnhancedAuditLog[]>(MOCK_ENHANCED_LOGS);
+  const [isLive, setIsLive] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<AuditCategory>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<AuditSeverity>('all');
@@ -175,6 +180,27 @@ export default function AuditLogsPage() {
   const [isSeeAll, setIsSeeAll] = useState(false);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
+  // Load live audit trail once; keep the demo set on any failure.
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getAuditLogs().then((live) => {
+      if (!cancelled && live && live.length > 0) {
+        setLogs(live.map((l) => ({
+          ...l,
+          adminName: l.adminName === 'Staff' && l.adminId !== 'system' ? l.adminId : l.adminName,
+          category: 'system',
+          severity: 'info',
+          sha256Hash: '—',
+          location: '—',
+          details: '',
+          actorRole: 'staff',
+        })));
+        setIsLive(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const handleCopyHash = (hash: string) => {
     navigator.clipboard.writeText(hash);
     setCopiedHash(hash);
@@ -182,7 +208,7 @@ export default function AuditLogsPage() {
   };
 
   const filteredLogs = useMemo(() => {
-    return MOCK_ENHANCED_LOGS.filter((l) => {
+    return logs.filter((l) => {
       const matchSearch =
         !search ||
         l.action.toLowerCase().includes(search.toLowerCase()) ||
@@ -197,7 +223,7 @@ export default function AuditLogsPage() {
 
       return matchSearch && matchCategory && matchSeverity;
     });
-  }, [search, selectedCategory, selectedSeverity]);
+  }, [logs, search, selectedCategory, selectedSeverity]);
 
   const displayedLogs = useMemo(() => {
     return isSeeAll

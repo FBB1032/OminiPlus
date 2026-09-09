@@ -14,8 +14,9 @@ import {
 } from 'recharts';
 import { useAuthStore } from '@/store/authStore';
 import { ROLE_PERMISSIONS, ROLE_LABELS, ROLE_COLORS, NAV_SECTIONS } from '@/store/permissionStore';
+import { liveApi } from '@/services/api';
 import { timeAgo } from '@/lib/utils';
-import type { AdminRole } from '@/types';
+import type { AdminRole, DashboardStats } from '@/types';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
@@ -64,6 +65,10 @@ export default function DashboardPage() {
   const admin = useAuthStore(s => s.admin);
   const adminRole: AdminRole = (admin?.role as AdminRole) || 'admin';
 
+  // Live platform KPIs from https://ominipulse.onrender.com/api/admin/dashboard
+  // (falls back to the demo figures when unreachable / cold-started).
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+
   useEffect(() => {
     if (adminRole === 'doctor') {
       router.replace('/dashboard/doctor-portal');
@@ -87,7 +92,14 @@ export default function DashboardPage() {
   const permissions = ROLE_PERMISSIONS[adminRole] || [];
   const hasPermission = (p: string) => permissions.includes(p as any);
 
-  // Build quick-access tiles based on role
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getDashboardStats().then((s) => {
+      if (!cancelled && s) setStats(s);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const ICON_MAP: Record<string, any> = {
     Stethoscope, Building2, Pill, Calendar, Bot, BarChart3,
     LayoutDashboard: Activity, Bell: Zap, ScrollText: Eye, ShieldCheck: Shield, Settings: Globe,
@@ -153,12 +165,13 @@ export default function DashboardPage() {
       </div>
 
       {/* ── KPI Stat Cards ───────────────────────────────────────── */}
+      {/* Live values from /api/admin/dashboard; demo values while loading/offline */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
         {hasPermission('doctors.view') && (
           <StatCard
             label="Verified Doctors"
-            value="186"
-            change="+12 this week"
+            value={stats ? String(stats.activeUsers) : '—'}
+            change={stats ? 'live from backend' : 'connecting…'}
             changeType="up"
             icon={<Stethoscope size={18} />}
             accentColor="#2563eb"
@@ -167,8 +180,8 @@ export default function DashboardPage() {
         {hasPermission('doctors.verify') && (
           <StatCard
             label="Pending Approvals"
-            value="8"
-            change="3 urgent"
+            value={stats ? String(stats.pendingVerifications) : '—'}
+            change={stats ? 'live from backend' : 'connecting…'}
             changeType="warning"
             icon={<Clock size={18} />}
             accentColor="#d97706"
@@ -177,8 +190,8 @@ export default function DashboardPage() {
         {hasPermission('hospitals.view') && (
           <StatCard
             label="Partner Hospitals"
-            value="42"
-            change="+2 this month"
+            value={stats ? String(stats.totalHospitals) : '—'}
+            change={stats ? 'live from backend' : 'connecting…'}
             changeType="up"
             icon={<Building2 size={18} />}
             accentColor="#0891b2"
@@ -187,8 +200,8 @@ export default function DashboardPage() {
         {hasPermission('appointments.view_overview') && (
           <StatCard
             label="Today's Appointments"
-            value="124"
-            change="24 active now"
+            value={stats ? String(stats.totalAppointments) : '—'}
+            change={stats ? 'live from backend' : 'connecting…'}
             changeType="neutral"
             icon={<Calendar size={18} />}
             accentColor="#16a34a"
@@ -197,8 +210,8 @@ export default function DashboardPage() {
         {hasPermission('ai_monitoring.view') && (
           <StatCard
             label="AI Flags"
-            value="12"
-            change="4 high severity"
+            value={stats ? String(stats.flaggedAIPrompts) : '—'}
+            change={stats ? 'live from backend' : 'connecting…'}
             changeType="warning"
             icon={<AlertTriangle size={18} />}
             accentColor="#ef4444"

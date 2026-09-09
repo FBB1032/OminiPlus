@@ -87,6 +87,24 @@ export const supabaseAuthService = {
     await supabase.auth.signOut();
   },
 
+  /** Refreshes the Supabase session (1h JWTs) and returns the new access token. */
+  async refresh(): Promise<{ admin: Admin; token: string }> {
+    if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.auth.refreshSession();
+    if (error || !data.session) throw new Error('Session refresh failed');
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.session.user.id)
+      .single();
+    if (profileError || !profile) throw new Error('Failed to load staff profile');
+    return {
+      admin: profileToAdmin(profile as ProfileRow),
+      token: data.session.access_token,
+    };
+  },
+
   async restoreSession(): Promise<{ admin: Admin; token: string } | null> {
     if (!isSupabaseConfigured) return null;
     const supabase = getSupabaseClient();

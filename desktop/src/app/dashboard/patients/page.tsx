@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users, Search, Eye, ShieldCheck, ShieldAlert, Download,
   CheckCircle, XCircle, Clock, Calendar, FileText, Activity, AlertTriangle, Lock
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
+import { liveApi } from '@/services/api';
 import type { Patient } from '@/types';
 
 // Mock Patient Directory
@@ -146,7 +147,10 @@ const INITIAL_PATIENTS: Patient[] = [
 ];
 
 export default function PatientsPage() {
+  // Live patient directory (https://ominipulse.onrender.com/api/admin/users)
+  // with the built-in demo roster as offline fallback.
   const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
+  const [isLive, setIsLive] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -159,6 +163,18 @@ export default function PatientsPage() {
     action: 'suspend' | 'activate';
     patientName: string;
   } | null>(null);
+
+  // Load live patient directory once; keep the demo roster on any failure.
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getPatients().then((live) => {
+      if (!cancelled && live && live.length > 0) {
+        setPatients(live);
+        setIsLive(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Search & Filter
   const filteredPatients = patients.filter((p) => {

@@ -1,5 +1,5 @@
 export const APP_NAME = 'Omini Pulse Admin';
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'https://ominipulse.onrender.com/api';
 
 export const SIDEBAR_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'LayoutDashboard' },

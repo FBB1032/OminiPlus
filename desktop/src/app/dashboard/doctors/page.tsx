@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Stethoscope, Search, Download, Eye, CheckCircle, XCircle, 
   AlertCircle, ShieldAlert, Award, FileText, Calendar, 
@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi } from '@/services/api';
 import type { Doctor, VerificationStatus } from '@/types';
 
 // Mock comprehensive doctor registrations with all verification assets
@@ -150,7 +151,10 @@ const INITIAL_DOCTORS: Doctor[] = [
 ];
 
 export default function DoctorsPage() {
+  // Live doctor registry (https://ominipulse.onrender.com/api) with the
+  // built-in demo roster as offline fallback.
   const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
+  const [isLive, setIsLive] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | VerificationStatus>('all');
   const [selectedDoc, setSelectedDoc] = useState<Doctor | null>(null);
@@ -165,6 +169,18 @@ export default function DoctorsPage() {
     type: 'approve' | 'reject' | 'suspend';
     docId: string;
   } | null>(null);
+
+  // Load live doctor registry once; keep the demo roster on any failure.
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getDoctors().then((live) => {
+      if (!cancelled && live && live.length > 0) {
+        setDoctors(live);
+        setIsLive(true);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Filter & Search Logic
   const filteredDocs = doctors.filter((doc) => {
@@ -246,6 +262,13 @@ export default function DoctorsPage() {
               <Stethoscope size={18} style={{ color: '#2563eb' }} />
             </div>
             <h1 className="page-title">Doctor Verification</h1>
+            <span style={{
+              fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+              background: isLive ? '#f0fdf4' : '#f8fafc',
+              color: isLive ? '#16a34a' : '#64748b',
+            }}>
+              {isLive ? 'Live data' : 'Demo data'}
+            </span>
           </div>
           <p className="page-subtitle">Verify doctor credentials, certificates, and review platform registration requests.</p>
         </div>

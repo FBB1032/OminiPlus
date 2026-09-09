@@ -207,6 +207,8 @@ export interface RegisteredFacility {
   isVerifiedFacility: boolean;
   operatingHours: string;
   adminName: string;
+  licenseNo?: string;
+  cacNumber?: string;
 }
 
 export const ALL_FACILITIES: RegisteredFacility[] = [
