@@ -31,8 +31,8 @@ router.get(
       .from('appointments')
       .select(
         `id, scheduled_at, duration, status, type, reason, payment_status,
-         doctor:doctor_id (id, specialization, consultation_fee, profile:doctor_profiles!doctor_profiles_profile_id_fkey(first_name, last_name)),
-         patient:patient_id (id, profile:patient_profiles!patient_profiles_profile_id_fkey(first_name, last_name))`
+         doctor:doctor_id (id, specialization, consultation_fee, profile:profiles!doctor_profiles_profile_id_fkey(first_name, last_name)),
+         patient:patient_id (id, profile:profiles!patient_profiles_profile_id_fkey(first_name, last_name))`
       )
       .order('scheduled_at', { ascending: true });
     if (req.query.status) query = query.eq('status', req.query.status);

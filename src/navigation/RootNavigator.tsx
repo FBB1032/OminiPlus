@@ -13,7 +13,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator = () => {
   const { isAuthenticated, isInitialized, role, onboardingCompleted } = useAuth();
-  const [showSplash, setShowSplash] = useState(true);
+  const [splashTimerDone, setSplashTimerDone] = useState(false);
 
   console.log('[RootNavigator] State Update:', { isAuthenticated, isInitialized, role, onboardingCompleted });
 
@@ -22,13 +22,16 @@ export const RootNavigator = () => {
 
     // Keep splash screen visible for 3s in dev mode to review splash screen changes
     const timer = setTimeout(() => {
-      setShowSplash(false);
+      setSplashTimerDone(true);
     }, 3000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  if (!isInitialized || showSplash) {
+  // Splash only shows for unauthenticated users
+  const showSplash = !isAuthenticated && (!isInitialized || !splashTimerDone);
+
+  if (showSplash) {
     return <SplashScreen />;
   }
 

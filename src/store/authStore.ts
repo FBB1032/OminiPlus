@@ -21,6 +21,7 @@ interface AuthStore {
   setUser: (user: User) => void;
   logout: () => Promise<void>;
   initialize: () => Promise<void>;
+  markInitialized: () => void;
   completeOnboarding: () => Promise<void>;
   setOtpVerifiedForReset: (email: string) => void;
   clearOtpVerifiedForReset: () => void;
@@ -63,6 +64,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
       storageService.multiRemove([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN_EXPIRY]),
     ]);
     set({ user: null, tokens: null, isAuthenticated: false, role: null });
+  },
+
+  markInitialized: () => {
+    set({ isLoading: false, isInitialized: true });
   },
 
   completeOnboarding: async () => {

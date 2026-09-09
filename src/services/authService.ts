@@ -72,6 +72,7 @@ export const authService = {
       const session = await supabaseAuthService.restoreSession();
       if (session) {
         await useAuthStore.getState().setAuth(session.user, session.tokens);
+        useAuthStore.getState().markInitialized();
         return;
       }
       await useAuthStore.getState().initialize();

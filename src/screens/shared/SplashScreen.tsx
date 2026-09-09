@@ -1,9 +1,17 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, Image, StatusBar } from 'react-native';
-import { Colors, FontSize, FontWeight, Spacing } from '../../theme';
+import React, { useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Image,
+  StatusBar,
+} from "react-native";
+import { Colors, FontSize, FontWeight, Spacing } from "../../theme";
 
-const { width } = Dimensions.get('window');
-const logo = require('../../../assets/images/logo.png');
+const { width } = Dimensions.get("window");
+const logo = require("../../../assets/images/logo.png");
 
 export const SplashScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -53,7 +61,7 @@ export const SplashScreen = () => {
               duration: 1100,
               useNativeDriver: true,
             }),
-          ])
+          ]),
         ).start();
       });
     });
@@ -77,14 +85,13 @@ export const SplashScreen = () => {
       <Animated.View
         style={[
           styles.logoWrapper,
-          { opacity: fadeAnim, transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }] },
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }],
+          },
         ]}
       >
-        <Image
-          source={logo}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
       </Animated.View>
 
       {/* Tagline */}
@@ -103,12 +110,12 @@ export const SplashScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B5757',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#0B5757",
+    alignItems: "center",
+    justifyContent: "center",
   },
   glow: {
-    position: 'absolute',
+    position: "absolute",
     width: width * 0.9,
     height: width * 0.9,
     borderRadius: width * 0.45,
@@ -118,20 +125,20 @@ const styles = StyleSheet.create({
   logoWrapper: {
     width: width * 0.88,
     height: 140,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: Spacing[4],
   },
   logo: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   textBlock: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   tagline: {
     fontSize: FontSize.md,
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontWeight: FontWeight.semiBold,
     letterSpacing: 0.4,
   },

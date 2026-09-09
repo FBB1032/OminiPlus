@@ -281,44 +281,6 @@ insert into public.vitals_readings (patient_id, condition, reading_type, systoli
   ('e0000000-0000-4000-8000-000000000001', null,           'heart_rate',     null, null, 72, null, 'normal', null),
   ('e0000000-0000-4000-8000-000000000001', null,           'spo2',           null, null, null, 98.00, 'normal', 'Room air');
 
--- ─── Appointment + SOAP + prescription ─────────────────────────────────────────
-
-insert into public.appointments (
-  id, doctor_id, patient_id, scheduled_at, duration, status, type, reason,
-  is_doctor_approved, payment_status
-) values (
-  'f0000000-0000-4000-8000-000000000001',
-  'c0000000-0000-4000-8000-000000000001',
-  'e0000000-0000-4000-8000-000000000001',
-  now() + interval '2 days',
-  30, 'scheduled', 'video',
-  'Diabetes follow-up review and glucose log assessment',
-  true, 'held'
-) on conflict (id) do nothing;
-
-insert into public.soap_notes (appointment_id, subjective, objective, assessment, plan, created_by) values (
-  'f0000000-0000-4000-8000-000000000001',
-  'Patient reports chronic fatigue and mild visual blurriness. Irregular blood glucose checks over the past week. No chest discomfort or dyspnea.',
-  'Height: 165 cm, Weight: 55 kg, BMI: 20.2 (Normal). Latest fasting glucose 145 mg/dL. Pulse 72 bpm regular.',
-  'Type 2 Diabetes Mellitus under review. Mild symptoms suggest glycemic fluctuations. Cardiopulmonary signs clear.',
-  '1. Review blood glucose logs and medication adherence.\n2. Advise regular hydration and scheduled carbohydrate intake.\n3. Diabetic retinopathy screening at next visit.',
-  '77777777-7777-7777-7777-777777777777'
-) on conflict do nothing;
-
-insert into public.prescriptions (id, appointment_id, doctor_id, patient_id, diagnosis, instructions, follow_up_date) values (
-  'a0000000-0000-4000-8000-000000000001',
-  'f0000000-0000-4000-8000-000000000001',
-  'c0000000-0000-4000-8000-000000000001',
-  'e0000000-0000-4000-8000-000000000001',
-  'Type 2 Diabetes Mellitus — suboptimal glycemic control',
-  'Continue metformin. Monitor fasting glucose twice weekly. Return immediately if visual symptoms worsen.',
-  current_date + 30
-) on conflict (id) do nothing;
-
-insert into public.prescription_medications (prescription_id, name, dosage, frequency, duration, instructions) values
-  ('a0000000-0000-4000-8000-000000000001', 'Metformin HCl', '1000mg', 'Twice daily (morning & evening)', '30 days', 'Take with meals to reduce GI upset'),
-  ('a0000000-0000-4000-8000-000000000001', 'Vitamin B12',   '1000mcg', 'Once daily',                     '30 days', 'Sublingual tablet in the morning');
-
 -- ─── Medical records ──────────────────────────────────────────────────────────
 
 insert into public.medical_records (id, patient_id, type, title, description, date, doctor_id, doctor_name, attachment_url, visibility) values
@@ -376,10 +338,6 @@ insert into public.medication_items (hospital_id, name, category, dosage_form, c
   ('d0000000-0000-4000-8000-000000000001', 'Normal Saline 500ml', 'IV Fluids', 'IV Bag', 150, 80, 3500.00, 'NS-2026-003', '2026-12-31'),
   ('d0000000-0000-4000-8000-000000000001', 'Amlodipine 10mg', 'Cardiovascular', 'Tablet', 60, 100, 2100.00, 'AML-2026-001', '2026-11-30'),
   ('d0000000-0000-4000-8000-000000000001', 'Artesunate Injection', 'Emergency', 'Ampoule', 40, 30, 6800.00, 'ART-2026-002', '2026-10-31')
-on conflict do nothing;
-
-insert into public.pharmacy_orders (prescription_id, patient_id, patient_name, doctor_name, department, status) values
-  ('a0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'Chioma Egwu', 'Dr. Folake Ademola', 'Cardiology', 'pending')
 on conflict do nothing;
 
 -- ─── Lab orders ──────────────────────────────────────────────────────────────
@@ -443,19 +401,6 @@ insert into public.notifications (profile_id, type, title, body, is_read) values
   ('99999999-9999-9999-9999-999999999999', 'general', 'Blood Request Escalation', 'ICU O- emergency request needs 2 more units. Donor notifications have been sent.', false)
 on conflict do nothing;
 
--- ─── Payment transaction (escrow demo) ────────────────────────────────────────
-
-insert into public.payment_transactions (
-  reference, appointment_id, patient_id, doctor_id, amount, currency,
-  platform_fee, doctor_payout, status, method, escrow_released
-) values (
-  'OP-DEMO-2026-000001',
-  'f0000000-0000-4000-8000-000000000001',
-  'e0000000-0000-4000-8000-000000000001',
-  'c0000000-0000-4000-8000-000000000001',
-  15000.00, 'NGN', 1500.00, 13500.00, 'held', 'card', false
-) on conflict (reference) do nothing;
-
 -- ─── AI flag + incident report (admin console demo rows) ─────────────────────
 
 insert into public.ai_flags (profile_id, prompt, reason, severity, status) values
@@ -482,5 +427,105 @@ update public.appointments
 
 end
 $$;
+
+-- ─── Appointments + clinical chain (idempotent — safe on every run) ───────────
+-- Lives OUTSIDE the one-time demo guard so re-seeding always restores these
+-- rows and the GET /appointments flow has data across all status filters:
+-- scheduled / completed / cancelled. Deterministic IDs + on-conflict-do-nothing.
+
+insert into public.appointments (
+  id, doctor_id, patient_id, scheduled_at, duration, status, type, reason,
+  is_doctor_approved, doctor_approved_at, cancellation_reason, payment_status,
+  payment_held_at, created_at
+) values
+  -- Upcoming video consultation (drives patient Home + doctor schedule)
+  ('f0000000-0000-4000-8000-000000000001',
+   'c0000000-0000-4000-8000-000000000001',
+   'e0000000-0000-4000-8000-000000000001',
+   now() + interval '2 days',
+   30, 'scheduled', 'video',
+   'Diabetes follow-up review and glucose log assessment',
+   true, now() - interval '3 days', null, 'held', now() - interval '3 days', now() - interval '4 days'),
+  -- Completed consultation (drives Completed filter + doctor stats)
+  ('f0000000-0000-4000-8000-000000000002',
+   'c0000000-0000-4000-8000-000000000001',
+   'e0000000-0000-4000-8000-000000000001',
+   now() - interval '14 days',
+   30, 'completed', 'in_person',
+   'Hypertension review and medication titration',
+   true, now() - interval '16 days', null, 'released', null, now() - interval '18 days'),
+  -- Cancelled booking (drives Cancelled filter)
+  ('f0000000-0000-4000-8000-000000000003',
+   'c0000000-0000-4000-8000-000000000001',
+   'e0000000-0000-4000-8000-000000000001',
+   now() - interval '7 days',
+   30, 'cancelled', 'video',
+   'Cardiology consult for palpitations',
+   false, null, 'Patient rescheduled due to a work conflict.', 'refunded', null, now() - interval '10 days')
+on conflict (id) do update
+  set scheduled_at         = excluded.scheduled_at,
+      status               = excluded.status,
+      type                 = excluded.type,
+      reason               = excluded.reason,
+      is_doctor_approved   = excluded.is_doctor_approved,
+      doctor_approved_at   = excluded.doctor_approved_at,
+      cancellation_reason = excluded.cancellation_reason,
+      payment_status       = excluded.payment_status,
+      payment_held_at      = excluded.payment_held_at,
+      created_at           = excluded.created_at;
+
+-- SOAP note + prescription attached to the completed consultation
+insert into public.soap_notes (appointment_id, subjective, objective, assessment, plan, created_by) values (
+  'f0000000-0000-4000-8000-000000000002',
+  'Patient reports chronic fatigue and mild visual blurriness. Irregular blood glucose checks over the past week. No chest discomfort or dyspnea.',
+  'Height: 165 cm, Weight: 55 kg, BMI: 20.2 (Normal). Latest fasting glucose 145 mg/dL. Pulse 72 bpm regular.',
+  'Type 2 Diabetes Mellitus under review. Mild symptoms suggest glycemic fluctuations. Cardiopulmonary signs clear.',
+  '1. Review blood glucose logs and medication adherence.\n2. Advise regular hydration and scheduled carbohydrate intake.\n3. Diabetic retinopathy screening at next visit.',
+  '77777777-7777-7777-7777-777777777777'
+) on conflict (appointment_id) do nothing;
+
+insert into public.prescriptions (id, appointment_id, doctor_id, patient_id, diagnosis, instructions, follow_up_date) values (
+  'a0000000-0000-4000-8000-000000000001',
+  'f0000000-0000-4000-8000-000000000002',
+  'c0000000-0000-4000-8000-000000000001',
+  'e0000000-0000-4000-8000-000000000001',
+  'Type 2 Diabetes Mellitus — suboptimal glycemic control',
+  'Continue metformin. Monitor fasting glucose twice weekly. Return immediately if visual symptoms worsen.',
+  current_date + 30
+) on conflict (id) do nothing;
+
+-- No unique constraint on (prescription_id, name) — clear the demo prescription's
+-- rows first so re-seeding never duplicates medications.
+delete from public.prescription_medications
+ where prescription_id = 'a0000000-0000-4000-8000-000000000001';
+
+insert into public.prescription_medications (prescription_id, name, dosage, frequency, duration, instructions) values
+  ('a0000000-0000-4000-8000-000000000001', 'Metformin HCl', '1000mg', 'Twice daily (morning & evening)', '30 days', 'Take with meals to reduce GI upset'),
+  ('a0000000-0000-4000-8000-000000000001', 'Vitamin B12',   '1000mcg', 'Once daily',                     '30 days', 'Sublingual tablet in the morning');
+
+-- Pending pharmacy order against the demo prescription (no unique constraint —
+-- clear existing demo rows first for idempotency)
+delete from public.pharmacy_orders
+ where prescription_id = 'a0000000-0000-4000-8000-000000000001';
+
+insert into public.pharmacy_orders (prescription_id, patient_id, patient_name, doctor_name, department, status) values
+  ('a0000000-0000-4000-8000-000000000001', 'e0000000-0000-4000-8000-000000000001', 'Chioma Egwu', 'Dr. Folake Ademola', 'Cardiology', 'pending');
+
+-- Escrow demo rows for the upcoming + completed consultations
+insert into public.payment_transactions (
+  reference, appointment_id, patient_id, doctor_id, amount, currency,
+  platform_fee, doctor_payout, status, method, escrow_released
+) values
+  ('OP-DEMO-2026-000001',
+   'f0000000-0000-4000-8000-000000000001',
+   'e0000000-0000-4000-8000-000000000001',
+   'c0000000-0000-4000-8000-000000000001',
+   15000.00, 'NGN', 1500.00, 13500.00, 'held', 'card', false),
+  ('OP-DEMO-2026-000002',
+   'f0000000-0000-4000-8000-000000000002',
+   'e0000000-0000-4000-8000-000000000001',
+   'c0000000-0000-4000-8000-000000000001',
+   15000.00, 'NGN', 1500.00, 13500.00, 'released', 'card', true)
+on conflict (reference) do nothing;
 
 commit;
