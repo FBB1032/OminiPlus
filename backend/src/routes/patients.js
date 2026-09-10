@@ -11,6 +11,10 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Postgres uuid fields error on malformed input — reject non-UUID ids with a
+// client error (400) instead of a retryable 500.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.use(authenticate);
 
 // ─── GET /api/patients/me — own patient profile ──────────────────────────────
@@ -21,7 +25,9 @@ router.get(
     const { supabase } = req.auth;
     const { data, error } = await supabase
       .from('patient_profiles')
-      .select('*')
+      .select(
+        `*, profile:profile_id (id, first_name, last_name, email, phone, avatar_url)`
+      )
       .eq('profile_id', req.auth.userId)
       .maybeSingle();
     if (error) throw new ApiError(500, 'db_error', error.message);
@@ -36,10 +42,15 @@ router.get(
   '/:id',
   requirePermission('patients:read'),
   wrap(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid patient id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase
       .from('patient_profiles')
-      .select('*')
+      .select(
+        `*, profile:profile_id (id, first_name, last_name, email, phone, avatar_url)`
+      )
       .eq('id', req.params.id)
       .maybeSingle();
     if (error) throw new ApiError(500, 'db_error', error.message);
@@ -54,6 +65,9 @@ router.get(
   '/:id/records',
   requirePermission('medical_records:read'),
   wrap(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid patient id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase
       .from('medical_records')
@@ -123,6 +137,9 @@ router.get(
   '/:id/consents',
   requirePermission('patients:read'),
   wrap(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid patient id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase
       .from('consent_grants')

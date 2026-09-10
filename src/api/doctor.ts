@@ -106,19 +106,21 @@ interface WorkingHoursRow {
 
 function mapAppointment(row: AppointmentRow): Appointment {
   const docName = row.doctor?.profile;
+  const patientId = row.patient_id ?? row.patient?.id ?? '';
+  const doctorId = row.doctor_id ?? row.doctor?.id ?? '';
   return {
     id: row.id,
-    doctorId: row.doctor_id,
-    patientId: row.patient_id,
+    doctorId,
+    patientId,
     doctor: {
-      id: row.doctor?.id ?? row.doctor_id,
+      id: row.doctor?.id ?? doctorId,
       firstName: docName?.first_name ?? 'Dr.',
       lastName: docName?.last_name ?? '',
       specialization: row.doctor?.specialization ?? '',
       avatarUrl: undefined,
     },
     patient: {
-      id: row.patient?.id ?? row.patient_id,
+      id: row.patient?.id ?? patientId,
       firstName: row.patient?.profile?.first_name ?? '',
       lastName: row.patient?.profile?.last_name ?? '',
       avatarUrl: undefined,
@@ -191,7 +193,13 @@ export const doctorApi = {
     const todayStr = new Date().toISOString().slice(0, 10);
     const todayAppointments = appointments.filter((a) => a.scheduledAt.slice(0, 10) === todayStr);
 
-    const patientIds = [...new Set(appointments.map((a) => a.patientId))];
+    const patientIds = [
+      ...new Set(
+        appointments
+          .map((a) => a.patientId)
+          .filter((pid): pid is string => !!pid)
+      ),
+    ];
     const recentPatients: Patient[] = [];
     for (const pid of patientIds.slice(0, 5)) {
       try {
@@ -266,7 +274,15 @@ export const doctorApi = {
     // Patients visible to this doctor = those with shared appointments.
     const { data } = await apiClient.get<{ appointments: AppointmentRow[] }>('/appointments');
     const rows = data.appointments ?? [];
-    const patientIds = [...new Set(rows.map((a) => a.patient_id))];
+    // PostgREST replaces FK columns with embedded objects, so prefer the
+    // embedded patient.id and drop rows without a usable id.
+    const patientIds = [
+      ...new Set(
+        rows
+          .map((a) => a.patient_id ?? a.patient?.id)
+          .filter((pid): pid is string => !!pid)
+      ),
+    ];
 
     const patients: Patient[] = [];
     for (const pid of patientIds) {

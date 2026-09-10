@@ -30,7 +30,8 @@ router.get(
     let query = supabase
       .from('appointments')
       .select(
-        `id, scheduled_at, duration, status, type, reason, payment_status,
+        `id, doctor_id, patient_id, scheduled_at, duration, status, type, reason, payment_status,
+         cancellation_reason, created_at,
          doctor:doctor_id (id, specialization, consultation_fee, profile:profiles!doctor_profiles_profile_id_fkey(first_name, last_name)),
          patient:patient_id (id, profile:profiles!patient_profiles_profile_id_fkey(first_name, last_name))`
       )

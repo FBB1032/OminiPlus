@@ -143,19 +143,21 @@ function mapDoctor(row: DoctorRow): Doctor {
 
 function mapAppointment(row: AppointmentRow): Appointment {
   const docName = row.doctor?.profile;
+  const patientId = row.patient_id ?? row.patient?.id ?? '';
+  const doctorId = row.doctor_id ?? row.doctor?.id ?? '';
   return {
     id: row.id,
-    doctorId: row.doctor_id,
-    patientId: row.patient_id,
+    doctorId,
+    patientId,
     doctor: {
-      id: row.doctor?.id ?? row.doctor_id,
+      id: row.doctor?.id ?? doctorId,
       firstName: docName?.first_name ?? 'Dr.',
       lastName: docName?.last_name ?? '',
       specialization: row.doctor?.specialization ?? '',
       avatarUrl: undefined,
     },
     patient: {
-      id: row.patient?.id ?? row.patient_id,
+      id: row.patient?.id ?? patientId,
       firstName: row.patient?.profile?.first_name ?? '',
       lastName: row.patient?.profile?.last_name ?? '',
       avatarUrl: undefined,
