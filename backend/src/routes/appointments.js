@@ -11,6 +11,10 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Postgres uuid fields error on malformed input — reject non-UUID params with a
+// client error (400) instead of a retryable 500 from the db layer.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const createSchema = z.object({
   doctorId: z.string().uuid(),
   patientId: z.string().uuid(),
@@ -94,6 +98,9 @@ router.patch(
     if (!status || !allowed.includes(status)) {
       throw new ApiError(400, 'validation_error', `status must be one of ${allowed.join(', ')}`);
     }
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid appointment id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase
       .from('appointments')
@@ -112,6 +119,9 @@ router.post(
   '/:id/complete',
   requirePermission('appointments:complete'),
   wrap(async (req, res) => {
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid appointment id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase.rpc('complete_appointment_and_release_escrow', {
       p_appointment_id: req.params.id,
@@ -127,6 +137,9 @@ router.post(
 router.get(
   '/slots/:doctorId/:date',
   wrap(async (req, res) => {
+    if (!UUID_RE.test(req.params.doctorId)) {
+      throw new ApiError(400, 'validation_error', 'Invalid doctor id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase.rpc('get_available_slots', {
       p_doctor_id: req.params.doctorId,

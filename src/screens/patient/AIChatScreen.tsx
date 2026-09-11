@@ -21,6 +21,7 @@ import { usePatientHome } from '../../hooks/usePatient';
 import { useAuth } from '../../hooks/useAuth';
 import { useChronicDiseaseStore } from '../../store/chronicDiseaseStore';
 import { aiApi } from '../../api/ai';
+import { AppError } from '../../api/client';
 import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
 
 const { width } = Dimensions.get('window');
@@ -765,8 +766,12 @@ export default function AIChatScreen({ route, navigation }: any) {
         const result = await aiApi.chat(conversationIdRef.current, chatHistory);
         conversationIdRef.current = result.conversationId;
         replyText = result.reply;
-      } catch {
-        replyText = getMedicalResponse(text, vitals);
+      } catch (err) {
+        // Quota/rate-limit messages are final and human-readable — surface
+        // them verbatim; anything else falls back to the local responder.
+        replyText = err instanceof AppError && err.statusCode === 429
+          ? err.message
+          : getMedicalResponse(text, vitals);
       }
 
       const aiMsg: Message = {

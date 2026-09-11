@@ -47,7 +47,10 @@ supabase/
 ├── migrations/
 │   ├── 0001_unified_schema.sql    # tables, enums, triggers
 │   ├── 0002_rls_policies.sql      # row-level security for every table
-│   └── 0003_auth_functions.sql    # OTP, login gate, session, slots, escrow RPCs
+│   ├── 0003_auth_functions.sql    # OTP, login gate, session, slots, escrow RPCs
+│   ├── 0004_ai_engine.sql         # AI conversations/usage tables + policies
+│   └── 0005_security_hardening.sql # audit fixes: role-injection lock, OTP/escrow
+│   │                              # authorization, slots padding bug, staff RLS
 ├── functions/
 │   ├── send-otp/index.ts          # edge function: issue + email reset OTP
 │   └── reset-password/index.ts    # edge function: verify OTP + set password
@@ -116,11 +119,16 @@ supabase login
 supabase link --project-ref <your-project-ref>
 
 # apply in order
-supabase db push                       # runs migrations/0001..0003
+supabase db push                       # runs migrations/0001..0005
 # then load the demo data + profiles
 psql "$SUPABASE_DB_URL" -f supabase/seed.sql
 # or: supabase db reset (local) with seed.sql configured as seed file
 ```
+
+> `0005_security_hardening.sql` is idempotent and can be pasted into the SQL
+> editor on its own for existing projects — it supersedes vulnerable policies
+> and functions from 0002/0003 (signup role injection, OTP exposure, escrow
+> authorization, slots day-name padding, staff workflow alignment).
 
 `seed.sql` can also be pasted straight into the Supabase **SQL editor** — it is
 self-contained. The auth users, identities, and profiles sections are safe to

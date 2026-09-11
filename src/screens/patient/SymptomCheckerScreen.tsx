@@ -14,6 +14,7 @@ import { Colors, Spacing, FontSize, FontWeight, Shadows } from '../../theme';
 import { Card, Button, StepIndicator, BodyMap, AppModal } from '../../components';
 import { AIDisclaimerBanner } from '../../components/common/AIDisclaimerBanner';
 import { aiApi } from '../../api/ai';
+import { AppError } from '../../api/client';
 import { BodyPartId } from '../../components/ui/BodyMap';
 import { PainLog } from '../../types';
 
@@ -52,7 +53,6 @@ export default function SymptomCheckerScreen({ navigation }: any) {
   const [tempNotes, setTempNotes] = useState('');
   const [isSeverityModalOpen, setIsSeverityModalOpen] = useState(false);
   const [triage, setTriage] = useState<string | null>(null);
-
   const areaName = (partId: string): string => {
     const mapping: Record<string, string> = {
       head: 'Head and neck',
@@ -245,10 +245,12 @@ export default function SymptomCheckerScreen({ navigation }: any) {
       .map((l) => `${areaName(l.bodyPartId)} pain severity ${l.severity}/10${l.notes ? ` (${l.notes})` : ''}`)
       .concat(selectedSymptoms.map((s) => `Associated symptom: ${s}`))
       .join('; ');
+    // Quota/rate-limit failures are final — show the server message in the
+    // AI card; transient failures just leave the local rule-based result.
     aiApi
       .triage({ symptoms, duration: notes || undefined })
-      .then((res) => setTriage(res.triage))
-      .catch(() => setTriage(null));
+      .then((res) => setTriage(res.reply ?? res.triage ?? null))
+      .catch((err) => setTriage(err instanceof AppError && err.statusCode === 429 ? err.message : null));
   };
 
   return (

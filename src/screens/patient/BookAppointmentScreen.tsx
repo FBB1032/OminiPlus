@@ -305,11 +305,16 @@ export default function BookAppointmentScreen({ route, navigation }: any) {
     bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
     try {
+      // The paid consult format must drive the appointment type so the
+      // doctor's video-join gate (type === 'video') matches what the patient
+      // paid for.
+      const paidType =
+        selectedFormat === 'video' ? 'video' : selectedFormat === 'audio' ? 'phone' : appointmentType;
       await bookMutation.mutateAsync({
         doctorId: selectedDoctor.id,
         scheduledAt: bookingDateTime.toISOString(),
         duration: 30, // 30 mins
-        type: appointmentType,
+        type: paidType,
         reason,
       });
 

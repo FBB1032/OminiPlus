@@ -54,7 +54,7 @@ delete from auth.users
     'admin@xyzspecialist.ng', 'nurse@xyzspecialist.ng', 'pharmacist@xyzspecialist.ng',
     'labtech@xyzspecialist.ng', 'bloodbank@xyzspecialist.ng', 'reception@xyzspecialist.ng'
  )
- and id not in (
+  and id not in (
     '11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222',
     '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444',
     '55555555-5555-5555-5555-555555555555', '66666666-6666-6666-6666-666666666666',
@@ -63,6 +63,9 @@ delete from auth.users
     'aaaaaaa2-2222-4222-8222-aaaaaaaaaaa2', 'aaaaaaa3-3333-4333-8333-aaaaaaaaaaa3',
     'aaaaaaa4-4444-4444-8444-aaaaaaaaaaa4', 'aaaaaaa5-5555-4555-8555-aaaaaaaaaaa5'
  );
+
+-- Never resurrect used/expired reset OTPs from previous demo runs.
+delete from public.password_reset_otps;
 
 -- GoTrue scans the token columns below as NON-NULL strings. Direct inserts
 -- that omit them leave NULLs, and every auth query on those rows then 500s
@@ -418,12 +421,6 @@ insert into public.incident_reports (
    'Demo report: consultation started 7 minutes late due to clinic-side delay. Patient notified and appointment was extended.',
    'resolved', 'low'
 ) on conflict do nothing;
-
--- Update seeded appointment payment linkage
-update public.appointments
-   set payment_status = 'held'
- where id = 'f0000000-0000-4000-8000-000000000001'
-   and payment_status <> 'held';
 
 end
 $$;

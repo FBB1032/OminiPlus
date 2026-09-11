@@ -7,11 +7,14 @@ const logger = require('./config/logger');
 const app = require('./app');
 
 const server = app.listen(config.port, () => {
+  const groqChain = config.ai.groq.apiKey
+    ? [config.ai.groq.model, ...config.ai.groq.fallbackModels].join(' → ')
+    : 'none (rule-based fallback)';
   logger.info('OminiPulse backend started', {
     port: config.port,
     env: config.env,
     supabase: config.supabase.url,
-    aiProviders: ['groq', 'gemini', 'openai'].filter((p) => config.ai[p].apiKey).join('>') || 'none (rule-based fallback)',
+    ai: groqChain,
   });
 });
 

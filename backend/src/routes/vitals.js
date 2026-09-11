@@ -57,24 +57,28 @@ router.post(
 
     const { alerts } = sentinel.evaluateReading(data);
     if (alerts.length > 0) {
-      // Attach sentinel analysis to the response; RLS governs who may write
-      // notifications, failures here are non-fatal.
-      const patientProfile = await supabase
-        .from('patient_profiles')
-        .select('profile_id')
-        .eq('id', b.patientId)
-        .maybeSingle();
-      if (patientProfile.data) {
-        for (const a of alerts) {
-          await supabase
-            .from('notifications')
-            .insert({
-              profile_id: patientProfile.data.profile_id,
-              type: 'general',
-              title: a.severity === 'critical' ? 'Critical Vitals Alert' : 'Vitals Check',
-              body: a.message,
-            })
-            .then(() => {}, () => {});
+      // Attach sentinel analysis to the response. Notifications are written via
+      // the service-role client: the only INSERT policy on notifications is
+      // admin-gated, so the user-scoped client would silently fail RLS.
+      const { adminClient } = require('../config/supabase');
+      if (adminClient) {
+        const patientProfile = await supabase
+          .from('patient_profiles')
+          .select('profile_id')
+          .eq('id', b.patientId)
+          .maybeSingle();
+        if (patientProfile.data) {
+          for (const a of alerts) {
+            adminClient
+              .from('notifications')
+              .insert({
+                profile_id: patientProfile.data.profile_id,
+                type: 'general',
+                title: a.severity === 'critical' ? 'Critical Vitals Alert' : 'Vitals Check',
+                body: a.message,
+              })
+              .then(() => {}, () => {});
+          }
         }
       }
     }
@@ -90,6 +94,11 @@ router.get(
   requirePermission('vitals:read'),
   wrap(async (req, res) => {
     const { supabase } = req.auth;
+    // Malformed uuid query params would 500 at the db layer — 400 instead.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (req.query.patientId && !UUID_RE.test(req.query.patientId)) {
+      throw new ApiError(400, 'validation_error', 'Invalid patientId');
+    }
     let query = supabase
       .from('vitals_readings')
       .select('*')

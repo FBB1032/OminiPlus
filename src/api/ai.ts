@@ -27,23 +27,25 @@ export interface AIChatResponse {
 }
 
 export interface AITriageResponse {
-  triage: string;
+  /** Live backend field; the offline mock returns `triage`. */
+  reply?: string;
+  triage?: string;
   urgency: string;
-  advice: string[];
+  advice?: string[];
   provider: string;
   model: string;
 }
 
+/** Live backend returns the differential as free text in `reply`. */
 export interface AICdsResponse {
-  differentials: string[];
-  workup: string[];
-  'safety-netting': string[];
+  reply: string;
   provider: string;
   model: string;
 }
 
 export interface AISoapResponse {
-  soap: string;
+  soap: string | null;
+  reply: string;
   provider: string;
   model: string;
 }

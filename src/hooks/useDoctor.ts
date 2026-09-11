@@ -74,8 +74,10 @@ export const useUpdateAppointmentStatus = () => {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       doctorApi.updateAppointmentStatus(id, status),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctorAppointments() });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patientAppointments() });
+      // Invalidate by prefix so status-filtered queries
+      // (['doctor','appointments',{status:'pending'}]) are also refreshed.
+      queryClient.invalidateQueries({ queryKey: ['doctor', 'appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['patient', 'appointments'] });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.patientHome });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.doctorDashboard });
     },

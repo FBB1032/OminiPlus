@@ -10,6 +10,18 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Postgres uuid fields error on malformed input — reject non-UUID ids with a
+// client error (400) instead of a retryable 500 from the db layer.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const verifySchema = z.object({
+  approve: z.boolean(),
+  licenseExpiryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'licenseExpiryDate must be YYYY-MM-DD')
+    .optional(),
+});
+
 router.use(authenticate, requirePermission('doctors:read'));
 
 // ─── GET /api/doctors?specialization=&available= ─────────────────────────────
@@ -21,7 +33,7 @@ router.get(
     let query = supabase
       .from('doctor_profiles')
       .select(
-        `id, specialization, bio, experience_years, clinic_name, clinic_address,
+        `id, profile_id, hospital_id, specialization, bio, experience_years, clinic_name, clinic_address,
          consultation_fee, rating, review_count, is_available, availability_status,
          is_mdcn_verified, hospital:hospital_id (id, name, city, state),
          profile:profile_id (id, first_name, last_name, avatar_url)`
@@ -110,8 +122,12 @@ router.put(
 router.patch(
   '/:id/verify',
   requirePermission('doctors:verify'),
+  validate(verifySchema),
   wrap(async (req, res) => {
-    const { approve, licenseExpiryDate } = req.body ?? {};
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid doctor id');
+    }
+    const { approve, licenseExpiryDate } = req.body;
     const { supabase } = req.auth;
 
     const { data, error } = await supabase
@@ -121,21 +137,21 @@ router.patch(
         ...(licenseExpiryDate ? { license_expiry_date: licenseExpiryDate } : {}),
       })
       .eq('id', req.params.id)
-      .select('id, is_mdcn_verified')
+      .select('id, is_mdcn_verified, profile_id')
       .single();
     if (error || !data) throw new ApiError(404, 'not_found', 'Doctor not found');
 
-    // Sync the profile verification_status so login gating sees the change
-    const { data: profile } = await supabase.from('doctor_profiles').select('profile_id').eq('id', req.params.id).single();
-    if (profile) {
-      await supabase
-        .from('profiles')
-        .update({
-          verification_status: approve === true ? 'approved' : 'pending',
-          is_approved: approve === true,
-        })
-        .eq('id', profile.profile_id);
-    }
+    // Sync the profile verification_status so login gating sees the change.
+    // A silent failure here would keep an approved doctor locked out
+    // (check_login_eligibility gates on profiles.verification_status).
+    const { error: syncErr } = await supabase
+      .from('profiles')
+      .update({
+        verification_status: approve === true ? 'approved' : 'pending',
+        is_approved: approve === true,
+      })
+      .eq('id', data.profile_id);
+    if (syncErr) throw new ApiError(500, 'sync_failed', syncErr.message);
     res.json({ doctor: data });
   })
 );

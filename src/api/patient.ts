@@ -221,16 +221,29 @@ function paginate<T>(items: T[], params?: PaginationParams): PaginatedResponse<T
 // ─── Cached patient context (own patient profile row) ─────────────────────────
 
 let ownPatientRow: PatientProfileRow | null = null;
+let ownPatientRowUserId: string | null = null;
 
 async function getOwnPatientId(): Promise<string> {
-  if (ownPatientRow) return ownPatientRow.id;
+  // Key the cache by auth user id so a stale row can never leak across
+  // accounts on the same device (logout alone does not reset this module).
+  const { getSupabaseClient } = await import('../services/supabaseClient');
+  const supabase = getSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const currentUserId = user?.id ?? null;
+  if (ownPatientRow && ownPatientRowUserId === currentUserId) {
+    return ownPatientRow.id;
+  }
   const { data } = await apiClient.get<{ patient: PatientProfileRow }>('/patients/me');
   ownPatientRow = data.patient;
+  ownPatientRowUserId = currentUserId;
   return data.patient.id;
 }
 
 export function __clearPatientCache() {
   ownPatientRow = null;
+  ownPatientRowUserId = null;
 }
 
 // ─── API ─────────────────────────────────────────────────────────────────────

@@ -23,14 +23,6 @@ export default function PrescriptionScreen({ route, navigation }: any) {
   const { role, user } = useAuth();
   const { appointmentId = 'apt-1', patientId = 'pat-1', mode = 'create', prescriptionId } = route?.params || {};
 
-  if (role !== 'doctor' && role !== 'admin') {
-    return <AccessDenied onBack={() => navigation.goBack()} message="Only clinical doctors and system administrators are permitted to issue or view prescriptions." />;
-  }
-
-  if (role === 'doctor' && user?.isApproved === false) {
-    return <AccessDenied onBack={() => navigation.goBack()} message="Verification Required: Your practitioner credentials must be verified before you can issue prescriptions." />;
-  }
-
   const isCreate = mode === 'create';
   const { success: showToastSuccess, error: showToastError } = useToast();
 
@@ -61,6 +53,16 @@ export default function PrescriptionScreen({ route, navigation }: any) {
 
   const { data: patient } = usePatientDetail(patientId);
   const { data: activePrescriptions } = usePatientPrescriptions(patientId);
+
+  // Access gates render AFTER all hooks so hook count stays stable across
+  // renders (early returns here would crash React if role flips mid-mount).
+  if (role !== 'doctor' && role !== 'admin') {
+    return <AccessDenied onBack={() => navigation.goBack()} message="Only clinical doctors and system administrators are permitted to issue or view prescriptions." />;
+  }
+
+  if (role === 'doctor' && user?.isApproved === false) {
+    return <AccessDenied onBack={() => navigation.goBack()} message="Verification Required: Your practitioner credentials must be verified before you can issue prescriptions." />;
+  }
 
   const medicationsWatch = useWatch({
     control,

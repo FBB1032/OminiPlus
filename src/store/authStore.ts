@@ -63,6 +63,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
       secureStoreService.remove(STORAGE_KEYS.REFRESH_TOKEN),
       storageService.multiRemove([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN_EXPIRY]),
     ]);
+    // Reset cross-request caches keyed to the previous account so a new
+    // login can never inherit the previous user's patient context.
+    try {
+      const { __clearPatientCache } = await import('../api/patient');
+      __clearPatientCache();
+    } catch {
+      // cache reset is best-effort
+    }
+    try {
+      const { queryClient } = await import('../api/queryClient');
+      queryClient.clear();
+    } catch {
+      // query cache reset is best-effort
+    }
     set({ user: null, tokens: null, isAuthenticated: false, role: null });
   },
 

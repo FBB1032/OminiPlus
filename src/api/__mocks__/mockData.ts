@@ -223,13 +223,11 @@ export const ACTIVE_PRESCRIPTIONS: any[] = [
 // ─── Response Builder ─────────────────────────────────────────────────────────
 
 function buildResponse(config: InternalAxiosRequestConfig, data: unknown): AxiosResponse {
+  // Mirrors the live Express contract: the resource object/array is the body
+  // itself ({ appointments: [...] }, { patient: {...} }), not wrapped in an
+  // extra { data: ... } envelope.
   return {
-    data: {
-      data,
-      message: 'Success (Mock Fallback)',
-      success: true,
-      statusCode: 200,
-    },
+    data,
     status: 200,
     statusText: 'OK',
     headers: {},
@@ -1267,9 +1265,11 @@ routes.push(
     test: (p) => p === '/ai/triage',
     handle: (config) => {
       const payload = parsePayload(config.data);
+      const reply = `Mock triage (offline): review of "${String(payload.symptoms).slice(0, 80)}" suggests a routine consultation.`;
       return {
-        triage: `Mock triage (offline): review of "${String(payload.symptoms).slice(0, 80)}" suggests a routine consultation.`,
-        urgency: 'routine',
+        reply,
+        triage: reply,
+        urgency: 'see-doctor-within-48h',
         advice: ['Monitor your symptoms', 'Stay hydrated', 'See a doctor if symptoms worsen'],
         provider: 'mock',
         model: 'offline-fallback',
@@ -1282,8 +1282,10 @@ routes.push(
     test: (p) => p === '/ai/soap',
     handle: (config) => {
       const payload = parsePayload(config.data);
+      const soap = `Subjective: ${String(payload.transcript).slice(0, 400)}\nObjective: mock offline data.\nAssessment: pending live review.\nPlan: mock plan.`;
       return {
-        soap: `Subjective: ${String(payload.transcript).slice(0, 400)}\nObjective: mock offline data.\nAssessment: pending live review.\nPlan: mock plan.`,
+        soap,
+        reply: soap,
         provider: 'mock',
         model: 'offline-fallback',
       };
@@ -1294,9 +1296,8 @@ routes.push(
     method: 'post',
     test: (p) => p === '/ai/cds',
     handle: () => ({
-      differentials: ['Mock differential (offline)'],
-      workup: ['Basic panel'],
-      'safety-netting': ['Return if symptoms worsen'],
+      reply:
+        'Differential (mock, offline): 1) Unspecified viral illness — most likely; 2) Bacterial infection — consider basic panel; Safety netting: return if symptoms worsen.',
       provider: 'mock',
       model: 'offline-fallback',
     }),

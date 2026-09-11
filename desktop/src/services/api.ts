@@ -41,7 +41,8 @@ interface HospitalRow {
   city: string | null;
   state: string | null;
   country: string | null;
-  phone: string | null;
+  emergency_phone?: string | null;
+  phone?: string | null;
   email: string | null;
   website: string | null;
   partner_status: string | null;
@@ -51,9 +52,9 @@ interface HospitalRow {
 
 interface AiFlagRow {
   id: string;
-  user_id: string;
+  profile_id: string | null;
   prompt: string;
-  reason: string;
+  reason: string | null;
   severity: string;
   status: string;
   created_at: string;
@@ -62,11 +63,14 @@ interface AiFlagRow {
 interface AuditLogRow {
   id: string;
   actor_id: string | null;
+  actor_name: string | null;
+  actor_role?: string | null;
   action: string;
-  entity_type: string | null;
-  entity_id: string | null;
+  record_category: string | null;
+  record_id: string | null;
+  record_name: string | null;
   ip_address: string | null;
-  user_agent: string | null;
+  device: string | null;
   created_at: string;
 }
 
@@ -76,13 +80,13 @@ interface PaymentRow {
   patient_id: string;
   doctor_id: string;
   appointment_id: string | null;
-  service_type: string | null;
   amount: number;
   currency: string;
   platform_fee: number | null;
   doctor_payout: number | null;
   status: string;
   method: string;
+  escrow_released: boolean | null;
   created_at: string;
 }
 
@@ -142,7 +146,7 @@ function mapHospital(row: HospitalRow): Hospital {
     address: [row.address, row.city, row.state].filter(Boolean).join(', '),
     city: row.city ?? '—',
     country: row.country ?? '—',
-    phone: row.phone ?? '—',
+    phone: row.emergency_phone ?? row.phone ?? '—',
     email: row.email ?? '—',
     website: row.website ?? undefined,
     partnerStatus: (row.partner_status as Hospital['partnerStatus']) ?? 'pending',
@@ -154,10 +158,10 @@ function mapHospital(row: HospitalRow): Hospital {
 function mapAiFlag(row: AiFlagRow): AIFlag {
   return {
     id: row.id,
-    userId: row.user_id,
+    userId: row.profile_id ?? 'unknown',
     userRole: 'patient',
     prompt: row.prompt,
-    reason: row.reason,
+    reason: row.reason ?? '—',
     severity: (row.severity as AIFlag['severity']) ?? 'low',
     status: (row.status as AIFlag['status']) ?? 'pending',
     createdAt: row.created_at,
@@ -168,12 +172,12 @@ function mapAuditLog(row: AuditLogRow): AuditLog {
   return {
     id: row.id,
     adminId: row.actor_id ?? 'system',
-    adminName: 'Staff',
+    adminName: row.actor_name ?? 'System',
     action: row.action,
-    resource: row.entity_type ?? '—',
-    resourceId: row.entity_id ?? undefined,
+    resource: row.record_category ?? '—',
+    resourceId: row.record_id ?? undefined,
     ipAddress: row.ip_address ?? '—',
-    userAgent: row.user_agent ?? undefined,
+    userAgent: row.device ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -187,14 +191,14 @@ function mapPayment(row: PaymentRow): PaymentTransaction {
     doctorId: row.doctor_id,
     doctorName: 'Doctor',
     appointmentId: row.appointment_id ?? '—',
-    serviceType: row.service_type ?? 'consultation',
+    serviceType: 'consultation',
     amount: row.amount,
     currency: row.currency,
     platformFee: row.platform_fee ?? 0,
     doctorPayout: row.doctor_payout ?? row.amount,
     status: (row.status as PaymentTransaction['status']) ?? 'pending',
     method: (row.method as PaymentTransaction['method']) ?? 'card',
-    escrowReleased: row.status === 'completed',
+    escrowReleased: row.escrow_released ?? row.status === 'released',
     createdAt: row.created_at,
   };
 }

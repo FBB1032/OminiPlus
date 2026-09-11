@@ -10,6 +10,10 @@ const { authenticate, requirePermission } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Postgres uuid fields error on malformed input — reject non-UUID ids with a
+// client error (400) instead of a retryable 500 from the db layer.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 router.use(authenticate, requirePermission('admin:dashboard'));
 
 // ─── GET /api/admin/dashboard — platform-wide KPI counts ─────────────────────
@@ -62,6 +66,9 @@ router.patch(
   requirePermission('admin:users'),
   wrap(async (req, res) => {
     const { isActive, verificationStatus } = req.body ?? {};
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid user id');
+    }
     const { supabase } = req.auth;
     const { data, error } = await supabase
       .from('profiles')
@@ -97,6 +104,9 @@ router.get(
   requirePermission('admin:audit'),
   wrap(async (req, res) => {
     const { supabase } = req.auth;
+    if (req.query.patientId && !UUID_RE.test(req.query.patientId)) {
+      throw new ApiError(400, 'validation_error', 'Invalid patientId');
+    }
     let query = supabase.from('audit_logs').select('*').order('created_at', { ascending: false });
     if (req.query.patientId) query = query.eq('patient_id', req.query.patientId);
     const { data, error } = await query.limit(500);
@@ -128,6 +138,9 @@ router.patch(
     const allowed = ['pending', 'under_review', 'resolved', 'dismissed', 'handover_to_board', 'temp_suspended', 'perm_suspended'];
     if (!status || !allowed.includes(status)) {
       throw new ApiError(400, 'validation_error', `status must be one of ${allowed.join(', ')}`);
+    }
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid incident id');
     }
     const { supabase } = req.auth;
     const { data, error } = await supabase
@@ -163,6 +176,9 @@ router.patch(
     const { status } = req.body ?? {};
     if (!['reviewed', 'dismissed'].includes(status)) {
       throw new ApiError(400, 'validation_error', 'status must be reviewed or dismissed');
+    }
+    if (!UUID_RE.test(req.params.id)) {
+      throw new ApiError(400, 'validation_error', 'Invalid flag id');
     }
     const { supabase } = req.auth;
     const { data, error } = await supabase.from('ai_flags').update({ status }).eq('id', req.params.id).select('*').single();

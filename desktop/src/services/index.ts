@@ -70,11 +70,12 @@ export const appointmentsService = {
 };
 
 // ─── AI Monitoring ────────────────────────────────────────────────────────────
+// Backend contract: GET /admin/ai-flags, PATCH /admin/ai-flags/:id
 export const aiService = {
   getFlags: async (params?: { page?: number; limit?: number; status?: string }) =>
-    apiClient.get<ApiResponse<PaginatedResponse<AIFlag>>>('/admin/ai/flags', { params }).then(r => r.data.data),
+    apiClient.get<ApiResponse<PaginatedResponse<AIFlag>>>('/admin/ai-flags', { params }).then(r => r.data.data),
   updateFlag: async (id: string, status: string) =>
-    apiClient.patch<ApiResponse<AIFlag>>(`/admin/ai/flags/${id}`, { status }).then(r => r.data.data),
+    apiClient.patch<ApiResponse<AIFlag>>(`/admin/ai-flags/${id}`, { status }).then(r => r.data.data),
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

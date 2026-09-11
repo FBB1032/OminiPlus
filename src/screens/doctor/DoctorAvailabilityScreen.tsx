@@ -138,7 +138,9 @@ const TimePickerModal = ({ visible, value, title, onClose, onConfirm }: TimePick
 export default function DoctorAvailabilityScreen({ navigation }: any) {
   const { user } = useAuth();
   const isDoctor = user?.role === 'doctor';
-  const isUnverifiedDoctor = isDoctor && ((user as any)?.isVerified === false || (user as any)?.verificationStatus === 'pending' || (user as any)?.isVerified !== true);
+  const isUnverifiedDoctor =
+    isDoctor &&
+    ((user as any)?.isVerified === false || (user as any)?.verificationStatus === 'pending');
 
   const { success: showSuccess, error: showError } = useToast();
   const { data: serverAvailability, isLoading, isError, refetch } = useDoctorAvailability();

@@ -2,7 +2,8 @@
  * AI engine facade — single entry point for all model calls.
  *
  * Responsibilities:
- *   • Route through the provider chain (Groq → Gemini → OpenAI) with failover
+ *   • Route through the Groq model chain (gpt-oss-120b → gpt-oss-20b →
+ *     compound-mini → allam-2-7b) with automatic failover
  *   • Apply guardrails before/after every call
  *   • Enforce a per-user daily usage cap
  *   • Persist conversations + usage to Supabase (ai_conversations, ai_usage)
@@ -10,7 +11,7 @@
 
 const config = require('../config');
 const logger = require('../config/logger');
-const { buildChain } = require('./providers');
+const { buildChain, FATAL_STATUS } = require('./providers');
 const { SYSTEM_PROMPTS, screenInput, scrubOutput, containsRedFlag, EMERGENCY_FOOTER } = require('./guardrails');
 
 const chain = buildChain();
@@ -19,7 +20,7 @@ const BLOCKED_REPLY =
   'I can\u2019t help with that request. For anything involving prescriptions or specific dosing, please consult a licensed doctor or pharmacist. If this is urgent, visit the nearest hospital or call 112.';
 
 /**
- * Core completion with failover + guardrails.
+ * Core completion with model failover + guardrails.
  * @param {object} opts { systemPrompt, messages, maxTokens?, temperature? }
  * @returns {{ text: string, provider: string, model: string, fallback: boolean }}
  */
@@ -35,7 +36,9 @@ async function complete(opts) {
       if (!text) throw new Error('Empty completion');
       return { text, provider: provider.name, model: provider.model, fallback: false };
     } catch (err) {
-      logger.warn('AI provider failed; trying next', { provider: provider.name, message: err.message });
+      logger.warn('Groq model failed; trying next in chain', { model: provider.model, status: err.status, code: err.code, message: err.message });
+      // 401/403 = the API key is invalid/forbidden — no model can fix that.
+      if (err.status && FATAL_STATUS.has(err.status)) break;
     }
   }
   return { text: '', provider: 'none', model: config.ai.fallbackModel, fallback: true };
@@ -178,9 +181,12 @@ function fallbackTriage(symptoms) {
 // ─── Persistence helpers ─────────────────────────────────────────────────────
 
 async function flagPrompt(ctx, prompt, reason, severity) {
-  const supabase = ctx.supabase ?? null;
-  if (!supabase) return;
-  await supabase
+  // Insert via the service-role client: the only write policy on ai_flags is
+  // admin-gated, so the caller's client would silently fail RLS and the
+  // admin review queue would stay empty.
+  const { adminClient } = require('../config/supabase');
+  if (!adminClient) return;
+  await adminClient
     .from('ai_flags')
     .insert({ profile_id: ctx.userId ?? null, prompt, reason, severity, status: 'pending' });
 }

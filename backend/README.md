@@ -5,8 +5,9 @@ Express.js backend for OminiPulse, sitting in front of the shared **Supabase** p
 
 ```
 Mobile / Web / Desktop  ──►  Express API (this folder)  ──►  Supabase (PostgreSQL + RLS + GoTrue)
-                                    │
-                                    └──►  AI chain: Groq → Gemini → OpenAI → rule-based fallback
+                                     │
+                                     └──►  AI chain: Groq (gpt-oss-120b → gpt-oss-20b → compound-mini
+                                           → allam-2-7b) → rule-based fallback
 ```
 
 ## 1. Architecture
@@ -16,7 +17,7 @@ Mobile / Web / Desktop  ──►  Express API (this folder)  ──►  Supabas
 | **AuthN** | Supabase GoTrue JWTs (issued at login by any client) verified on every request (`src/middleware/auth.js`). |
 | **AuthZ (RBAC)** | Two layers: HTTP endpoints guarded by a 9-role permission matrix (`src/rbac/permissions.js`) **and** PostgreSQL RLS policies (`supabase/migrations/0002_rls_policies.sql`). User-scoped queries run under the caller's JWT, so even a handler bug cannot leak rows. |
 | **Database** | Supabase PostgreSQL. All queries go through `@supabase/supabase-js` — user clients (RLS-on) for everything user-facing, one service-role client for server-only admin ops. No direct SQL credentials in this process. |
-| **AI** | Provider chain `Groq → Gemini → OpenAI` with automatic failover and deterministic rule-based fallback. Guardrails screen inputs (harmful/prescription-bypass prompts), scrub outputs, and append emergency notices for red-flag symptoms. Vitals sentinel is a free rule-based anomaly engine. |
+| **AI** | Groq-only model chain (`gpt-oss-120b → gpt-oss-20b → compound-mini → allam-2-7b`) with automatic per-request failover on model errors and a deterministic rule-based fallback. Guardrails screen inputs (harmful/prescription-bypass prompts), scrub outputs, and append emergency notices for red-flag symptoms. Vitals sentinel is a free rule-based anomaly engine. |
 
 ### Repository layout
 
@@ -39,7 +40,7 @@ backend/
     │   └── requestContext.js    # per-request logger + timing
     ├── rbac/permissions.js      # the 9-role × permission matrix
     ├── ai/
-    │   ├── providers.js         # Groq / Gemini / OpenAI adapters (one contract)
+    │   ├── providers.js         # Groq adapter + model-fallback chain builder
     │   ├── guardrails.js        # input screening, output scrubbing, system prompts
     │   ├── engine.js            # chat / clinical CDS / SOAP / triage + usage metering
     │   └── sentinel.js          # rule-based vitals anomaly detection
@@ -84,12 +85,19 @@ backend/
 
 ## 3. AI model choice rationale
 
-| Rank | Provider | Why |
+All models run on a single Groq API key; the engine fails over down the chain
+per request when a model errors (decommissioned, rate-limited, capacity,
+timeout). A 401/403 (bad key) fails fast — no model can fix that.
+
+| Rank | Groq model | Why |
 |---|---|---|
-| 1 | **Groq** (`llama-3.3-70b-versatile`) | Free tier with generous rate limits, ~fastest tokens/sec on the market, 70B-class quality. Best cost/quality for chat, triage, CDS. |
-| 2 | **Google Gemini 1.5 Flash** | Free tier fallback, strong medical reasoning, long context. |
-| 3 | **OpenAI `gpt-4o-mini`** | Cheap paid safety net if both free tiers are exhausted. |
+| 1 | `openai/gpt-oss-120b` | Strongest general model on Groq; primary for chat, triage, CDS. |
+| 2 | `openai/gpt-oss-20b` | Same family, smaller — fast capacity relief when the 120B tier is saturated. |
+| 3 | `groq/compound-mini` | Agentic compound system — independent model stack for diversity. |
+| 4 | `allam-2-7b` | Small always-on model; last resort. |
 | — | **Rule-based fallback** | Zero-cost deterministic responses + sentinel. The product degrades, never breaks, with zero API keys configured. |
+
+Override the chain with `GROQ_MODEL` + `GROQ_FALLBACK_MODELS` (comma-separated, tried in order).
 
 Safety: input guardrails block overdose/prescription-bypass prompts (logged to `ai_flags` for admin review), red-flag symptoms always get the emergency footer (112 / nearest hospital), and outputs are scrubbed of injection attempts. Doctors' CDS/SOAP prompts pin the model to "suggest, never decide".
 
@@ -116,8 +124,8 @@ npm run dev                 # http://localhost:8080
 
 - [ ] `SUPABASE_URL` + `SUPABASE_ANON_KEY` — from Supabase dashboard → Settings → API (same values the mobile app uses as `EXPO_PUBLIC_*`).
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` — server-only; used for the admin eligibility lookup. **Never ship it to any client.**
-- [ ] `GROQ_API_KEY` — create free at https://console.groq.com (recommended primary).
-- [ ] Optional: `GEMINI_API_KEY` (https://aistudio.google.com), `OPENAI_API_KEY` (paid fallback).
+- [ ] `GROQ_API_KEY` — create free at https://console.groq.com.
+- [ ] Optional: `GROQ_MODEL` / `GROQ_FALLBACK_MODELS` to override the model chain.
 - [ ] `CORS_ORIGINS` — set to your real web origins in production (comma-separated; never `*` with credentials).
 - [ ] Tune `AI_DAILY_USER_CAP`, `AI_RATE_LIMIT_MAX` to your Groq tier limits.
 

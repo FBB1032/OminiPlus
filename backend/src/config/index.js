@@ -55,22 +55,18 @@ const config = {
 
   // ─── AI engine ─────────────────────────────────────────────────────────────
   ai: {
-    // Ordered provider chain: first configured provider with quota wins.
-    // Groq is the default primary (free tier, fastest tokens/sec).
+    // Groq-only model chain: if the primary model fails (decommissioned,
+    // rate-limited, capacity error), the engine automatically retries with
+    // the next model in GROQ_FALLBACK_MODELS.
     groq: {
       apiKey: optional('GROQ_API_KEY'),
-      model: optional('GROQ_MODEL', 'llama-3.3-70b-versatile'),
-      baseUrl: 'https://api.groq.com/openai/v1',
-    },
-    gemini: {
-      apiKey: optional('GEMINI_API_KEY'),
-      model: optional('GEMINI_MODEL', 'gemini-1.5-flash'),
-      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-    },
-    openai: {
-      apiKey: optional('OPENAI_API_KEY'),
-      model: optional('OPENAI_MODEL', 'gpt-4o-mini'),
-      baseUrl: 'https://api.openai.com/v1',
+      model: optional('GROQ_MODEL', 'openai/gpt-oss-120b'),
+      // Ordered fallback models — same Groq key, tried in sequence.
+      fallbackModels: optional('GROQ_FALLBACK_MODELS', 'openai/gpt-oss-20b,groq/compound-mini,allam-2-7b')
+        .split(',')
+        .map((m) => m.trim())
+        .filter(Boolean),
+      baseUrl: optional('GROQ_BASE_URL', 'https://api.groq.com/openai/v1'),
     },
     fallbackModel: optional('AI_FALLBACK_MODEL', 'rule-based'),
     maxTokens: Number(optional('AI_MAX_TOKENS', 1024)),

@@ -100,7 +100,7 @@ export interface Patient {
   createdAt: string;
 }
 
-export type PaymentStatus = 'completed' | 'escrowed' | 'pending' | 'refunded' | 'failed';
+export type PaymentStatus = 'completed' | 'escrowed' | 'held' | 'released' | 'pending' | 'refunded' | 'failed';
 export type PaymentMethod = 'card' | 'bank_transfer' | 'ussd' | 'wallet';
 
 export interface PaymentTransaction {

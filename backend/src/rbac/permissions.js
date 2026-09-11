@@ -29,7 +29,7 @@ const PERMISSIONS = {
   // ─── Appointments ────────────────────────────────────────────────────────
   'appointments:read': ['patient', 'doctor', 'admin', ...HOSPITAL_STAFF],
   'appointments:create': ['patient', 'receptionist'],
-  'appointments:update': ['doctor', 'admin', 'receptionist'],
+  'appointments:update': ['doctor', 'admin', 'receptionist', 'patient'],
   'appointments:complete': ['doctor', 'admin'],
 
   // ─── Doctors & directory ─────────────────────────────────────────────────

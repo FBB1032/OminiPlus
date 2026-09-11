@@ -87,14 +87,52 @@ const FORMAT_OPTIONS: { key: ConsultFormat; icon: string; label: string }[] = [
 export default function DoctorProfileScreen({ route, navigation }: any) {
   const { success: toastSuccess, error: toastError } = useToast();
   const { doctorId } = route.params;
-  const initialDoctor = MOCK_DOCTORS[doctorId] || MOCK_DOCTORS['1'];
 
+  // Prefer the live backend row; the mock entry is only a last-resort
+  // fallback when the directory is unreachable (offline demo).
+  const initialDoctor = MOCK_DOCTORS[doctorId] || MOCK_DOCTORS['1'];
   const [doctorData, setDoctorData] = useState(initialDoctor);
+  const [isLoadingLive, setIsLoadingLive] = useState(true);
   const [selectedFormat, setSelectedFormat] = useState<ConsultFormat>('chat');
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [newRating, setNewRating] = useState(5);
   const [newAuthor, setNewAuthor] = useState('');
   const [newText, setNewText] = useState('');
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { patientApi } = await import('../../api/patient');
+        const res = await patientApi.getDoctors();
+        const list = Array.isArray(res.data) ? res.data : (res.data as { items?: unknown[] })?.items ?? [];
+        const match = (list as import('../../types').Doctor[]).find((d) => d.id === doctorId);
+        if (cancelled || !match) return;
+        setDoctorData((prev: typeof initialDoctor) => ({
+          ...prev,
+          id: match.id,
+          name: `Dr. ${match.firstName} ${match.lastName}`,
+          spec: match.specialization || prev.spec,
+          about: match.bio || prev.about,
+          rating: match.rating ?? prev.rating,
+          experience: match.experience ?? prev.experience,
+          patients: match.reviewCount || prev.patients,
+          mdcnVerified: match.verificationStatus === 'approved',
+          hospital: match.clinicName || prev.hospital,
+          available: match.isAvailable ?? prev.available,
+          avatar: match.avatarUrl || prev.avatar,
+          consultFee: match.consultationFee ?? prev.consultFee,
+        }));
+      } catch {
+        // offline — keep the mock entry
+      } finally {
+        if (!cancelled) setIsLoadingLive(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [doctorId]);
 
   const activeFee: number = doctorData.tiers?.[selectedFormat] ?? doctorData.consultFee ?? MIN_CONSULT_FEE;
   const lowestFee: number = doctorData.tiers

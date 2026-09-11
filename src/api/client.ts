@@ -56,7 +56,9 @@ const processQueue = (error: unknown, token: string | null) => {
 
 const MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 1_000;
-const RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+// 429 is deliberately NOT retried: the backend's AI limiter and daily-quota
+// responses are final and their messages must surface immediately.
+const RETRYABLE_STATUS_CODES = new Set([408, 500, 502, 503, 504]);
 
 interface RetryConfig extends InternalAxiosRequestConfig {
   _retryCount?: number;
@@ -144,12 +146,15 @@ apiClient.interceptors.response.use(
       return apiClient(config);
     }
 
-    // 2. Mock fallback — after exhausting retries on network / server errors
+    // 2. Mock fallback — GETs only, after exhausting retries on network /
+    //    server errors. Mutations must never silently "succeed" against
+    //    in-memory data: the user would believe a booking/vitals write
+    //    succeeded when nothing reached the server.
     const isNetworkError = !error.response || error.code === 'ERR_NETWORK';
-    const isServerError =
-      error.response && (error.response.status === 404 || error.response.status >= 500);
+    const isServerError = error.response && error.response.status >= 500;
+    const isReadRequest = (config?.method ?? 'get').toLowerCase() === 'get';
 
-    if ((isNetworkError || isServerError) && retryCount >= MAX_RETRIES) {
+    if (isReadRequest && (isNetworkError || isServerError) && retryCount >= MAX_RETRIES) {
       const mock = getMockResponse(error.config);
       if (mock) {
         logger.warn(
@@ -193,6 +198,11 @@ apiClient.interceptors.response.use(
 
     // 4. Normalise to AppError — the live backend returns
     //    { error: { code, message } } (zod validation details included on 400)
+    if (error.response?.status === 401 && config?._refreshRetry) {
+      // The replayed request failed too — the session is dead; clean up so
+      // the app does not stay "authenticated" with unusable tokens.
+      await handleSessionExpiry();
+    }
     const apiErrorData = error.response?.data as
       | { error?: { code?: string; message?: string }; message?: string; errors?: Record<string, string[]> }
       | undefined;

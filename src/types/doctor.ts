@@ -67,6 +67,7 @@ export interface Appointment {
   isDoctorApproved?: boolean;
   doctorApprovedAt?: string;
   paymentStatus?: 'held' | 'released' | 'refunded' | 'pending';
+  consultFee?: number;
   paymentHeldAt?: string;
   cancellationReason?: string;
   refundAmount?: number;

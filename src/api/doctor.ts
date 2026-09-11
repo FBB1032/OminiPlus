@@ -19,7 +19,7 @@
  * adapters return graceful empty results until the endpoint ships.
  */
 
-import apiClient from './client';
+import apiClient, { AppError } from './client';
 import { getSupabaseClient } from '../services/supabaseClient';
 import {
   ApiResponse,
@@ -133,6 +133,7 @@ function mapAppointment(row: AppointmentRow): Appointment {
     type: row.type as Appointment['type'],
     reason: row.reason ?? '',
     paymentStatus: (row.payment_status as Appointment['paymentStatus']) ?? undefined,
+    consultFee: row.doctor?.consultation_fee ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -190,8 +191,12 @@ export const doctorApi = {
   async getDashboard(): Promise<ApiResponse<DoctorDashboard>> {
     const { data } = await apiClient.get<{ appointments: AppointmentRow[] }>('/appointments');
     const appointments = (data.appointments ?? []).map(mapAppointment);
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const todayAppointments = appointments.filter((a) => a.scheduledAt.slice(0, 10) === todayStr);
+    // Local-day comparison (not UTC slice) so evening slots in UTC+1 land on
+    // the correct day.
+    const todayKey = new Date().toDateString();
+    const todayAppointments = appointments.filter(
+      (a) => new Date(a.scheduledAt).toDateString() === todayKey
+    );
 
     const patientIds = [
       ...new Set(
@@ -215,7 +220,9 @@ export const doctorApi = {
       totalPatients: patientIds.length,
       completedToday: todayAppointments.filter((a) => a.status === 'completed').length,
       pendingToday: todayAppointments.filter((a) => a.status === 'pending').length,
-      weeklyRevenue: 0,
+      weeklyRevenue: appointments
+        .filter((a) => a.paymentStatus === 'released')
+        .reduce((acc, a) => acc + (a.consultFee ?? 0), 0),
       monthlyAppointments: appointments.length,
     };
 
@@ -250,6 +257,19 @@ export const doctorApi = {
   },
 
   async updateAppointmentStatus(id: string, status: string): Promise<ApiResponse<Appointment>> {
+    // 'completed' is a server-side transition (escrow release) with its own
+    // endpoint; the PATCH route only accepts the statuses listed below.
+    if (status === 'completed') {
+      await apiClient.post(`/appointments/${id}/complete`);
+      const { data } = await apiClient.get<{ appointments: AppointmentRow[] }>('/appointments');
+      const row = (data.appointments ?? []).find((a) => a.id === id);
+      return {
+        data: row ? mapAppointment(row) : (null as unknown as Appointment),
+        message: 'Consultation completed',
+        success: true,
+        statusCode: 200,
+      };
+    }
     const { data } = await apiClient.patch<{ appointment: AppointmentRow }>(`/appointments/${id}`, {
       status,
     });
@@ -316,13 +336,13 @@ export const doctorApi = {
 
   async createPrescription(_payload: CreatePrescriptionPayload): Promise<ApiResponse<Prescription>> {
     // No doctor-facing prescriptions endpoint on the live backend yet —
-    // SOAP notes via /ai/soap are the clinical documentation path.
-    return {
-      data: null as unknown as Prescription,
-      message: 'Prescriptions are handled via SOAP notes on the live backend',
-      success: false,
-      statusCode: 501,
-    };
+    // SOAP notes via /ai/soap are the clinical documentation path. Throwing
+    // (instead of resolving with success:false) keeps the mutation's error
+    // path honest: the UI must not report a created prescription.
+    throw new AppError(
+      'Prescriptions are not yet supported on the live backend. Use the SOAP note flow to document the consultation.',
+      501
+    );
   },
 
   async getPrescriptionById(_id: string): Promise<ApiResponse<Prescription>> {

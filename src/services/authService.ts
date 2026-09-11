@@ -14,7 +14,6 @@ export const authService = {
     }
     const auth = await authApi.login(payload);
     const { user, tokens } = auth;
-    console.log('[authService] login resolved:', { user, tokens });
     await useAuthStore.getState().setAuth(user, tokens);
     return { data: auth, message: 'Logged in successfully', success: true };
   },
