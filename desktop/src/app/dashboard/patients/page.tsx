@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { liveApi } from '@/services/api';
+import { realtimeService } from '@/services/realtimeService';
 import type { Patient } from '@/types';
 
 // Mock Patient Directory
@@ -165,6 +166,7 @@ export default function PatientsPage() {
   } | null>(null);
 
   // Load live patient directory once; keep the demo roster on any failure.
+  // Realtime: moderation events from any admin session refresh this list.
   useEffect(() => {
     let cancelled = false;
     liveApi.getPatients().then((live) => {
@@ -174,6 +176,20 @@ export default function PatientsPage() {
       }
     });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = realtimeService.subscribe((msg) => {
+      if (msg.event === 'admin.users.changed') {
+        liveApi.getPatients().then((live) => {
+          if (live && live.length > 0) {
+            setPatients(live);
+            setIsLive(true);
+          }
+        });
+      }
+    });
+    return unsubscribe;
   }, []);
 
   // Search & Filter
@@ -227,6 +243,11 @@ export default function PatientsPage() {
 
     if (selectedPatient && selectedPatient.id === patientId) {
       setSelectedPatient((prev) => (prev ? { ...prev, isActive: action === 'activate' } : null));
+    }
+
+    // Live backend sync: suspend / reactivate the patient's account.
+    if (isLive) {
+      void liveApi.setUserStatus(patientId, action === 'activate');
     }
 
     setConfirmDialog(null);

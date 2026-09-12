@@ -15,6 +15,7 @@ const { validate } = require('../middleware/validate');
 const { authenticate, requirePermission } = require('../middleware/auth');
 const ai = require('../ai/engine');
 const sentinel = require('../ai/sentinel');
+const { logInteraction } = require('../services/aiInteractionLog');
 
 const router = express.Router();
 
@@ -120,6 +121,19 @@ router.post(
 
     await ai.recordUsage(req.auth.supabase, req.auth.userId, 'chat', result.provider, result.model, 0, 0, result.urgency === 'blocked');
 
+    // AI interaction audit: prompt + generated response (admin reviewable).
+    logInteraction({
+      req,
+      feature: 'chat',
+      prompt: lastUser.content,
+      response: result.reply,
+      provider: result.provider,
+      model: result.model,
+      urgency: result.urgency,
+      flagged: result.urgency === 'blocked',
+      conversationId,
+    });
+
     res.json({
       conversationId,
       reply: result.reply,
@@ -159,6 +173,16 @@ router.post(
     await ensureUsageBudget(req.auth.supabase, req.auth.userId);
     const result = await ai.clinicalCds(req.body);
     await ai.recordUsage(req.auth.supabase, req.auth.userId, 'clinical_cds', result.provider, result.model, 0, 0, false);
+
+    logInteraction({
+      req,
+      feature: 'clinical_cds',
+      prompt: req.body.presentation,
+      response: result.reply,
+      provider: result.provider,
+      model: result.model,
+    });
+
     res.json(result);
   })
 );
@@ -194,6 +218,16 @@ router.post(
     }
 
     await ai.recordUsage(req.auth.supabase, req.auth.userId, 'soap', result.provider, result.model, 0, 0, false);
+
+    logInteraction({
+      req,
+      feature: 'soap',
+      prompt: req.body.transcript,
+      response: result.reply,
+      provider: result.provider,
+      model: result.model,
+    });
+
     res.json(result);
   })
 );
@@ -217,6 +251,18 @@ router.post(
     await ensureUsageBudget(req.auth.supabase, req.auth.userId);
     const result = await ai.triage(req.body);
     await ai.recordUsage(req.auth.supabase, req.auth.userId, 'triage', result.provider, result.model, 0, 0, result.urgency === 'blocked');
+
+    logInteraction({
+      req,
+      feature: 'triage',
+      prompt: req.body.symptoms,
+      response: result.reply ?? result.triage ?? null,
+      provider: result.provider,
+      model: result.model,
+      urgency: result.urgency,
+      flagged: result.urgency === 'blocked',
+    });
+
     res.json(result);
   })
 );
@@ -230,6 +276,15 @@ router.post(
   wrap(async (req, res) => {
     const reading = req.body;
     const { alerts } = sentinel.evaluateReading(reading);
+
+    logInteraction({
+      req,
+      feature: 'sentinel',
+      prompt: JSON.stringify(reading).slice(0, 4000),
+      response: JSON.stringify(alerts).slice(0, 4000),
+      provider: 'rules',
+      model: 'sentinel',
+    });
 
     // Persist critical alerts as notifications for the patient
     for (const alert of alerts.filter((a) => a.severity === 'critical')) {

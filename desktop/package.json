@@ -13,8 +13,8 @@
     "lint": "eslint",
     "electron": "electron .",
     "electron:dev": "concurrently -k -s first \"next dev -p 3005\" \"wait-on tcp:3005 && cross-env ELECTRON_DEV_URL=http://localhost:3005 electron .\"",
-    "electron:pack": "next build && electron-builder --dir",
-    "electron:dist": "next build && electron-builder"
+    "electron:pack": "next build && node scripts/copy-standalone-assets.js && electron-builder --dir",
+    "electron:dist": "next build && node scripts/copy-standalone-assets.js && electron-builder"
   },
   "build": {
     "appId": "ai.ominipulse.desktop",

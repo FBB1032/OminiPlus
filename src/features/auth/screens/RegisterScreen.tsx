@@ -98,10 +98,17 @@ export default function RegisterScreen({ navigation, route }: AuthScreenProps<'R
       });
       if (selectedRole === 'doctor') {
         showToastSuccess('Registration Submitted', 'Clinical registration submitted. Account is pending verification.');
+        navigation.navigate('PendingApproval');
       } else {
         showToastSuccess('Registration Successful!', 'Your account has been created.');
+        navigation.navigate('Login');
       }
     } catch (err: any) {
+      if (err?.code === 'doctor_pending_verification') {
+        showToastSuccess('Registration Submitted', 'Your credentials are under review by our verification committee.');
+        navigation.navigate('PendingApproval');
+        return;
+      }
       const message = err?.response?.data?.message || err?.message || 'Failed to register. Please try again.';
       showToastError('Registration Failed', message);
     } finally {

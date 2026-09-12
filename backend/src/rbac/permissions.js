@@ -65,6 +65,7 @@ const PERMISSIONS = {
   'admin:incidents': ['admin'],
   'admin:ai_flags': ['admin'],
   'admin:payments': ['admin'],
+  'admin:notifications': ['admin'],
 
   // ─── AI engine ───────────────────────────────────────────────────────────
   'ai:chat': ['patient', 'doctor', 'admin'],

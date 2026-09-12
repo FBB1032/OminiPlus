@@ -8,8 +8,46 @@ const { z } = require('zod');
 const { wrap, ApiError } = require('../middleware/errors');
 const { validate } = require('../middleware/validate');
 const { authenticate, requirePermission } = require('../middleware/auth');
+const { adminClient } = require('../config/supabase');
+const hub = require('../realtime/hub');
 
 const router = express.Router();
+
+/**
+ * Fan out an appointment event over the realtime hub.
+ * The doctor's clinical sessions subscribe to role:doctor + user:<doctor>,
+ * patients subscribe to user:<patient profile id>. The doctor's profile id
+ * is resolved from doctor_profiles so the user channel is addressable.
+ */
+async function publishAppointmentEvent(event, appointment) {
+  try {
+    if (!appointment) return;
+    let doctorProfileId = null;
+    if (adminClient && appointment.doctor_id) {
+      const { data: dp } = await adminClient
+        .from('doctor_profiles')
+        .select('profile_id')
+        .eq('id', appointment.doctor_id)
+        .maybeSingle();
+      doctorProfileId = dp?.profile_id ?? null;
+    }
+    const payload = {
+      id: appointment.id,
+      doctorId: appointment.doctor_id,
+      patientId: appointment.patient_id,
+      scheduledAt: appointment.scheduled_at,
+      status: appointment.status,
+      type: appointment.type,
+      reason: appointment.reason,
+    };
+    hub.publishAll([`role:doctor`, 'admins'], event, payload);
+    if (doctorProfileId) {
+      hub.publishToUser(doctorProfileId, event, payload);
+    }
+  } catch {
+    // Realtime delivery must never break the REST response.
+  }
+}
 
 // Postgres uuid fields error on malformed input — reject non-UUID params with a
 // client error (400) instead of a retryable 500 from the db layer.
@@ -83,6 +121,9 @@ router.post(
       .single();
     if (error) throw new ApiError(400, 'booking_failed', error.message);
 
+    // Realtime: the doctor's dashboard reflects the booking instantly.
+    await publishAppointmentEvent('appointment.booked', data);
+
     res.status(201).json({ appointment: data });
   })
 );
@@ -109,6 +150,10 @@ router.patch(
       .select('*')
       .single();
     if (error || !data) throw new ApiError(404, 'not_found', 'Appointment not found or not updatable');
+
+    // Realtime: status changes (approve/cancel/no-show) propagate instantly.
+    await publishAppointmentEvent(`appointment.${status}`, data);
+
     res.json({ appointment: data });
   })
 );
@@ -128,6 +173,10 @@ router.post(
     });
     if (error) throw new ApiError(400, 'complete_failed', error.message);
     if (!data) throw new ApiError(404, 'not_found', 'Appointment not found');
+
+    // Realtime: escrow release/completion propagates to the patient + admins.
+    await publishAppointmentEvent('appointment.completed', { id: req.params.id, status: 'completed' });
+
     res.json({ completed: true, appointmentId: req.params.id });
   })
 );

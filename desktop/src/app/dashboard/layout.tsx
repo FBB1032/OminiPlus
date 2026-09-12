@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { TopNav } from '@/components/layout/TopNav';
 import { useAuthStore } from '@/store/authStore';
 import { useUIStore } from '@/store/uiStore';
+import { realtimeService } from '@/services/realtimeService';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuthStore();
@@ -15,6 +16,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!isAuthenticated) router.replace('/login');
   }, [isAuthenticated, router]);
+
+  // One shared realtime socket per authenticated console session — powers
+  // live appointment sync, broadcast delivery, and moderation updates.
+  useEffect(() => {
+    if (isAuthenticated) {
+      realtimeService.connect();
+      return () => realtimeService.disconnect();
+    }
+  }, [isAuthenticated]);
 
   if (!isAuthenticated) return null;
 

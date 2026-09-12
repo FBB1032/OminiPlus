@@ -34,7 +34,7 @@ export type Permission =
 
 export type UserRole = 'doctor' | 'patient' | 'admin';
 export type VerificationStatus = 'pending' | 'approved' | 'rejected' | 'suspended' | 'license_expired' | 'license_renewal_pending';
-export type AppointmentStatus = 'pending' | 'approved' | 'completed' | 'cancelled';
+export type AppointmentStatus = 'pending' | 'scheduled' | 'approved' | 'completed' | 'cancelled' | 'no_show';
 export type PartnerStatus = 'active' | 'pending' | 'inactive' | 'suspended' | 'rejected';
 
 // ─── Core Models ──────────────────────────────────────────────────────────────
@@ -273,6 +273,56 @@ export interface AuditLog {
   createdAt: string;
 }
 
+/** Hash-chained administrative action trail (admin_audit_logs). */
+export interface AdminAuditLog {
+  id: string;
+  actorId: string | null;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  targetLabel: string | null;
+  status: 'success' | 'failure';
+  metadata: Record<string, unknown>;
+  ipAddress: string | null;
+  userAgent: string | null;
+  prevHash: string | null;
+  entryHash: string;
+  createdAt: string;
+}
+
+/** User↔AI prompt/response pair (ai_interaction_logs). */
+export interface AIInteraction {
+  id: string;
+  profileId: string | null;
+  profileRole: string | null;
+  feature: 'chat' | 'triage' | 'clinical_cds' | 'soap' | 'sentinel';
+  conversationId: string | null;
+  prompt: string;
+  response: string | null;
+  provider: string | null;
+  model: string | null;
+  urgency: string | null;
+  flagged: boolean;
+  createdAt: string;
+}
+
+/** Broadcast Center message (broadcast_messages). */
+export interface Broadcast {
+  id: string;
+  title: string;
+  body: string;
+  type: 'announcement' | 'reminder' | 'alert' | 'system';
+  targetAudience: 'all' | 'doctors' | 'patients' | 'staff';
+  status: 'draft' | 'scheduled' | 'sent';
+  recipientCount: number;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ReportEvidence {
   id: string;
   fileName: string;
@@ -310,7 +360,7 @@ export interface Notification {
   title: string;
   body: string;
   type: 'announcement' | 'reminder' | 'alert' | 'system';
-  targetAudience: 'all' | 'doctors' | 'patients';
+  targetAudience: 'all' | 'doctors' | 'patients' | 'staff';
   status: 'draft' | 'sent' | 'scheduled';
   sentAt?: string;
   scheduledAt?: string;

@@ -19,6 +19,9 @@ import { Pagination } from '@/components/ui/Pagination';
 import { useAuthStore } from '@/store/authStore';
 import { ThreeBodyMap } from '@/components/clinical/ThreeBodyMap';
 import { DoctorPatientChat } from '@/components/clinical/DoctorPatientChat';
+import { liveApi } from '@/services/api';
+import { realtimeService } from '@/services/realtimeService';
+import type { Appointment } from '@/types';
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -451,6 +454,53 @@ function DoctorPortalContent() {
       }
     } catch {}
   }, []);
+
+  // ── Live appointment sync (mobile bookings → doctor portal) ────────────────
+  // Live appointments from the unified backend are mapped into the portal's
+  // Consultation shape and merged ahead of the demo roster. The realtime
+  // socket invalidates on `appointment.*` events (patient booked / status
+  // changed) so the dashboard reflects bookings instantly — no refresh.
+
+  const [liveConsults, setLiveConsults] = useState<Consultation[]>([]);
+  const [isLiveSyncActive, setIsLiveSyncActive] = useState(false);
+
+  const loadLiveAppointments = useCallback(async () => {
+    const live = await liveApi.getAppointments();
+    if (!live) return;
+    const mapped: Consultation[] = live.map((a: Appointment) => ({
+      id: a.id,
+      patientName: `${a.patient.firstName} ${a.patient.lastName}`.trim() || 'Unknown Patient',
+      patientAge: 0,
+      patientGender: 'Female',
+      bloodGroup: '—',
+      genotype: '—',
+      time: new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: a.type,
+      status:
+        a.status === 'completed' ? 'completed'
+        : a.status === 'cancelled' ? 'cancelled'
+        : a.status === 'approved' || a.status === 'scheduled' ? 'in_progress'
+        : 'waiting',
+      reason: a.reason || 'General consultation',
+      vitals: { bp: '—', hr: '—', temp: '—', weight: '—', spo2: '—' },
+      history: 'Loaded from live OminiPulse backend.',
+      allergies: ['Not yet documented'],
+    }));
+    setLiveConsults(mapped);
+    setIsLiveSyncActive(mapped.length > 0);
+  }, []);
+
+  useEffect(() => {
+    void loadLiveAppointments();
+    // Realtime: any appointment event (booked/approved/cancelled/completed)
+    // triggers an instant re-fetch.
+    const unsubscribe = realtimeService.subscribe((msg) => {
+      if (msg.event.startsWith('appointment.')) {
+        void loadLiveAppointments();
+      }
+    });
+    return unsubscribe;
+  }, [loadLiveAppointments]);
 
   const [codeInputValue, setCodeInputValue] = useState('');
   const [patientRosterType, setPatientRosterType] = useState<'private' | 'hospital'>('private');
@@ -1020,7 +1070,7 @@ function DoctorPortalContent() {
   const [reviewPageSize, setReviewPageSize] = useState(5);
   const [reviewIsSeeAll, setReviewIsSeeAll] = useState(false);
 
-  const filteredPatients = TODAY_CONSULTATIONS.filter(pt =>
+  const filteredPatients = [...liveConsults, ...TODAY_CONSULTATIONS].filter(pt =>
     !patientSearch ||
     pt.patientName.toLowerCase().includes(patientSearch.toLowerCase()) ||
     pt.id.toLowerCase().includes(patientSearch.toLowerCase()) ||
@@ -1060,9 +1110,11 @@ function DoctorPortalContent() {
     setPainIntensity(3);
   };
 
+  const allConsultations = [...liveConsults, ...TODAY_CONSULTATIONS];
+
   const displayedAppts = apptIsSeeAll
-    ? TODAY_CONSULTATIONS
-    : TODAY_CONSULTATIONS.slice((apptPage - 1) * apptPageSize, apptPage * apptPageSize);
+    ? allConsultations
+    : allConsultations.slice((apptPage - 1) * apptPageSize, apptPage * apptPageSize);
 
   const displayedRx = rxIsSeeAll
     ? issuedPrescriptions
@@ -1072,8 +1124,8 @@ function DoctorPortalContent() {
     ? patientReviews
     : patientReviews.slice((reviewPage - 1) * reviewPageSize, reviewPage * reviewPageSize);
 
-  // Up Next Appointment in Schedule
-  const nextAppt = TODAY_CONSULTATIONS.find(c => c.status === 'in_progress' || c.status === 'waiting') || TODAY_CONSULTATIONS[0];
+  // Up Next Appointment in Schedule (live bookings first)
+  const nextAppt = allConsultations.find(c => c.status === 'in_progress' || c.status === 'waiting') || allConsultations[0];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 60 }}>
@@ -2087,6 +2139,15 @@ function DoctorPortalContent() {
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', margin: 0 }}>
                 Clinical Appointment Calendar & Schedule
+                {isLiveSyncActive && (
+                  <span style={{
+                    marginLeft: 10, fontSize: 10.5, fontWeight: 700, padding: '3px 8px',
+                    borderRadius: 6, background: '#ecfdf5', color: '#059669',
+                    verticalAlign: 'middle', border: '1px solid #a7f3d0'
+                  }}>
+                    ● LIVE SYNC
+                  </span>
+                )}
               </h2>
               <p style={{ fontSize: 13, color: '#64748b', margin: '4px 0 0' }}>
                 Manage upcoming consultations, video triage rooms, and completed patient sessions
@@ -2207,7 +2268,7 @@ function DoctorPortalContent() {
       {/* ═════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'chat' && (
         <DoctorPatientChat
-          consultations={TODAY_CONSULTATIONS as any}
+          consultations={allConsultations as any}
           activePatientId={activeChatPatientId}
           onSelectPatientId={(id) => setActiveChatPatientId(id)}
           onStartVideoConsult={(p) => setActiveVideoConsult(p as any)}

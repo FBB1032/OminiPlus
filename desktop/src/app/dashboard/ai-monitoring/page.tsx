@@ -154,23 +154,55 @@ export default function AIMonitoringPage() {
   const [isSeeAll, setIsSeeAll] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
 
-  // Load live flags once; keep the demo set on any failure.
+  // Load live flags + AI interaction logs (prompt/response pairs); keep the
+  // demo set on any failure. Interactions become reviewable entries with the
+  // response attached so admins see the full user↔AI exchange.
   useEffect(() => {
     let cancelled = false;
-    liveApi.getAIFlags().then((live) => {
-      if (!cancelled && live && live.length > 0) {
-        setFlags(live.map((f) => ({
-          ...f,
-          category: 'safety',
-          confidenceScore: 90,
-          modelEngine: 'live',
-          flaggedTokens: [],
-          recommendedAction: 'Review the prompt and take action.',
-          mitigationResponse: '',
-        })));
+
+    async function loadLive() {
+      const [liveFlags, interactions] = await Promise.all([
+        liveApi.getAIFlags(),
+        liveApi.getAIInteractions({ limit: 200 }),
+      ]);
+      if (cancelled) return;
+
+      const mappedFlags = (liveFlags ?? []).map((f) => ({
+        ...f,
+        category: 'safety' as const,
+        confidenceScore: 90,
+        modelEngine: 'live',
+        flaggedTokens: [],
+        recommendedAction: 'Review the prompt and take action.',
+        mitigationResponse: '',
+      }));
+
+      // Interaction logs: prompt + response pairs, surfaced as low-severity
+      // review entries (flagged ones escalate).
+      const mappedInteractions: EnhancedAIFlag[] = (interactions ?? []).map((i) => ({
+        id: i.id,
+        userId: i.profileId ?? 'unknown',
+        userRole: (i.profileRole as EnhancedAIFlag['userRole']) ?? 'patient',
+        prompt: i.prompt,
+        reason: i.response ? `AI Response: ${i.response.slice(0, 160)}${i.response.length > 160 ? '…' : ''}` : 'No response recorded',
+        severity: i.flagged ? 'high' : 'low',
+        status: i.flagged ? 'pending' : 'reviewed',
+        createdAt: i.createdAt,
+        category: 'hallucination' as const,
+        confidenceScore: i.flagged ? 95 : 50,
+        modelEngine: `${i.provider ?? 'unknown'}/${i.model ?? 'unknown'}`,
+        flaggedTokens: [],
+        recommendedAction: i.flagged ? 'Escalate: this interaction was blocked by guardrails.' : 'Informational — logged interaction.',
+        mitigationResponse: i.response ?? '',
+      }));
+
+      if (mappedFlags.length > 0 || mappedInteractions.length > 0) {
+        setFlags([...mappedFlags, ...mappedInteractions]);
         setIsLive(true);
       }
-    });
+    }
+
+    void loadLive();
     return () => { cancelled = true; };
   }, []);
 

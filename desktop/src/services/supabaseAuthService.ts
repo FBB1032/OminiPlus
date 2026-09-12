@@ -52,7 +52,9 @@ export const supabaseAuthService = {
           ? 'This account has been suspended. Contact support.'
           : eligibility.reason === 'account_deactivated'
             ? 'This account is deactivated.'
-            : 'Your account is still pending verification.'
+            : eligibility.reason === 'verification_rejected'
+              ? 'Your verification was rejected. Please update your credentials and reapply.'
+              : 'Your account is still pending verification.'
       );
     }
 

@@ -13,7 +13,17 @@ import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
 import { liveApi } from '@/services/api';
+import { realtimeService } from '@/services/realtimeService';
 import type { AuditLog } from '@/types';
+
+/** Maps backend action verbs onto the console's audit categories. */
+function categorizeAction(action: string): 'auth' | 'facility' | 'doctor' | 'security' | 'system' {
+  if (action.startsWith('doctor.') || action.startsWith('account.')) return 'doctor';
+  if (action.startsWith('broadcast.')) return 'security';
+  if (action.startsWith('incident.')) return 'security';
+  if (action.startsWith('ai.')) return 'system';
+  return 'system';
+}
 
 export type AuditCategory = 'all' | 'auth' | 'facility' | 'doctor' | 'security' | 'system';
 export type AuditSeverity = 'all' | 'critical' | 'warning' | 'info' | 'success';
@@ -180,25 +190,80 @@ export default function AuditLogsPage() {
   const [isSeeAll, setIsSeeAll] = useState(false);
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-  // Load live audit trail once; keep the demo set on any failure.
+  // Load the live administrative audit trail (hash-chained admin_audit_logs)
+  // first, then the NDPA patient-record trail; demo data is the fallback.
+  // Realtime: any admin action taken in another session appears here live.
   useEffect(() => {
     let cancelled = false;
-    liveApi.getAuditLogs().then((live) => {
-      if (!cancelled && live && live.length > 0) {
-        setLogs(live.map((l) => ({
+
+    async function loadLive() {
+      const [adminTrail, ndpaTrail] = await Promise.all([
+        liveApi.getAdminAuditLogs({ limit: 200 }),
+        liveApi.getAuditLogs(),
+      ]);
+
+      if (cancelled) return;
+
+      if (adminTrail && adminTrail.length > 0) {
+        // Map the administrative action trail onto the enhanced view shape.
+        const mappedAdmin: EnhancedAuditLog[] = adminTrail.map((l) => ({
+          id: l.id,
+          adminId: l.actorId ?? 'system',
+          adminName: l.actorName || 'System',
+          actorRole: l.actorRole || 'system',
+          category: categorizeAction(l.action),
+          action: l.action,
+          resource: l.targetType,
+          resourceId: l.targetId ?? undefined,
+          ipAddress: l.ipAddress ?? '—',
+          location: '—',
+          userAgent: l.userAgent ?? undefined,
+          severity: l.status === 'failure' ? 'warning' : 'success',
+          sha256Hash: l.entryHash,
+          details: l.targetLabel
+            ? `Target: ${l.targetLabel}${Object.keys(l.metadata ?? {}).length ? ` · ${JSON.stringify(l.metadata)}` : ''}`
+            : '',
+          createdAt: l.createdAt,
+        }));
+        const mappedNdpa = (ndpaTrail ?? []).map((l) => ({
           ...l,
           adminName: l.adminName === 'Staff' && l.adminId !== 'system' ? l.adminId : l.adminName,
-          category: 'system',
-          severity: 'info',
+          category: 'auth' as const,
+          severity: 'info' as const,
           sha256Hash: '—',
           location: '—',
           details: '',
           actorRole: 'staff',
-        })));
+        }));
+        setLogs([...mappedAdmin, ...mappedNdpa]);
+        setIsLive(true);
+      } else if (ndpaTrail && ndpaTrail.length > 0) {
+        setLogs(
+          ndpaTrail.map((l) => ({
+            ...l,
+            adminName: l.adminName === 'Staff' && l.adminId !== 'system' ? l.adminId : l.adminName,
+            category: 'system' as const,
+            severity: 'info' as const,
+            sha256Hash: '—',
+            location: '—',
+            details: '',
+            actorRole: 'staff',
+          }))
+        );
         setIsLive(true);
       }
+    }
+
+    void loadLive();
+    const unsubscribe = realtimeService.subscribe((msg) => {
+      if (msg.event === 'admin.users.changed' || msg.event === 'broadcast.delivered') {
+        void loadLive();
+      }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, []);
 
   const handleCopyHash = (hash: string) => {

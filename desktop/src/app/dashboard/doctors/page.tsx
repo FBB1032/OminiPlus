@@ -14,6 +14,7 @@ import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
 import { liveApi } from '@/services/api';
+import { realtimeService } from '@/services/realtimeService';
 import type { Doctor, VerificationStatus } from '@/types';
 
 // Mock comprehensive doctor registrations with all verification assets
@@ -171,6 +172,7 @@ export default function DoctorsPage() {
   } | null>(null);
 
   // Load live doctor registry once; keep the demo roster on any failure.
+  // Realtime: moderation events from any admin session refresh this list.
   useEffect(() => {
     let cancelled = false;
     liveApi.getDoctors().then((live) => {
@@ -180,6 +182,20 @@ export default function DoctorsPage() {
       }
     });
     return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = realtimeService.subscribe((msg) => {
+      if (msg.event === 'admin.users.changed') {
+        liveApi.getDoctors().then((live) => {
+          if (live && live.length > 0) {
+            setDoctors(live);
+            setIsLive(true);
+          }
+        });
+      }
+    });
+    return unsubscribe;
   }, []);
 
   // Filter & Search Logic
@@ -211,15 +227,15 @@ export default function DoctorsPage() {
     setConfirmAction({ type, docId });
   };
 
-  // Perform State Updates
+  // Perform State Updates (optimistic local + best-effort live sync)
   const handleConfirmAction = (reason?: string) => {
     if (!confirmAction) return;
 
     const { type, docId } = confirmAction;
-    setDoctors((prev) => 
+    setDoctors((prev) =>
       prev.map((doc) => {
         if (doc.id !== docId) return doc;
-        
+
         return {
           ...doc,
           verificationStatus: type === 'approve' ? 'approved' : type === 'reject' ? 'rejected' : 'suspended',
@@ -244,6 +260,15 @@ export default function DoctorsPage() {
           verificationReviewedBy: 'super_admin_1',
         };
       });
+    }
+
+    // Live backend sync: verification decision (approve/reject) or suspension
+    if (isLive) {
+      if (type === 'suspend') {
+        void liveApi.setUserStatus(docId, false);
+      } else {
+        void liveApi.verifyDoctor(docId, type, reason);
+      }
     }
 
     setConfirmAction(null);

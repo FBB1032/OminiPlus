@@ -40,11 +40,13 @@ const MOCK_APPOINTMENTS: Appointment[] = Array.from({ length: 25 }, (_, i) => ({
   createdAt: new Date(Date.now() - i * 86400000).toISOString(),
 }));
 
-const STATUS_VARIANTS: Record<AppointmentStatus, 'warning' | 'info' | 'success' | 'error'> = {
+const STATUS_VARIANTS: Record<AppointmentStatus, 'warning' | 'info' | 'success' | 'error' | 'neutral'> = {
   pending: 'warning',
+  scheduled: 'info',
   approved: 'info',
   completed: 'success',
   cancelled: 'error',
+  no_show: 'neutral',
 };
 
 const TYPE_ICONS = {

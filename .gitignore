@@ -43,3 +43,5 @@ backend/.env
 /ios
 /android
 .env
+
+DESKTOP_BACKEND_INTEGRATION.md

@@ -14,6 +14,9 @@ import type {
   Hospital,
   AIFlag,
   AuditLog,
+  AdminAuditLog,
+  AIInteraction,
+  Broadcast,
   PaymentTransaction,
   Appointment,
 } from '@/types';
@@ -102,6 +105,20 @@ interface AppointmentRow {
   created_at: string;
   doctor?: { id: string; specialization: string | null; profile?: { first_name: string | null; last_name: string | null } | null } | null;
   patient?: { id: string; profile?: { first_name: string | null; last_name: string | null } | null } | null;
+}
+
+interface BroadcastRow {
+  id: string;
+  title: string;
+  body: string;
+  type: string;
+  target_audience: string;
+  status: string;
+  recipient_count: number | null;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 // ─── Mappers ─────────────────────────────────────────────────────────────────
@@ -223,6 +240,22 @@ function mapAppointment(row: AppointmentRow): Appointment {
     status: (row.status as Appointment['status']) ?? 'pending',
     reason: row.reason ?? '',
     createdAt: row.created_at,
+  };
+}
+
+function mapBroadcast(row: BroadcastRow): Broadcast {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    type: (row.type as Broadcast['type']) ?? 'announcement',
+    targetAudience: (row.target_audience as Broadcast['targetAudience']) ?? 'all',
+    status: (row.status as Broadcast['status']) ?? 'draft',
+    recipientCount: row.recipient_count ?? 0,
+    scheduledAt: row.scheduled_at,
+    sentAt: row.sent_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -349,6 +382,89 @@ export const liveApi = {
   async setUserStatus(id: string, isActive: boolean): Promise<boolean> {
     try {
       await apiClient.patch(`/admin/users/${id}/status`, { isActive });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /** Super-admin doctor verification decision (approve | reject). */
+  async verifyDoctor(id: string, decision: 'approve' | 'reject', reason?: string): Promise<boolean> {
+    try {
+      await apiClient.post(`/admin/users/${id}/verify`, { decision, reason });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /** Hash-chained administrative action trail (compliance). */
+  async getAdminAuditLogs(params?: { action?: string; actorId?: string; limit?: number }): Promise<AdminAuditLog[] | null> {
+    const data = await safeGet<{ logs: AdminAuditLog[] }>('/admin/admin-audit-logs', params);
+    if (!data) return null;
+    return (data.logs ?? []).map((row) => ({
+      ...row,
+      actorId: row.actorId ?? (row as unknown as { actor_id?: string }).actor_id ?? null,
+      actorName: row.actorName ?? (row as unknown as { actor_name?: string }).actor_name ?? 'System',
+      actorRole: row.actorRole ?? (row as unknown as { actor_role?: string }).actor_role ?? 'system',
+      targetType: row.targetType ?? (row as unknown as { target_type?: string }).target_type ?? 'user',
+      targetId: row.targetId ?? (row as unknown as { target_id?: string }).target_id ?? null,
+      targetLabel: row.targetLabel ?? (row as unknown as { target_label?: string }).target_label ?? null,
+      ipAddress: row.ipAddress ?? (row as unknown as { ip_address?: string }).ip_address ?? null,
+      userAgent: row.userAgent ?? (row as unknown as { user_agent?: string }).user_agent ?? null,
+      prevHash: row.prevHash ?? (row as unknown as { prev_hash?: string }).prev_hash ?? null,
+      entryHash: row.entryHash ?? (row as unknown as { entry_hash?: string }).entry_hash ?? '—',
+    }));
+  },
+
+  /** User↔AI prompt/response interaction logs (admin review). */
+  async getAIInteractions(params?: { feature?: string; search?: string; limit?: number }): Promise<AIInteraction[] | null> {
+    const data = await safeGet<{ interactions: AIInteraction[] }>('/admin/ai-interactions', params);
+    if (!data) return null;
+    return (data.interactions ?? []).map((row) => ({
+      ...row,
+      profileId: row.profileId ?? (row as unknown as { profile_id?: string }).profile_id ?? null,
+      profileRole: row.profileRole ?? (row as unknown as { profile_role?: string }).profile_role ?? null,
+      conversationId: row.conversationId ?? (row as unknown as { conversation_id?: string }).conversation_id ?? null,
+      createdAt: row.createdAt ?? (row as unknown as { created_at?: string }).created_at ?? '',
+    }));
+  },
+
+  // ─── Broadcast Center ────────────────────────────────────────────────────────
+
+  async getBroadcasts(): Promise<Broadcast[] | null> {
+    const data = await safeGet<{ broadcasts: BroadcastRow[] }>('/broadcasts');
+    if (!data) return null;
+    return (data.broadcasts ?? []).map((row) => mapBroadcast(row));
+  },
+
+  async createBroadcast(payload: {
+    title: string;
+    body: string;
+    type?: 'announcement' | 'reminder' | 'alert' | 'system';
+    targetAudience?: 'all' | 'doctors' | 'patients' | 'staff';
+    scheduledAt?: string;
+  }): Promise<Broadcast | null> {
+    try {
+      const { data } = await apiClient.post<{ broadcast: BroadcastRow }>('/broadcasts', payload);
+      return mapBroadcast(data.broadcast);
+    } catch {
+      return null;
+    }
+  },
+
+  async dispatchBroadcast(id: string): Promise<{ recipients: number } | null> {
+    try {
+      const { data } = await apiClient.post<{ broadcastId: string; recipients: number }>(`/broadcasts/${id}/dispatch`);
+      return { recipients: data.recipients };
+    } catch {
+      return null;
+    }
+  },
+
+  async deleteBroadcast(id: string): Promise<boolean> {
+    try {
+      await apiClient.delete(`/broadcasts/${id}`);
       return true;
     } catch {
       return false;

@@ -46,10 +46,10 @@ Error envelope: `{ error: { code: string, message: string } }` (+ zod validation
 
 | Operation | Endpoint |
 |---|---|
-| Sign up | `POST {SUPABASE_URL}/auth/v1/signup` (or supabase-js `signUp`) |
+| Register (role-aware) | `POST /api/auth/register` — patients activate immediately (email verification bypassed server-side); doctors are created `pending` and gated until super-admin approval |
 | Login | `POST {SUPABASE_URL}/auth/v1/token?grant_type=password` |
 | Refresh | `refreshSession()` via supabase-js (auto-refresh) |
-| Eligibility gate | `GET /api/auth/eligibility/:email` (suspension/MDCN lock) |
+| Eligibility gate | `GET /api/auth/eligibility/:email` (suspension/MDCN lock; `verification_rejected` for rejected doctors) |
 | Current profile | `GET /api/auth/me` → `{ profile }` |
 
 JWTs are 1h; supabase-js auto-refreshes. Roles live in `profiles.role` and RBAC is
@@ -57,21 +57,42 @@ enforced by the permission matrix in `backend/src/rbac/permissions.js`.
 
 ### 1.2 Business surface (mounted under `/api`)
 
-| Area | Endpoints |
+| Area | Endpoints | 
 |---|---|
 | Doctors | `GET /api/doctors` (public search), `GET /api/doctors/:id`, `GET /api/doctors/verification/pending`, `PATCH /api/doctors/verification/:id` |
 | Patients | `GET /api/patients/me`, `GET /api/patients/:id`, `GET/POST /api/patients/:id/records`, `GET /api/patients/:id/consents` |
-| Appointments | `GET/POST /api/appointments`, `PATCH /api/appointments/:id`, `POST /api/appointments/:id/complete`, `GET /api/appointments/slots/:doctorId/:date` |
+| Appointments | `GET/POST /api/appointments`, `PATCH /api/appointments/:id`, `POST /api/appointments/:id/complete`, `GET /api/appointments/slots/:doctorId/:date` — mutations publish realtime `appointment.*` events |
 | Vitals | `GET/POST /api/vitals` |
 | Hospital | `GET /api/hospital/beds`, `POST /api/hospital/beds/:id/admit\|discharge`, `GET /api/hospital/pharmacy/queue\|inventory`, `POST /api/hospital/pharmacy/orders/:id/dispense`, `GET /api/hospital/lab/orders`, `POST /api/hospital/lab/orders/:id/results`, `GET /api/hospital/blood/requests`, `POST /api/hospital/blood/requests/:id/status` |
-| AI | `POST /api/ai/chat`, `GET /api/ai/conversations/:id`, `POST /api/ai/cds`, `POST /api/ai/soap`, `POST /api/ai/triage`, `POST /api/ai/sentinel` |
-| Admin | `GET /api/admin/dashboard`, `GET /api/admin/users`, `PATCH /api/admin/users/:id/status`, `GET /api/admin/hospitals`, `GET /api/admin/audit-logs`, `GET /api/admin/incidents`, `PATCH /api/admin/incidents/:id`, `GET /api/admin/ai-flags`, `PATCH /api/admin/ai-flags/:id`, `GET /api/admin/payments` |
+| AI | `POST /api/ai/chat`, `GET /api/ai/conversations/:id`, `POST /api/ai/cds`, `POST /api/ai/soap`, `POST /api/ai/triage`, `POST /api/ai/sentinel` — every turn logs prompt+response to `ai_interaction_logs` |
+| Admin | `GET /api/admin/dashboard`, `GET /api/admin/users`, `POST /api/admin/users/:id/verify` (approve/reject doctor), `PATCH /api/admin/users/:id/status` (suspend/reactivate), `GET /api/admin/hospitals`, `GET /api/admin/audit-logs`, `GET /api/admin/admin-audit-logs` (hash-chained admin trail), `GET /api/admin/ai-interactions` (prompt/response review), `GET /api/admin/incidents`, `PATCH /api/admin/incidents/:id`, `GET /api/admin/ai-flags`, `PATCH /api/admin/ai-flags/:id`, `GET /api/admin/payments` |
+| Broadcasts | `GET/POST /api/broadcasts`, `PATCH/DELETE /api/broadcasts/:id`, `POST /api/broadcasts/:id/dispatch` (fan-out to notifications + realtime push; scheduled broadcasts auto-dispatch on a 60s sweep) |
 
-### 1.3 RBAC permission matrix (roles → permissions)
+### 1.3 Realtime (WebSocket)
+
+`GET {BASE}/ws?token=<supabase-jwt>` — one authenticated socket per client;
+heartbeat-evicted; channels `user:<id>`, `role:<role>`, `admins`. Events:
+`appointment.booked|scheduled|approved|cancelled|completed`,
+`account.verification`, `account.status`, `broadcast.delivered`,
+`admin.users.changed`. Clients: `src/services/realtimeService.ts` (mobile) and
+`desktop/src/services/realtimeService.ts` (desktop).
+
+### 1.4 Governance data model (migration 0006)
+
+- `admin_audit_logs` — hash-chained (`prev_hash`/`entry_hash`, insert-only
+  trigger; actor pinned from `auth.uid()`), all administrative mutations.
+- `ai_interaction_logs` — one row per AI turn (prompt, response, provider,
+  model, urgency, flagged), admin-reviewable.
+- `broadcast_messages` + `notifications.broadcast_id` — Broadcast Center
+  payloads with audience targeting and delivery accounting.
+
+### 1.5 RBAC permission matrix (roles → permissions)
 
 `admin` sees everything; `hospital_admin` hospital-scoped; `doctor` clinical read/write;
 `nurse`, `receptionist`, `blood_officer`, `pharmacist`, `lab_technician` scoped staff
 permissions; `patient` own-data + AI. Full matrix: `backend/src/rbac/permissions.js`.
+Super-admin controls: `POST /api/admin/users/:id/verify` (doctor approve/reject),
+`PATCH /api/admin/users/:id/status` (suspend/reactivate any non-admin account).
 
 ---
 

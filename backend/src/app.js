@@ -20,6 +20,7 @@ const vitalsRoutes = require('./routes/vitals');
 const hospitalRoutes = require('./routes/hospital');
 const adminRoutes = require('./routes/admin');
 const aiRoutes = require('./routes/ai');
+const { router: broadcastRoutes } = require('./routes/broadcasts');
 
 const app = express();
 
@@ -70,6 +71,7 @@ app.use('/api/vitals', vitalsRoutes);
 app.use('/api/hospital', hospitalRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/broadcasts', broadcastRoutes);
 
 // ─── 404 + errors ────────────────────────────────────────────────────────────
 app.use(notFound);

@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Bell, Send, Users, Stethoscope, Globe, Plus, Download, Mail, Clock, CheckCheck } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi } from '@/services/api';
+import { realtimeService } from '@/services/realtimeService';
 import type { Notification } from '@/types';
 
 const INITIAL_NOTIFICATIONS: (Notification & { isRead?: boolean })[] = [
@@ -17,10 +19,11 @@ const INITIAL_NOTIFICATIONS: (Notification & { isRead?: boolean })[] = [
   { id: 'n5', title: 'Scheduled Maintenance', body: 'Routine server maintenance scheduled for June 15th midnight.', type: 'system', targetAudience: 'all', status: 'scheduled', scheduledAt: '2026-06-15T00:00:00Z', createdAt: '2026-06-05T10:00:00Z', isRead: false },
 ];
 
-const AUDIENCE_ICONS = {
+const AUDIENCE_ICONS: Record<string, React.ReactNode> = {
   all: <Globe size={13} style={{ color: '#2563eb' }} />,
   patients: <Users size={13} style={{ color: '#0ea5e9' }} />,
   doctors: <Stethoscope size={13} style={{ color: '#10b981' }} />,
+  staff: <Users size={13} style={{ color: '#8b5cf6' }} />,
 };
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'neutral'> = {
@@ -37,9 +40,52 @@ const TYPE_VARIANTS: Record<string, 'primary' | 'warning' | 'info' | 'neutral'> 
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<(Notification & { isRead?: boolean })[]>(INITIAL_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<(Notification & { isRead?: boolean; recipients?: number })[]>(INITIAL_NOTIFICATIONS);
   const [showCompose, setShowCompose] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [isLive, setIsLive] = useState(false);
+  const [feedback, setFeedback] = useState('');
+
+  const triggerFeedback = useCallback((msg: string) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(''), 4000);
+  }, []);
+
+  // Load live broadcast history; keep the demo set on any failure.
+  const loadBroadcasts = useCallback(async () => {
+    const live = await liveApi.getBroadcasts();
+    if (live && live.length > 0) {
+      const mapped: (Notification & { isRead: boolean; recipients?: number })[] = live.map((b) => ({
+        id: b.id,
+        title: b.title,
+        body: b.body,
+        type: b.type,
+        targetAudience: b.targetAudience,
+        status: b.status,
+        sentAt: b.sentAt ?? undefined,
+        scheduledAt: b.scheduledAt ?? undefined,
+        createdAt: b.createdAt,
+        isRead: b.status !== 'sent',
+        recipients: b.recipientCount || undefined,
+      }));
+      setNotifications(mapped);
+      setIsLive(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBroadcasts();
+    // Realtime: dispatches from ANY admin session (or the scheduled sweep)
+    // appear here instantly — universal delivery accounting.
+    const unsubscribe = realtimeService.subscribe((msg) => {
+      if (msg.event === 'broadcast.delivered') {
+        void loadBroadcasts();
+        const recipients = (msg.payload as { recipients?: number }).recipients;
+        triggerFeedback(`Broadcast "${(msg.payload as { title?: string }).title ?? ''}" delivered to ${recipients ?? '?'} recipients.`);
+      }
+    });
+    return unsubscribe;
+  }, [loadBroadcasts, triggerFeedback]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -55,12 +101,40 @@ export default function NotificationsPage() {
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [audience, setAudience] = useState<'all' | 'doctors' | 'patients'>('all');
+  const [audience, setAudience] = useState<'all' | 'doctors' | 'patients' | 'staff'>('all');
   const [type, setType] = useState<'announcement' | 'reminder' | 'alert' | 'system'>('announcement');
 
-  const handleSendNotification = (status: 'sent' | 'draft') => {
+  const handleSendNotification = async (status: 'sent' | 'draft') => {
     if (!title.trim() || !body.trim()) return;
 
+    if (isLive) {
+      // Live path: create the broadcast server-side, then dispatch it.
+      // The fan-out writes one notifications row per recipient and pushes
+      // a realtime event to every connected admin/desktop session.
+      const created = await liveApi.createBroadcast({ title, body, type, targetAudience: audience });
+      if (created) {
+        if (status === 'sent') {
+          const dispatched = await liveApi.dispatchBroadcast(created.id);
+          triggerFeedback(
+            dispatched
+              ? `Broadcast dispatched to ${dispatched.recipients} recipients.`
+              : 'Broadcast saved but dispatch failed — retry from the log.'
+          );
+        } else {
+          triggerFeedback('Broadcast draft saved.');
+        }
+        await loadBroadcasts();
+        setShowCompose(false);
+        setTitle('');
+        setBody('');
+        setAudience('all');
+        setType('announcement');
+        return;
+      }
+      triggerFeedback('Live backend unreachable — broadcast saved locally only.');
+    }
+
+    // Demo/offline fallback (local state only)
     const newNotif: Notification & { isRead?: boolean } = {
       id: `n-${Date.now()}`,
       title,
@@ -136,6 +210,16 @@ export default function NotificationsPage() {
         </div>
       </div>
 
+      {/* Delivery feedback toast (realtime dispatch confirmations) */}
+      {feedback && (
+        <div style={{
+          background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46',
+          borderRadius: 10, padding: '10px 14px', fontSize: 13, fontWeight: 600,
+        }}>
+          {feedback}
+        </div>
+      )}
+
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
         {[
@@ -207,9 +291,14 @@ export default function NotificationsPage() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 12, flexWrap: 'wrap' }}>
                   <Badge variant={TYPE_VARIANTS[n.type]} size="sm">{n.type}</Badge>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#64748b' }}>
-                    {AUDIENCE_ICONS[n.targetAudience]}
+                    {AUDIENCE_ICONS[n.targetAudience] ?? <Users size={13} style={{ color: '#64748b' }} />}
                     <span style={{ textTransform: 'capitalize' }}>Audience: {n.targetAudience}</span>
                   </span>
+                  {n.recipients != null && n.recipients > 0 && (
+                    <span style={{ fontSize: 12, color: '#059669', fontWeight: 600 }}>
+                      Delivered to {n.recipients} recipients
+                    </span>
+                  )}
                   <span style={{ fontSize: 11.5, color: '#94a3b8' }}>
                     {n.sentAt ? `Sent: ${new Date(n.sentAt).toLocaleString()}` : n.scheduledAt ? `Scheduled: ${new Date(n.scheduledAt).toLocaleString()}` : `Created: ${new Date(n.createdAt).toLocaleDateString()}`}
                   </span>
@@ -291,7 +380,7 @@ export default function NotificationsPage() {
                 <label style={{ fontSize: 12.5, fontWeight: 600, color: '#334155', display: 'block', marginBottom: 6 }}>
                   Target Audience
                 </label>
-                <select 
+                <select
                   className="select"
                   value={audience}
                   onChange={e => setAudience(e.target.value as any)}
@@ -299,6 +388,7 @@ export default function NotificationsPage() {
                   <option value="all">All Users</option>
                   <option value="doctors">Doctors Only</option>
                   <option value="patients">Patients Only</option>
+                  <option value="staff">Hospital Staff Only</option>
                 </select>
               </div>
 

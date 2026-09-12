@@ -7,6 +7,7 @@
  */
 
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient';
+import apiClient from '../api/client';
 import { logger } from '../utils/logger';
 import {
   AuthResponse,
@@ -115,7 +116,9 @@ export const supabaseAuthService = {
           ? 'This account has been suspended. Contact support.'
           : eligibility.reason === 'account_deactivated'
             ? 'This account is deactivated.'
-            : 'Your account is still pending verification. You will be notified once approved.'
+            : eligibility.reason === 'verification_rejected'
+              ? 'Your verification was rejected. Please update your credentials and reapply.'
+              : 'Your account is still pending verification. You will be notified once approved.'
       );
     }
 
@@ -132,30 +135,38 @@ export const supabaseAuthService = {
 
   async register(payload: RegisterPayload): Promise<AuthResponse> {
     requireConfigured();
-    const supabase = getSupabaseClient();
 
-    const { data, error } = await supabase.auth.signUp({
+    // Role-aware registration goes through the Express backend so the
+    // server controls activation policy:
+    //   • patient → email verification bypassed, immediately active
+    //   • doctor  → created 'pending', activated by super-admin approval
+    // The backend provisions via the service role (clients cannot claim
+    // roles), then we sign in to obtain the session.
+    const { data: registered } = await apiClient.post<{
+      user: { id: string; email: string; role: UserRole; verificationStatus: string };
+      requiresAdminApproval: boolean;
+    }>('/auth/register', {
       email: payload.email,
       password: payload.password,
-      options: {
-        data: {
-          first_name: payload.firstName,
-          last_name: payload.lastName,
-          role: payload.role,
-          phone: payload.phone,
-        },
-      },
+      firstName: payload.firstName,
+      lastName: payload.lastName,
+      role: payload.role,
+      phone: payload.phone,
+      specialization: (payload as RegisterPayload & { specialty?: string }).specialty,
+      licenseNumber: (payload as RegisterPayload & { licenseNo?: string }).licenseNo,
     });
-    if (error) throw new Error(error.message);
 
-    // Profiles row is auto-created by the on_auth_user_created trigger.
-    // Doctors stay 'pending' verification; patients are immediately approved.
-    if (data.user && !data.session) {
-      throw new Error('Check your email to confirm your account before signing in.');
+    if (registered?.requiresAdminApproval) {
+      // Doctor accounts wait for super-admin verification — no session is
+      // issued; the caller routes to the pending-approval screen.
+      throw Object.assign(new Error('DOCTOR_PENDING_VERIFICATION'), {
+        code: 'doctor_pending_verification',
+        user: registered.user,
+      });
     }
-    if (!data.session) throw new Error('Registration succeeded. Please sign in.');
 
-    return buildAuthResponse(data.session.access_token, data.session.refresh_token!);
+    // Patients: sign in immediately (the account is already active).
+    return this.login({ email: payload.email, password: payload.password });
   },
 
   async me(): Promise<User> {
