@@ -112,15 +112,15 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('crushing chest')
   ) {
     return (
-      "**[CRITICAL EMERGENCY ALERT — IMMEDIATE ACTION REQUIRED]**\n\n" +
-      "Your reported symptoms indicate an acute cardiovascular, neurological, or respiratory emergency that cannot wait for a routine chat.\n\n" +
-      "**Immediate Emergency Steps:**\n" +
-      "1. **Seek Emergency Care**: Call national emergency dispatch (112) or proceed to the nearest hospital emergency department immediately.\n" +
-      "2. **Sit Upright**: Do not lie flat; sit upright in a comfortable position and loosen tight collar or waistbands.\n" +
-      "3. **Chest Pressure**: If crushing pain is radiating to your left arm or jaw, and you have no known aspirin allergy or stomach ulcer, chew one 300mg soluble Aspirin tablet.\n" +
-      "4. **Stroke Warning**: If experiencing facial droop, arm weakness, or slurred speech, note the exact time symptoms began. Rapid clinical thrombolysis within 3–4.5 hours is critical.\n" +
-      "5. **Do Not Drive**: Have someone drive you or wait for an ambulance.\n\n" +
-      "Tap 'Book Specialist' or visit our Emergency Blood / Hospital section if emergency admission is required."
+      "**🚨 EMERGENCY — PLEASE ACT NOW**\n\n" +
+      "What you are describing can be a sign of a serious heart, lung, or brain problem. Please do not wait for a chat reply — get help right away.\n\n" +
+      "**Do these things now:**\n" +
+      "1. **Call for help**: Dial 112 (national emergency) or get to the nearest hospital emergency unit immediately.\n" +
+      "2. **Sit upright**: Sit in a comfortable position. Do not lie flat. Loosen anything tight around your neck or waist.\n" +
+      "3. **Chest pressure**: If there is crushing pain spreading to your left arm or jaw, and you are NOT allergic to aspirin and do not have a stomach ulcer, slowly chew one 300mg aspirin tablet.\n" +
+      "4. **Stroke signs**: If the face is drooping, an arm feels weak, or speech is slurred, take note of the exact time it started — treatment works best within the first 3 to 4 hours.\n" +
+      "5. **Do not drive yourself**: Ask someone to drive you, or wait for an ambulance.\n\n" +
+      "You can also tap 'Book Specialist' or open our Emergency Blood / Hospital section if admission is needed."
     );
   }
 
@@ -133,13 +133,13 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('sickling')
   ) {
     return (
-      "**[SICKLE CELL VASO-OCCLUSIVE CRISIS PROTOCOL]**\n\n" +
-      "Severe bone or joint pain in sickle cell disease indicates microvascular occlusion caused by sickled red blood cells:\n\n" +
-      "• **Aggressive Hydration**: Drink 3 to 4 liters of warm water or oral rehydration solution today. Fluid expansion reduces blood viscosity and relieves sickling.\n" +
-      "• **Warmth**: Keep affected joints and extremities warm with blankets or warm compresses. **Never apply ice or cold water**, as cold causes vasoconstriction and triggers further crisis.\n" +
-      "• **Analgesia**: Take your prescribed pain management medication promptly (e.g. Paracetamol or prescribed NSAID for mild crisis; physician-directed analgesia for moderate to severe pain).\n" +
-      "• **Red Flags for Emergency Admission**: Chest pain with fever or cough (Acute Chest Syndrome), breathlessness, severe pallor (aplastic/sequestration crisis), or unmanageable pain (>7/10) require immediate emergency department presentation.\n\n" +
-      "Would you like to review emergency blood donors or schedule an urgent Hematologist consultation?"
+      "**Sickle Cell Pain Crisis — What To Do**\n\n" +
+      "Strong bone or joint pain during a sickle cell crisis happens because some red blood cells have changed shape and are blocking small blood vessels. Here is what helps:\n\n" +
+      "• **Drink lots of fluid**: Try to drink 3 to 4 liters (about 12 to 16 cups) of warm water or rehydration solution today. This thins the blood and eases the blockage.\n" +
+      "• **Keep warm**: Wrap the painful joints in warm blankets or use a warm compress. **Never use ice or cold water** — cold makes the blood vessels tighten and can make the crisis worse.\n" +
+      "• **Take your pain medicine**: Use the pain medicine your doctor already prescribed for you. For mild pain, Paracetamol is usually fine.\n" +
+      "• **Go to the hospital straight away if**: you have chest pain with fever or cough, trouble breathing, you look very pale, or the pain is unbearable (worse than 7 out of 10).\n\n" +
+      "Would you like to see emergency blood donors or book an urgent appointment with a blood specialist?"
     );
   }
 
@@ -152,13 +152,13 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('fever and body pain')
   ) {
     return (
-      "**[FEBRILE ILLNESS & MALARIA / TYPHOID ASSESSMENT]**\n\n" +
-      "Cyclical fever, rigors (shivering), headaches, joint pains, and dark urine are hallmark symptoms of endemic malaria in Nigeria:\n\n" +
-      "1. **Test Before Treating**: Always confirm with a Rapid Diagnostic Test (mRDT) or Thick Blood Film microscopy before taking antimalarial therapy.\n" +
-      "2. **First-Line Regimen**: For confirmed uncomplicated Plasmodium falciparum, WHO and Nigerian FMOH guidelines recommend quality-assured Artemisinin-based Combination Therapy (ACT), such as Artemether-Lumefantrine taken with fatty food for optimal absorption.\n" +
-      "3. **Symptom Control**: Paracetamol (500mg–1000mg up to 4 times daily) helps alleviate fever and joint aches. Drink at least 2.5–3L of fluids daily.\n" +
-      "4. **Typhoid Cross-Screening**: If high remittent fever persists beyond 3–4 days despite antimalarials, a Widal test or blood culture is indicated to screen for Salmonella Typhi (Typhoid fever).\n\n" +
-      "Please seek urgent clinical evaluation if you experience persistent vomiting, extreme jaundice (yellow eyes), or temperature above 39.5°C."
+      "**Fever — Could It Be Malaria or Typhoid?**\n\n" +
+      "Fever that comes and goes, with shivering, headache, body pain, or dark urine, is very often malaria — especially in Nigeria. Here is the safe way to handle it:\n\n" +
+      "1. **Test first**: Do a malaria test (RDT or blood test) at a pharmacy or clinic BEFORE taking any malaria medicine. This tells you what you are actually treating.\n" +
+      "2. **If malaria is confirmed**: The recommended treatment is ACT (like Artemether-Lumefantrine). Take it exactly as told, **with food** — fatty food helps the medicine work better.\n" +
+      "3. **For the fever and aches**: Paracetamol (500mg to 1000mg, up to 4 times a day) helps. Also drink plenty of water — about 10 to 12 cups a day.\n" +
+      "4. **If fever continues after 3 to 4 days** of malaria treatment, go back for another test — typhoid is common and needs different treatment.\n\n" +
+      "**Go to a hospital urgently if** you cannot stop vomiting, your eyes turn yellow, or your temperature goes above 39.5°C."
     );
   }
 
@@ -171,12 +171,12 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('blurred vision and pregnant')
   ) {
     return (
-      "**[MATERNAL HEALTH & PREECLAMPSIA ADVISORY]**\n\n" +
-      "In pregnancy (particularly past 20 weeks), sudden facial/hand edema accompanied by severe headache or visual blurring requires urgent obstetric evaluation:\n\n" +
-      "• **Immediate Blood Pressure Check**: A reading of ≥140/90 mmHg with proteinuria may indicate preeclampsia, which requires close clinical monitoring to protect maternal and fetal safety.\n" +
-      "• **Urinalysis**: Have a clinic test for urinary protein dipstick.\n" +
-      "• **Medication Safety**: Avoid OTC NSAIDs (such as Ibuprofen or Aspirin) during pregnancy unless specifically prescribed by your Obstetrician.\n\n" +
-      "Please contact your maternity care team or visit an antenatal clinic immediately if you have upper abdominal pain or sudden swelling."
+      "**Pregnancy Warning — Please Get Checked**\n\n" +
+      "If you are pregnant (especially past 20 weeks) and you notice sudden swelling of your face or hands, a bad headache, or blurred vision, this can be a sign of a pregnancy complication called preeclampsia — high blood pressure in pregnancy. It needs to be checked quickly to keep both you and the baby safe.\n\n" +
+      "• **Check your blood pressure today**: If it is 140/90 or higher, that is a warning sign.\n" +
+      "• **Do a urine test**: A simple dipstick test at a clinic can show if there is protein in your urine — another warning sign of preeclampsia.\n" +
+      "• **Be careful with painkillers**: Do NOT take Ibuprofen or Aspirin on your own during pregnancy. Only take medicines your antenatal doctor has approved. Paracetamol is usually the safer option.\n\n" +
+      "**Go to your antenatal clinic or maternity hospital immediately** if you also have pain at the top of your belly or sudden swelling."
     );
   }
 
@@ -191,16 +191,16 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('hypertension') ||
     q.includes('pressure')
   ) {
-    let msg = "Hypertension management relies on consistent monitoring, medication adherence, and sodium restriction (<2g daily).\n\n";
+    let msg = "High blood pressure (also called hypertension — simply put, the force of blood pushing against your blood vessel walls is higher than it should be) is best managed by three things: taking your medicine every day as prescribed, checking your numbers regularly, and cutting back on salty foods.\n\n";
     if (latestBp) {
-      msg += `**Latest Logged Reading:**\n• **Blood Pressure**: ${latestBp.systolic}/${latestBp.diastolic} mmHg (${latestBp.category})\n• **Heart Rate**: ${latestBp.pulse || 72} bpm\n• **Logged**: ${new Date(latestBp.recordedAt).toLocaleDateString()} at ${new Date(latestBp.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n\n`;
+      msg += `**Your most recent reading:**\n• **Blood Pressure**: ${latestBp.systolic}/${latestBp.diastolic} mmHg (${latestBp.category})\n• **Heart Rate**: ${latestBp.pulse || 72} beats per minute\n• **Recorded**: ${new Date(latestBp.recordedAt).toLocaleDateString()} at ${new Date(latestBp.recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}\n\n`;
       if (latestBp.systolic >= 140 || latestBp.diastolic >= 90) {
-        msg += "[CLINICAL ADVISORY] Your last recorded reading falls within Stage 1/2 Hypertension. If you have headache or dizziness, take your prescribed antihypertensive medication (e.g. Amlodipine/Lisinopril) and rest.";
+        msg += "**Heads up**: Your last reading is higher than the safe range (your top number should stay under 140, and the bottom under 90). If you have a headache or feel dizzy, take your prescribed blood pressure medicine (e.g. Amlodipine or Lisinopril) and rest. If it stays this high or you feel unwell, please see a doctor.";
       } else {
-        msg += "[TARGET ATTAINED] Your blood pressure is in an optimal target range. Continue healthy lifestyle habits and regular medication schedule.";
+        msg += "**Good news**: Your blood pressure is in a healthy range. Keep up the good work — keep taking your medicine on schedule and eating well.";
       }
     } else if (vitals?.bloodPressure) {
-      msg += `Your profile records a resting blood pressure of ${vitals.bloodPressure} mmHg. Maintain low-sodium nutrition and regular cardiovascular exercise.`;
+      msg += `Your profile shows a resting blood pressure of ${vitals.bloodPressure} mmHg. Keep eating less salty foods and staying active with regular walks or light exercise.`;
     }
     return msg;
   }
@@ -211,18 +211,18 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('glucose') ||
     q.includes('insulin')
   ) {
-    let msg = "Glycemic control is essential for preventing microvascular diabetic complications.\n\n";
+    let msg = "Keeping your blood sugar steady protects your eyes, kidneys, nerves, and heart over the long term. The main habits: take your medicine as prescribed, watch your portions of starchy and sugary foods, and check your sugar regularly.\n\n";
     if (latestSugar) {
-      msg += `**Latest Glucose Reading:**\n• **Blood Sugar**: ${latestSugar.glucoseLevel} mg/dL (${latestSugar.type})\n• **Category**: ${latestSugar.category}\n• **Logged**: ${new Date(latestSugar.recordedAt).toLocaleDateString()}\n\n`;
+      msg += `**Your most recent reading:**\n• **Blood Sugar**: ${latestSugar.glucoseLevel} mg/dL (${latestSugar.type})\n• **Category**: ${latestSugar.category}\n• **Recorded**: ${new Date(latestSugar.recordedAt).toLocaleDateString()}\n\n`;
       if (latestSugar.glucoseLevel > 180) {
-        msg += "[HYPERGLYCEMIA ADVISORY] Your recorded glucose level indicates postprandial hyperglycemia. Check water intake, review meal carbohydrate portion, and ensure adherence to prescribed oral hypoglycemic agents (like Metformin).";
+        msg += "**A bit high**: This reading is above the usual safe range for after meals (under 180 mg/dL). Drink water, reduce your next starchy portion, and make sure you are taking your diabetes tablets (like Metformin) as prescribed. If readings stay high, book a doctor's visit.";
       } else if (latestSugar.glucoseLevel < 70) {
-        msg += "**[HYPOGLYCEMIA ALERT]**: A reading below 70 mg/dL requires the 'Rule of 15': ingest 15 grams of fast-acting glucose (half cup fruit juice or 3 sugar cubes) and re-test in 15 minutes.";
+        msg += "**⚠️ LOW SUGAR — act now**: A reading below 70 means your sugar is too low. Take 15 grams of quick sugar right away (half a glass of fruit juice or 3 sugar cubes), wait 15 minutes, then test again. Repeat if it is still below 70.";
       } else {
-        msg += "[NORMAL RANGE] Your recorded blood sugar is within the clinically acceptable range.";
+        msg += "**Good news**: Your blood sugar is within the safe range. Keep it up!";
       }
     } else {
-      msg += "Normal fasting blood glucose ranges between 70–100 mg/dL, and post-meal glucose should remain below 140 mg/dL for non-diabetic adults.";
+      msg += "For reference: a normal fasting (morning, before food) sugar is 70–100 mg/dL, and after a meal it should stay below 140 mg/dL in adults without diabetes.";
     }
     return msg;
   }
@@ -236,13 +236,14 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
     q.includes('symptom')
   ) {
     let response =
-      "A headache can arise from tension, dehydration, ocular strain, or blood pressure fluctuations. \n\n" +
-      "**Clinical Guidance:**\n" +
-      "• Rest in a quiet, darkened room and drink 500mL of water.\n" +
-      "• If accompanied by high fever, stiff neck, or sudden onset thunderclap pain, seek urgent medical attention.\n" +
-      "• Would you like to launch the 3D Body Map Symptom Checker for a structured clinical analysis?";
+      "I hear you — headaches are never fun. A headache like this usually comes from tension and stress, not drinking enough water, too much screen time, or changes in blood pressure.\n\n" +
+      "**What you can do now:**\n" +
+      "• Rest in a quiet, dim room and drink a large glass of water (about 2 cups).\n" +
+      "• Paracetamol can help if you need it, following the pack instructions.\n" +
+      "**See a doctor urgently if** the headache comes with a high fever, a stiff neck, or it started suddenly like a thunderclap — the worst headache of your life.\n\n" +
+      "Would you like to try the Body Map Symptom Checker for a step-by-step look at what might be going on?";
     if (latestBp) {
-      response += `\n\n**Vitals Context**: Your latest recorded blood pressure is ${latestBp.systolic}/${latestBp.diastolic} mmHg.`;
+      response += `\n\n**For context**: Your last recorded blood pressure was ${latestBp.systolic}/${latestBp.diastolic} mmHg.`;
     }
     return response;
   }
@@ -250,38 +251,38 @@ const getMedicalResponse = (query: string, vitals?: any): string => {
   // 7. Drug Information & Interactions
   if (q.includes('metformin') || q.includes('side effect') || q.includes('medication') || q.includes('lisinopril') || q.includes('amlodipine')) {
     let response =
-      "**Clinical Medication Overview:**\n\n" +
-      "• **Metformin**: An oral biguanide prescribed for Type 2 Diabetes. Improves insulin sensitivity and lowers hepatic glucose production. To prevent common GI side effects (bloating, nausea), always take it during or immediately after meals.\n" +
-      "• **Lisinopril / Amlodipine**: Common first-line antihypertensive agents. A dry persistent cough is a recognized class side-effect of ACE inhibitors like Lisinopril, while ankle swelling (peripheral edema) can occur with calcium channel blockers like Amlodipine.\n\n" +
-      "Always consult your doctor before modifying medication dosages or stopping prescriptions.";
+      "**About your medicines — in plain words:**\n\n" +
+      "• **Metformin** (for type 2 diabetes): Helps your body respond better to its own insulin so sugar stays lower. It commonly causes bloating, nausea, or loose stools — taking it **with or right after food** usually settles this.\n" +
+      "• **Lisinopril / Amlodipine** (for blood pressure): Common first choices for high blood pressure. A dry, persistent cough is a known side effect of Lisinopril. Ankle swelling can happen with Amlodipine — mention it to your doctor if you notice it; it is not dangerous but the dose may need changing.\n\n" +
+      "Please don't change your dose or stop any medicine without talking to your doctor first — even if you feel fine.";
     if (latestBp) {
-      response += `\n\nYour recorded blood pressure is ${latestBp.systolic}/${latestBp.diastolic} mmHg.`;
+      response += `\n\nFor reference, your last recorded blood pressure was ${latestBp.systolic}/${latestBp.diastolic} mmHg.`;
     }
     return response;
   }
 
   if (q.includes('interaction') || q.includes('ibuprofen') || q.includes('aspirin')) {
     return (
-      "**[DRUG INTERACTION ADVISORY: Ibuprofen + Aspirin]**\n\n" +
-      "Combining Ibuprofen with Aspirin is clinically contraindicated in routine practice:\n" +
-      "1. **Gastrointestinal Risk**: Both are non-steroidal anti-inflammatory drugs (NSAIDs). Simultaneous use significantly increases the risk of gastric mucosal ulceration, bleeding, and renal injury.\n" +
-      "2. **Platelet Blunting**: Ibuprofen reversibly blocks platelet COX-1 and can interfere with low-dose Aspirin's irreversible cardioprotective anti-platelet effect.\n\n" +
-      "If you take daily baby Aspirin for cardiovascular protection, discuss safer analgesic alternatives (such as Paracetamol) with your physician."
+      "**Mixing Ibuprofen and Aspirin — please be careful**\n\n" +
+      "These two painkillers belong to the same family (NSAIDs) and should not be taken together regularly:\n" +
+      "1. **Stomach risk**: Taking both at once greatly raises the chance of stomach ulcers, bleeding, and kidney problems.\n" +
+      "2. **Heart protection risk**: If you take a daily low-dose (baby) aspirin for your heart, Ibuprofen can stop it from doing its job properly.\n\n" +
+      "If you need a painkiller while on daily aspirin, **Paracetamol is the safer choice** — but please confirm with your doctor or pharmacist."
     );
   }
 
   // Default Assistant Introduction
   let baseMsg =
-    "Hello! I am your Omini Pulse AI Clinical Assistant. I can help you with:\n" +
-    "• Step-by-step Symptom Triage via 3D Body Map\n" +
-    "• Medication explanations and drug-drug interactions\n" +
-    "• Tracking your real-time Blood Pressure and Blood Glucose logs\n" +
-    "• Direct specialist booking and emergency blood donor matching\n\n" +
-    "How can I assist your health and wellness journey today?";
+    "Hello! I am your Omini Pulse AI Health Assistant — think of me as a knowledgeable medical friend who explains things the way a doctor would, but in plain, everyday language. I can help you with:\n" +
+    "• Understanding what your symptoms might mean, step by step\n" +
+    "• Explaining your medicines and which ones don't mix well\n" +
+    "• Tracking your blood pressure and blood sugar readings\n" +
+    "• Booking a specialist or finding emergency blood donors\n\n" +
+    "What would you like help with today?";
 
   if (latestBp || latestSugar) {
-    baseMsg += "\n\n**Live Vitals Active**: ";
-    if (latestBp) baseMsg += `BP: ${latestBp.systolic}/${latestBp.diastolic} mmHg (${latestBp.category}) `;
+    baseMsg += "\n\n**Your latest readings**: ";
+    if (latestBp) baseMsg += `Blood Pressure: ${latestBp.systolic}/${latestBp.diastolic} mmHg (${latestBp.category}) `;
     if (latestSugar) baseMsg += `• Blood Sugar: ${latestSugar.glucoseLevel} mg/dL (${latestSugar.type})`;
   }
 
@@ -669,7 +670,7 @@ export default function AIChatScreen({ route, navigation }: any) {
     setIsTyping(true);
 
     setTimeout(() => {
-      const ocrSummary = "I have analyzed your uploaded clinical document:\n\n• **Document**: Clinical E-Prescription & Lab Report\n• **Extracted Medications**: Amoxicillin 500mg (3x daily), Paracetamol 500mg (as needed)\n• **Extracted Findings**: Hemoglobin 13.5 g/dL and Fasting Glucose 95 mg/dL (both normal)\n\nAll extracted values have been cross-referenced with your EHR. Would you like me to schedule medication alarms for Amoxicillin?";
+      const ocrSummary = "I have gone through your uploaded document. Here is what it says, in plain words:\n\n• **Document type**: E-Prescription and Lab Report\n• **Medicines found**: Amoxicillin 500mg (three times a day) and Paracetamol 500mg (only when needed for pain or fever)\n• **Lab results**: Your hemoglobin (blood level) is 13.5 and your fasting sugar is 95 — both of these are normal, so nothing to worry about there.\n\nWould you like me to set reminder alarms so you don't miss any Amoxicillin doses?";
       const aiMsg: Message = {
         id: `msg-${Date.now() + 1}`,
         text: ocrSummary,
@@ -719,7 +720,7 @@ export default function AIChatScreen({ route, navigation }: any) {
       setIsTyping(true);
 
       setTimeout(() => {
-        const summaryText = `Here is a summary of your recent health profile and vitals:\n\n• **Blood Pressure**: ${vitals?.bloodPressure || '120/80'} mmHg (Optimal)\n• **Heart Rate**: ${vitals?.heartRate || '72'} bpm (Normal Sinus Rhythm)\n• **Active Prescriptions**: 2 medications logged\n• **Lab Tests**: All recent blood work within normal limits\n\nYour overall health index is strong. Here is your visual vitals snapshot:`;
+        const summaryText = `Here is a simple summary of your recent health profile and vitals:\n\n• **Blood Pressure**: ${vitals?.bloodPressure || '120/80'} mmHg — this is in the healthy range\n• **Heart Rate**: ${vitals?.heartRate || '72'} beats per minute at rest — normal\n• **Active Prescriptions**: 2 medicines logged\n• **Lab Tests**: All your recent blood work came back normal\n\nOverall, your health is in good shape. Here is your vitals snapshot:`;
         const aiMsg: Message = {
           id: `msg-${Date.now() + 1}`,
           text: summaryText,
@@ -815,7 +816,7 @@ export default function AIChatScreen({ route, navigation }: any) {
         setVoiceStatus('speaking');
         setVoiceTranscription('"How can I lower my blood pressure naturally?"');
         
-        const fullResponse = "To lower your blood pressure naturally: reduce sodium intake under 2,000 mg daily, adopt a heart-healthy diet, exercise 150 minutes per week, and practice deep breathing exercises daily. Since your BP vitals show prehypertension, this will be highly beneficial.";
+        const fullResponse = "Here is how to lower your blood pressure naturally, in simple terms: eat less salty foods and seasoning cubes (aim for less than one teaspoon of salt a day), fill half your plate with vegetables and fruit, take a brisk 30-minute walk most days of the week, and take a few slow, deep breaths when you feel stressed. These habits work best alongside any medicine your doctor has prescribed, not instead of it. Since your recent readings are slightly high, starting these now will make a real difference.";
         
         let currentText = '';
         const words = fullResponse.split(' ');
