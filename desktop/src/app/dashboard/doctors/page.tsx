@@ -156,6 +156,7 @@ export default function DoctorsPage() {
   // built-in demo roster as offline fallback.
   const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
   const [isLive, setIsLive] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | VerificationStatus>('all');
   const [selectedDoc, setSelectedDoc] = useState<Doctor | null>(null);
@@ -176,9 +177,14 @@ export default function DoctorsPage() {
   useEffect(() => {
     let cancelled = false;
     liveApi.getDoctors().then((live) => {
-      if (!cancelled && live && live.length > 0) {
-        setDoctors(live);
-        setIsLive(true);
+      if (!cancelled) {
+        if (live && live.length > 0) {
+          setDoctors(live);
+          setIsLive(true);
+          setLoadError(null);
+        } else {
+          setLoadError('Live backend returned no data — showing demo roster');
+        }
       }
     });
     return () => { cancelled = true; };
@@ -191,6 +197,9 @@ export default function DoctorsPage() {
           if (live && live.length > 0) {
             setDoctors(live);
             setIsLive(true);
+            setLoadError(null);
+          } else {
+            setLoadError('Live refresh returned empty — using cached data');
           }
         });
       }
@@ -287,13 +296,13 @@ export default function DoctorsPage() {
               <Stethoscope size={18} style={{ color: '#2563eb' }} />
             </div>
             <h1 className="page-title">Doctor Verification</h1>
-            <span style={{
-              fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
-              background: isLive ? '#f0fdf4' : '#f8fafc',
-              color: isLive ? '#16a34a' : '#64748b',
-            }}>
-              {isLive ? 'Live data' : 'Demo data'}
-            </span>
+<span style={{
+                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                  background: isLive ? '#f0fdf4' : loadError ? '#fef2f2' : '#f8fafc',
+                  color: isLive ? '#16a34a' : loadError ? '#dc2626' : '#64748b',
+                }}>
+                  {isLive ? 'Live data' : loadError ? 'Fallback mode' : 'Demo data'}
+                </span>
           </div>
           <p className="page-subtitle">Verify doctor credentials, certificates, and review platform registration requests.</p>
         </div>

@@ -152,6 +152,7 @@ export default function PatientsPage() {
   // with the built-in demo roster as offline fallback.
   const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
   const [isLive, setIsLive] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -170,9 +171,14 @@ export default function PatientsPage() {
   useEffect(() => {
     let cancelled = false;
     liveApi.getPatients().then((live) => {
-      if (!cancelled && live && live.length > 0) {
-        setPatients(live);
-        setIsLive(true);
+      if (!cancelled) {
+        if (live && live.length > 0) {
+          setPatients(live);
+          setIsLive(true);
+          setLoadError(null);
+        } else {
+          setLoadError('Live backend returned no data — showing demo roster');
+        }
       }
     });
     return () => { cancelled = true; };
@@ -185,6 +191,9 @@ export default function PatientsPage() {
           if (live && live.length > 0) {
             setPatients(live);
             setIsLive(true);
+            setLoadError(null);
+          } else {
+            setLoadError('Live refresh returned empty — using cached data');
           }
         });
       }

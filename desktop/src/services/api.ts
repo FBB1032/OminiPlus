@@ -277,7 +277,10 @@ async function safeGet<T>(path: string, params?: Record<string, unknown>): Promi
   try {
     const { data } = await apiClient.get<T>(path, { params });
     return data;
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    console.warn(`[liveApi] GET ${path} failed (${status ?? 'no status'}): ${msg}`);
     return null; // network / 403 / cold start — caller falls back to demo data
   }
 }

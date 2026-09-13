@@ -181,6 +181,7 @@ export default function AuditLogsPage() {
   // with the built-in demo trail as offline fallback.
   const [logs, setLogs] = useState<EnhancedAuditLog[]>(MOCK_ENHANCED_LOGS);
   const [isLive, setIsLive] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<AuditCategory>('all');
   const [selectedSeverity, setSelectedSeverity] = useState<AuditSeverity>('all');
@@ -237,6 +238,7 @@ export default function AuditLogsPage() {
         }));
         setLogs([...mappedAdmin, ...mappedNdpa]);
         setIsLive(true);
+        setLoadError(null);
       } else if (ndpaTrail && ndpaTrail.length > 0) {
         setLogs(
           ndpaTrail.map((l) => ({
@@ -251,6 +253,9 @@ export default function AuditLogsPage() {
           }))
         );
         setIsLive(true);
+        setLoadError(null);
+      } else {
+        setLoadError('Live backend returned no audit data — showing demo trail');
       }
     }
 
@@ -382,6 +387,13 @@ export default function AuditLogsPage() {
               <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', margin: 0 }}>
                 Audit & Compliance Governance
               </h1>
+              {!isLive && <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                background: loadError ? '#fef2f2' : '#f8fafc',
+                color: loadError ? '#dc2626' : '#64748b',
+              }}>
+                {loadError ? 'Fallback mode' : 'Demo data'}
+              </span>}
               <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
                 Immutable, SHA-256 cryptographic audit trail under NDPA 2023 Section 30 and ISO 27001 standards
               </p>

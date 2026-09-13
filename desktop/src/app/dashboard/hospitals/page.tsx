@@ -150,6 +150,7 @@ export default function HospitalsPage() {
   // with the built-in demo roster as offline fallback.
   const [hospitals, setHospitals] = useState<VerificationHospital[]>(INITIAL_HOSPITALS);
   const [isLive, setIsLive] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PartnerStatus>('all');
   const [selectedHospital, setSelectedHospital] = useState<VerificationHospital | null>(null);
@@ -163,10 +164,14 @@ export default function HospitalsPage() {
   useEffect(() => {
     let cancelled = false;
     liveApi.getHospitals().then((live) => {
-      if (!cancelled && live && live.length > 0) {
-        // Adapt plain Hospital rows to the verification view shape.
-        setHospitals(live.map((h) => ({ ...h, documentsCount: 0 })));
-        setIsLive(true);
+      if (!cancelled) {
+        if (live && live.length > 0) {
+          setHospitals(live.map((h) => ({ ...h, documentsCount: 0 })));
+          setIsLive(true);
+          setLoadError(null);
+        } else {
+          setLoadError('Live backend returned no data — showing demo roster');
+        }
       }
     });
     return () => { cancelled = true; };
@@ -322,6 +327,13 @@ export default function HospitalsPage() {
               <Building2 size={18} style={{ color: '#2563eb' }} />
             </div>
             <h1 className="page-title">Hospital Verification</h1>
+{ !isLive && <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                  background: loadError ? '#fef2f2' : '#f8fafc',
+                  color: loadError ? '#dc2626' : '#64748b',
+                }}>
+                  {loadError ? 'Fallback mode' : 'Demo data'}
+                </span> }
           </div>
           <p className="page-subtitle">Accredit healthcare systems, review clinical facility operations licenses, and activate partner networks.</p>
         </div>
