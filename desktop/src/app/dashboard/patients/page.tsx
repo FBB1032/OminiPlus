@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users, Search, Eye, ShieldCheck, ShieldAlert, Download,
-  CheckCircle, XCircle, Clock, Calendar, FileText, Activity, AlertTriangle, Lock
+  CheckCircle, XCircle, Clock, Calendar, FileText, Activity, AlertTriangle, Lock, RefreshCw
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -11,147 +11,15 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
-import { liveApi } from '@/services/api';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import { realtimeService } from '@/services/realtimeService';
 import type { Patient } from '@/types';
 
-// Mock Patient Directory
-const INITIAL_PATIENTS: Patient[] = [
-  {
-    id: 'pat-4901',
-    firstName: 'Aisha',
-    lastName: 'Okonkwo',
-    email: 'aisha.okonkwo@gmail.com',
-    phone: '+234 803 111 2233',
-    dateOfBirth: '1994-05-12',
-    age: 32,
-    gender: 'female',
-    bloodGroup: 'O+',
-    genotype: 'AA',
-    totalAppointments: 6,
-    lastVisitAt: '2026-06-03T10:00:00Z',
-    isActive: true,
-    createdAt: '2025-11-14T09:30:00Z',
-  },
-  {
-    id: 'pat-4902',
-    firstName: 'Babatunde',
-    lastName: 'Balogun',
-    email: 'babatunde.balogun@yahoo.com',
-    phone: '+234 805 222 3344',
-    dateOfBirth: '1988-11-20',
-    age: 37,
-    gender: 'male',
-    bloodGroup: 'A+',
-    genotype: 'AS',
-    totalAppointments: 11,
-    lastVisitAt: '2026-06-01T14:15:00Z',
-    isActive: true,
-    createdAt: '2025-08-20T11:00:00Z',
-  },
-  {
-    id: 'pat-4903',
-    firstName: 'Chioma',
-    lastName: 'Nwachukwu',
-    email: 'chioma.n@outlook.com',
-    phone: '+234 812 333 4455',
-    dateOfBirth: '1999-03-08',
-    age: 27,
-    gender: 'female',
-    bloodGroup: 'B+',
-    genotype: 'AA',
-    totalAppointments: 4,
-    lastVisitAt: '2026-05-28T16:30:00Z',
-    isActive: true,
-    createdAt: '2026-01-10T15:45:00Z',
-  },
-  {
-    id: 'pat-4904',
-    firstName: 'David',
-    lastName: 'Adebayo',
-    email: 'david.adebayo@gmail.com',
-    phone: '+234 901 444 5566',
-    dateOfBirth: '1976-08-15',
-    age: 49,
-    gender: 'male',
-    bloodGroup: 'O-',
-    genotype: 'AA',
-    totalAppointments: 18,
-    lastVisitAt: '2026-06-04T09:00:00Z',
-    isActive: true,
-    createdAt: '2025-06-12T08:00:00Z',
-  },
-  {
-    id: 'pat-4905',
-    firstName: 'Efe',
-    lastName: 'Eze',
-    email: 'efe.eze@icloud.com',
-    phone: '+234 802 555 6677',
-    dateOfBirth: '2001-12-04',
-    age: 24,
-    gender: 'male',
-    bloodGroup: 'AB+',
-    genotype: 'AS',
-    totalAppointments: 2,
-    lastVisitAt: '2026-04-19T11:20:00Z',
-    isActive: false, // Suspended
-    createdAt: '2026-02-02T13:10:00Z',
-  },
-  {
-    id: 'pat-4906',
-    firstName: 'Funmi',
-    lastName: 'Okeke',
-    email: 'funmi.okeke@gmail.com',
-    phone: '+234 810 666 7788',
-    dateOfBirth: '1992-07-25',
-    age: 33,
-    gender: 'female',
-    bloodGroup: 'O+',
-    genotype: 'AA',
-    totalAppointments: 8,
-    lastVisitAt: '2026-06-02T13:45:00Z',
-    isActive: true,
-    createdAt: '2025-10-05T10:20:00Z',
-  },
-  {
-    id: 'pat-4907',
-    firstName: 'Grace',
-    lastName: 'Ojo',
-    email: 'grace.ojo@yahoo.com',
-    phone: '+234 814 777 8899',
-    dateOfBirth: '1985-02-18',
-    age: 41,
-    gender: 'female',
-    bloodGroup: 'A-',
-    genotype: 'AA',
-    totalAppointments: 15,
-    lastVisitAt: '2026-05-30T15:00:00Z',
-    isActive: true,
-    createdAt: '2025-07-18T14:30:00Z',
-  },
-  {
-    id: 'pat-4908',
-    firstName: 'Henry',
-    lastName: 'Bello',
-    email: 'henry.bello@hotmail.com',
-    phone: '+234 809 888 9900',
-    dateOfBirth: '1990-09-30',
-    age: 35,
-    gender: 'male',
-    bloodGroup: 'O+',
-    genotype: 'SS',
-    totalAppointments: 22,
-    lastVisitAt: '2026-06-04T12:00:00Z',
-    isActive: true,
-    createdAt: '2025-05-09T09:15:00Z',
-  },
-];
-
 export default function PatientsPage() {
   // Live patient directory (https://ominipulse.onrender.com/api/admin/users)
-  // with the built-in demo roster as offline fallback.
-  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
-  const [isLive, setIsLive] = useState(false);
+  // — no fallback; failures render an explicit error state.
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
@@ -166,40 +34,29 @@ export default function PatientsPage() {
     patientName: string;
   } | null>(null);
 
-  // Load live patient directory once; keep the demo roster on any failure.
-  // Realtime: moderation events from any admin session refresh this list.
-  useEffect(() => {
-    let cancelled = false;
-    liveApi.getPatients().then((live) => {
-      if (!cancelled) {
-        if (live && live.length > 0) {
-          setPatients(live);
-          setIsLive(true);
-          setLoadError(null);
-        } else {
-          setLoadError('Live backend returned no data — showing demo roster');
-        }
-      }
-    });
-    return () => { cancelled = true; };
+  // Load the live patient directory. Errors surface as an explicit error state.
+  const loadPatients = useCallback(async () => {
+    try {
+      const live = await liveApi.getPatients();
+      setPatients(live);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  // Realtime: moderation events from any admin session refresh this list.
   useEffect(() => {
+    void loadPatients();
     const unsubscribe = realtimeService.subscribe((msg) => {
       if (msg.event === 'admin.users.changed') {
-        liveApi.getPatients().then((live) => {
-          if (live && live.length > 0) {
-            setPatients(live);
-            setIsLive(true);
-            setLoadError(null);
-          } else {
-            setLoadError('Live refresh returned empty — using cached data');
-          }
-        });
+        void loadPatients();
       }
     });
     return unsubscribe;
-  }, []);
+  }, [loadPatients]);
 
   // Search & Filter
   const filteredPatients = patients.filter((p) => {
@@ -255,9 +112,7 @@ export default function PatientsPage() {
     }
 
     // Live backend sync: suspend / reactivate the patient's account.
-    if (isLive) {
-      void liveApi.setUserStatus(patientId, action === 'activate');
-    }
+    void liveApi.setUserStatus(patientId, action === 'activate');
 
     setConfirmDialog(null);
   };
@@ -306,6 +161,37 @@ export default function PatientsPage() {
           Export Patient List
         </Button>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading patient directory from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load patients from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadPatients(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* ── KPI Metric Cards ─────────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

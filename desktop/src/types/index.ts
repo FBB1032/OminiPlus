@@ -355,6 +355,9 @@ export interface Report {
   resolvedAt?: string;
 }
 
+/** Live incident_reports row mapped for the Reports console. */
+export type IncidentReport = Omit<Report, 'evidenceFiles' | 'suspensionDurationDays' | 'disciplinaryActionNote' | 'boardHandoverAt' | 'targetLicenseNo' | 'targetSpecialty' | 'targetHospital' | 'consultationId'>;
+
 export interface Notification {
   id: string;
   title: string;

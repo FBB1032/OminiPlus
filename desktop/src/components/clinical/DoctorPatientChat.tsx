@@ -58,36 +58,8 @@ interface DoctorPatientChatProps {
   onTriggerFeedback?: (msg: string) => void;
 }
 
-const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
-  'c-100': [
-    { id: 'm-100-1', sender: 'patient', text: 'Good morning Dr. Folake. I noticed some visual blurriness when working on my computer yesterday.', timestamp: '10:15 AM' },
-    { id: 'm-100-2', sender: 'doctor', text: 'Good morning Chioma. Did you take your fasting blood glucose reading this morning?', timestamp: '10:18 AM', read: true },
-    { id: 'm-100-3', sender: 'patient', text: 'Yes, it was 142 mg/dL. I took my Metformin 500mg as prescribed with dinner last night.', timestamp: '10:20 AM' },
-    { id: 'm-100-4', sender: 'doctor', text: '142 mg/dL is slightly elevated above our target threshold. Are you experiencing any sudden dizziness, frequent urination, or dry mouth?', timestamp: '10:22 AM', read: true },
-    { id: 'm-100-5', sender: 'patient', text: 'A little dizziness when standing up quickly, but no excessive urination.', timestamp: '10:25 AM' },
-    { id: 'm-100-6', sender: 'doctor', text: 'I have logged your reported vitals in your chart. Please drink plenty of water today. We will do a visual eye check together on our video consult at 11:15 AM.', timestamp: '10:28 AM', read: true, type: 'vitals_card', metadata: { bp: '120/78 mmHg', hr: '72 bpm', temp: '36.5 °C', spo2: '99%' } },
-  ],
-  'c-101': [
-    { id: 'm-101-1', sender: 'patient', text: 'Hello Dr. Ademola, my home BP monitor read 124/80 this morning. Feeling much better with the low-sodium regimen!', timestamp: 'Yesterday 02:15 PM' },
-    { id: 'm-101-2', sender: 'doctor', text: 'Excellent progress Mariam! 124/80 is right in the ideal controlled range. Keep up the morning walks and continue your Atorvastatin 20mg at bedtime.', timestamp: 'Yesterday 02:22 PM', read: true },
-    { id: 'm-101-3', sender: 'patient', text: 'Thank you doctor! Will keep following the dietary plan.', timestamp: 'Yesterday 02:30 PM' },
-  ],
-  'c-102': [
-    { id: 'm-102-1', sender: 'patient', text: 'Doctor, I felt a dull chest tightness during my jog yesterday morning. It went away after 5 minutes of rest.', timestamp: '08:30 AM' },
-    { id: 'm-102-2', sender: 'doctor', text: 'Tunde, thank you for alerting me immediately. Please avoid any strenuous cardiovascular exertion until we evaluate your ECG tracing today. Take your Amlodipine 5mg as scheduled.', timestamp: '08:35 AM', read: true },
-    { id: 'm-102-3', sender: 'patient', text: 'Understood Dr. Folake. I will connect to the telehealth room at 10:30 AM sharp.', timestamp: '08:40 AM' },
-  ],
-  'c-103': [
-    { id: 'm-103-1', sender: 'patient', text: 'Doctor, the light sensitivity is quite bad today. The throbbing is mostly around my temples and behind my eyes.', timestamp: '09:10 AM' },
-    { id: 'm-103-2', sender: 'doctor', text: 'Grace, please rest in a dimly lit, quiet room with minimal screen exposure. Have you taken any pain relief medication today?', timestamp: '09:15 AM', read: true },
-    { id: 'm-103-3', sender: 'patient', text: 'Just paracetamol, but it only helped a little bit.', timestamp: '09:18 AM' },
-  ],
-  'c-104': [
-    { id: 'm-104-1', sender: 'patient', text: 'Good day Doctor. My knee stiffness is much better with the physical therapy stretches, but I will need a refill for my Lisinopril 10mg soon.', timestamp: '08:00 AM' },
-    { id: 'm-104-2', sender: 'doctor', text: 'Good day Robert. I reviewed your blood pressure trends and your numbers are consistently stable at 132/84 mmHg. I have renewed your Lisinopril 10mg.', timestamp: '08:15 AM', read: true, type: 'rx_card', metadata: { rxDrug: 'Lisinopril 10mg', rxDosage: '1 Tablet daily in the morning (30 days)' } },
-    { id: 'm-104-3', sender: 'doctor', text: 'Your digital prescription slip has been sent directly to HealthPlus Pharmacy Lekki.', timestamp: '08:16 AM', read: true },
-  ],
-};
+// Session messages are ephemeral: each conversation thread starts empty and
+// fills from the live session input (and realtime events) — no mock history.
 
 const CLINICAL_TEMPLATES = [
   'Please confirm your current blood pressure reading.',
@@ -140,7 +112,7 @@ export function DoctorPatientChat({
   onOpenPrescription,
   onTriggerFeedback,
 }: DoctorPatientChatProps) {
-  const [messagesByPatient, setMessagesByPatient] = useState<Record<string, ChatMessage[]>>(INITIAL_MESSAGES);
+  const [messagesByPatient, setMessagesByPatient] = useState<Record<string, ChatMessage[]>>({});
   const [inputText, setInputText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showEHR, setShowEHR] = useState(true);

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -69,186 +69,6 @@ interface IssuedPrescription {
 }
 
 // ── Initial Mock Data ───────────────────────────────────────────────────────
-
-const INITIAL_PATIENT_REVIEWS: PatientReview[] = [
-  {
-    id: 'pr-1',
-    patientName: 'Mariam Oladosu',
-    rating: 5,
-    date: '2026-06-02',
-    comment: 'Dr. Folake is extremely thorough and caring. She explained my blood pressure management plan clearly.',
-    doctorReply: 'Thank you Mariam! Stay consistent with your medication and salt reduction regimen.',
-  },
-  {
-    id: 'pr-2',
-    patientName: 'Tunde Afolabi',
-    rating: 5,
-    date: '2026-05-28',
-    comment: 'Very professional cardiac evaluation and bedside manner. I highly recommend her clinic.',
-  },
-  {
-    id: 'pr-3',
-    patientName: 'Grace Eze',
-    rating: 4,
-    date: '2026-05-15',
-    comment: 'Very good consultation. Video call was clear and prescription was sent to pharmacy immediately.',
-  },
-];
-
-const TODAY_CONSULTATIONS: Consultation[] = [
-  {
-    id: 'c-100',
-    patientName: 'Chioma Egwu',
-    patientAge: 32,
-    patientGender: 'Female',
-    bloodGroup: 'O+',
-    genotype: 'AA',
-    time: '11:15 AM',
-    type: 'video',
-    status: 'waiting',
-    reason: 'Regular diabetes follow-up consultation & visual blurriness check',
-    vitals: { bp: '120/78 mmHg', hr: '72 bpm', temp: '36.5 °C', weight: '55 kg', spo2: '99%' },
-    history: 'Type 2 Diabetes Mellitus under review. Regular glucose tracking active.',
-    allergies: ['None recorded'],
-    painRegion: {
-      region: 'Head',
-      severity: 3,
-      color: 'yellow',
-      notes: 'Occasional mild tension headache during screen use.',
-    },
-  },
-  {
-    id: 'c-101',
-    patientName: 'Mariam Oladosu',
-    patientAge: 34,
-    patientGender: 'Female',
-    bloodGroup: 'O+',
-    genotype: 'AA',
-    time: '09:00 AM',
-    type: 'video',
-    status: 'completed',
-    reason: 'Follow-up on hypertension medication & occasional palpitations',
-    vitals: { bp: '124/80 mmHg', hr: '72 bpm', temp: '36.6 °C', weight: '68 kg', spo2: '99%' },
-    history: 'Hypertension (2 yrs), Mild seasonal asthma.',
-    allergies: ['Penicillin', 'Sulfa drugs'],
-    painRegion: {
-      region: 'Chest',
-      severity: 3,
-      color: 'yellow',
-      notes: 'Substernal tightness after heavy exertion, relieved by rest.',
-    },
-  },
-  {
-    id: 'c-102',
-    patientName: 'Tunde Afolabi',
-    patientAge: 48,
-    patientGender: 'Male',
-    bloodGroup: 'A+',
-    genotype: 'AS',
-    time: '10:30 AM',
-    type: 'video',
-    status: 'in_progress',
-    reason: 'Routine cardiac risk evaluation & lipid profile review',
-    vitals: { bp: '138/88 mmHg', hr: '82 bpm', temp: '36.8 °C', weight: '84 kg', spo2: '98%' },
-    history: 'Hyperlipidemia, borderline pre-diabetes managed via diet.',
-    allergies: ['Aspirin'],
-    painRegion: {
-      region: 'Chest',
-      severity: 5,
-      color: 'orange',
-      notes: 'Mid-chest dull ache during morning jog.',
-    },
-  },
-  {
-    id: 'c-103',
-    patientName: 'Grace Eze',
-    patientAge: 29,
-    patientGender: 'Female',
-    bloodGroup: 'B+',
-    genotype: 'AA',
-    time: '02:00 PM',
-    type: 'video',
-    status: 'waiting',
-    reason: 'Frequent tension headaches & dizziness after screen work',
-    vitals: { bp: '116/74 mmHg', hr: '86 bpm', temp: '36.5 °C', weight: '59 kg', spo2: '99%' },
-    history: 'Migraine with aura, no surgical history.',
-    allergies: ['None recorded'],
-    painRegion: {
-      region: 'Head',
-      severity: 7,
-      color: 'red',
-      notes: 'Frontal and temporal throbbing pain, photophobia present.',
-    },
-  },
-  {
-    id: 'c-104',
-    patientName: 'Robert Okafor',
-    patientAge: 56,
-    patientGender: 'Male',
-    bloodGroup: 'O-',
-    genotype: 'AA',
-    time: '04:30 PM',
-    type: 'phone',
-    status: 'waiting',
-    reason: 'Medication refill consultation for Amlodipine 5mg & knee joint stiffness',
-    vitals: { bp: '132/84 mmHg', hr: '74 bpm', temp: '36.7 °C', weight: '91 kg', spo2: '97%' },
-    history: 'Essential Hypertension (5 yrs), Mild osteoarthritis.',
-    allergies: ['Ibuprofen'],
-    painRegion: {
-      region: 'Lower Limbs',
-      severity: 4,
-      color: 'orange',
-      notes: 'Bilateral knee pain after walking longer distances.',
-    },
-  },
-];
-
-const INITIAL_PRESCRIPTIONS: IssuedPrescription[] = [
-  {
-    id: 'RX-9085',
-    patientName: 'Chioma Egwu (32y · Female)',
-    drugName: 'Metformin Hydrochloride 500mg',
-    dosage: '1 Tablet with evening meal',
-    frequency: 'Once daily (QD)',
-    duration: '30 days',
-    pharmacy: 'OminiPulse Central E-Pharmacy',
-    date: 'Today, 11:30 AM',
-    status: 'Received by Patient App',
-  },
-  {
-    id: 'RX-9081',
-    patientName: 'Tunde Afolabi (48y · Male)',
-    drugName: 'Amlodipine Besylate 5mg',
-    dosage: '1 Tablet by mouth daily',
-    frequency: 'Once daily (QD)',
-    duration: '30 days',
-    pharmacy: 'Pharmacare Pharmacy Ikeja',
-    date: 'Today, 09:15 AM',
-    status: 'Received by Patient App',
-  },
-  {
-    id: 'RX-8942',
-    patientName: 'Mariam Oladosu (34y · Female)',
-    drugName: 'Atorvastatin Calcium 20mg',
-    dosage: '1 Tablet at bedtime',
-    frequency: 'Once daily (QD)',
-    duration: '14 days',
-    pharmacy: 'MedPlus Pharmacy Victoria Island',
-    date: 'Yesterday, 02:40 PM',
-    status: 'Dispensed',
-  },
-  {
-    id: 'RX-8819',
-    patientName: 'Robert Okafor (56y · Male)',
-    drugName: 'Lisinopril 10mg',
-    dosage: '1 Tablet daily in the morning',
-    frequency: 'Once daily (QD)',
-    duration: '30 days',
-    pharmacy: 'HealthPlus Pharmacy Lekki',
-    date: '3 days ago',
-    status: 'Dispensed',
-  },
-];
 
 // ── Interactive 3D Anatomical Body Map Component ─────────────────────────────
 
@@ -413,29 +233,35 @@ function DoctorPortalContent() {
   };
 
   // ── Hospital Affiliation & 6-Digit Code Connection (Desktop & Phone Synced) ─
-  const MOCK_DESKTOP_INVITES: Record<string, { hospitalId: string; hospitalName: string; department: string; address: string; admin: string }> = {
-    '492817': {
-      hospitalId: 'hosp-evercare',
-      hospitalName: 'Evercare Hospital Lekki',
-      department: 'Cardiology',
-      address: 'Bisola Durosinmi Etti Drive, Lekki Phase 1, Lagos',
-      admin: 'Dr. Adeola Benson (Chief Medical Officer)',
-    },
-    '715392': {
-      hospitalId: 'hosp-luth',
-      hospitalName: 'Lagos University Teaching Hospital (LUTH)',
-      department: 'Cardiology',
-      address: 'Ishaga Road, Idi-Araba, Surulere, Lagos',
-      admin: 'Prof. Olufemi Osinowo (Clinical Director)',
-    },
-    '830146': {
-      hospitalId: 'hosp-reddington',
-      hospitalName: 'Reddington Hospital Victoria Island',
-      department: 'Internal Medicine',
-      address: '12 Idowu Martins Street, Victoria Island, Lagos',
-      admin: 'Dr. Charles Majekodunmi (Medical Superintendent)',
-    },
-  };
+  // Live hospitals from the database; each facility exposes a deterministic
+  // 6-digit linkage code derived from its id for demo-free desktop pairing.
+  const [LIVE_HOSPITAL_INVITES, setLiveHospitalInvites] = useState<
+    Record<string, { hospitalId: string; hospitalName: string; department: string; address: string; admin: string }>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getHospitals().then((hospitals) => {
+      if (cancelled) return;
+      const invites: typeof LIVE_HOSPITAL_INVITES = {};
+      for (const h of hospitals) {
+        // Deterministic 6-digit code from the hospital UUID (demo-free).
+        let hash = 0;
+        for (const ch of h.id) hash = (hash * 31 + ch.charCodeAt(0)) % 1000000;
+        invites[String(hash).padStart(6, '0')] = {
+          hospitalId: h.id,
+          hospitalName: h.name,
+          department: 'General Practice',
+          address: h.address ?? '—',
+          admin: h.email,
+        };
+      }
+      setLiveHospitalInvites(invites);
+    }).catch(() => {
+      // Invites stay empty; affiliation pairing is unavailable until live.
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const [desktopAffiliation, setDesktopAffiliation] = useState<{
     hospitalId: string;
@@ -457,7 +283,7 @@ function DoctorPortalContent() {
 
   // ── Live appointment sync (mobile bookings → doctor portal) ────────────────
   // Live appointments from the unified backend are mapped into the portal's
-  // Consultation shape and merged ahead of the demo roster. The realtime
+  // Consultation shape. The realtime
   // socket invalidates on `appointment.*` events (patient booked / status
   // changed) so the dashboard reflects bookings instantly — no refresh.
 
@@ -465,29 +291,33 @@ function DoctorPortalContent() {
   const [isLiveSyncActive, setIsLiveSyncActive] = useState(false);
 
   const loadLiveAppointments = useCallback(async () => {
-    const live = await liveApi.getAppointments();
-    if (!live) return;
-    const mapped: Consultation[] = live.map((a: Appointment) => ({
-      id: a.id,
-      patientName: `${a.patient.firstName} ${a.patient.lastName}`.trim() || 'Unknown Patient',
-      patientAge: 0,
-      patientGender: 'Female',
-      bloodGroup: '—',
-      genotype: '—',
-      time: new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      type: a.type,
-      status:
-        a.status === 'completed' ? 'completed'
-        : a.status === 'cancelled' ? 'cancelled'
-        : a.status === 'approved' || a.status === 'scheduled' ? 'in_progress'
-        : 'waiting',
-      reason: a.reason || 'General consultation',
-      vitals: { bp: '—', hr: '—', temp: '—', weight: '—', spo2: '—' },
-      history: 'Loaded from live OminiPulse backend.',
-      allergies: ['Not yet documented'],
-    }));
-    setLiveConsults(mapped);
-    setIsLiveSyncActive(mapped.length > 0);
+    try {
+      const live = await liveApi.getAppointments();
+      const mapped: Consultation[] = live.map((a: Appointment) => ({
+        id: a.id,
+        patientName: `${a.patient.firstName} ${a.patient.lastName}`.trim() || 'Unknown Patient',
+        patientAge: 0,
+        patientGender: 'Female',
+        bloodGroup: '—',
+        genotype: '—',
+        time: new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: a.type,
+        status:
+          a.status === 'completed' ? 'completed'
+          : a.status === 'cancelled' ? 'cancelled'
+          : a.status === 'approved' || a.status === 'scheduled' ? 'in_progress'
+          : 'waiting',
+        reason: a.reason || 'General consultation',
+        vitals: { bp: '—', hr: '—', temp: '—', weight: '—', spo2: '—' },
+        history: 'Loaded from live OminiPulse backend.',
+        allergies: ['Not yet documented'],
+      }));
+      setLiveConsults(mapped);
+      setIsLiveSyncActive(mapped.length > 0);
+    } catch {
+      // Live feed unavailable; the portal stays on its empty state.
+      setIsLiveSyncActive(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -505,72 +335,45 @@ function DoctorPortalContent() {
   const [codeInputValue, setCodeInputValue] = useState('');
   const [patientRosterType, setPatientRosterType] = useState<'private' | 'hospital'>('private');
 
-  const HOSPITAL_PATIENTS_ROSTER = [
-    {
-      id: 'hp-1',
-      fullName: 'Amara Obi',
-      mrn: 'EVR-2024-0089',
-      phone: '+234 803 112 3344',
-      email: 'amara.obi@example.com',
-      age: 36,
-      gender: 'Female',
-      bloodGroup: 'O+',
-      department: 'Cardiology',
-      isAppUser: true,
-      lastVisit: 'Aug 28, 2026',
-      notes: 'Hypertension follow-up. Teleconsultation synced via OmniPlus app.',
-    },
-    {
-      id: 'hp-2',
-      fullName: 'Alhaji Ibrahim Danladi',
-      mrn: 'EVR-2023-1492',
-      phone: '+234 802 555 7891',
-      email: undefined,
-      age: 65,
-      gender: 'Male',
-      bloodGroup: 'B+',
-      department: 'Cardiology',
-      isAppUser: false,
-      lastVisit: 'Aug 15, 2026',
-      notes: 'Paper chart archive. Attends physical hospital clinic appointments only.',
-    },
-    {
-      id: 'hp-3',
-      fullName: 'Folashade Adeleke',
-      mrn: 'EVR-2024-0311',
-      phone: '+234 814 777 9022',
-      email: 'fola.adeleke@corporate.ng',
-      age: 29,
-      gender: 'Female',
-      bloodGroup: 'A+',
-      department: 'Cardiology',
-      isAppUser: true,
-      lastVisit: 'Sep 02, 2026',
-      notes: 'Holter monitor scheduled. Digital reports sent through OmniPlus.',
-    },
-    {
-      id: 'hp-4',
-      fullName: 'Emmanuel Okafor',
-      mrn: 'EVR-2024-0552',
-      phone: '+234 806 888 3311',
-      email: undefined,
-      age: 50,
-      gender: 'Male',
-      bloodGroup: 'O-',
-      department: 'Cardiology',
-      isAppUser: false,
-      lastVisit: 'Jul 30, 2026',
-      notes: 'In-hospital post-op check. Phone number on file for hospital reception contact.',
-    },
-  ];
+  // Hospital patient roster — live from the platform patient directory
+  // (https://ominipulse.onrender.com/api/admin/users?role=patient). No fallback.
+  const [HOSPITAL_PATIENTS_ROSTER, setHospitalPatientsRoster] = useState<
+    { id: string; fullName: string; mrn: string; phone: string; email: string | undefined; age: number; gender: string; bloodGroup: string; department: string; isAppUser: boolean; lastVisit: string; notes: string }[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getPatients().then((patients) => {
+      if (cancelled) return;
+      setHospitalPatientsRoster(
+        patients.map((p, i) => ({
+          id: p.id,
+          fullName: `${p.firstName} ${p.lastName}`.trim() || 'Unknown Patient',
+          mrn: `OMP-${p.id.slice(0, 4).toUpperCase()}-${String(1000 + i)}`,
+          phone: p.phone ?? '—',
+          email: p.email,
+          age: 0,
+          gender: '—',
+          bloodGroup: '—',
+          department: '—',
+          isAppUser: true,
+          lastVisit: new Date(p.createdAt).toLocaleDateString(undefined, { month: 'short', day: '2-digit', year: 'numeric' }),
+          notes: 'Registered via the OmniPulse mobile application.',
+        }))
+      );
+    }).catch(() => {
+      // Roster stays empty; the portal surfaces the error via its live banner.
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const previewHospitalInvite = useMemo(() => {
     const clean = codeInputValue.trim().replace(/\D/g, '');
     if (clean.length === 6) {
-      return MOCK_DESKTOP_INVITES[clean] || null;
+      return LIVE_HOSPITAL_INVITES[clean] || null;
     }
     return null;
-  }, [codeInputValue]);
+  }, [codeInputValue, LIVE_HOSPITAL_INVITES]);
 
   const handleConnectDesktopHospital = () => {
     const clean = codeInputValue.trim().replace(/\D/g, '');
@@ -578,7 +381,7 @@ function DoctorPortalContent() {
       triggerFeedback('Please enter a valid 6-digit hospital code.');
       return;
     }
-    const found = MOCK_DESKTOP_INVITES[clean];
+    const found = LIVE_HOSPITAL_INVITES[clean];
     if (!found) {
       triggerFeedback('Invalid or expired 6-digit code. Please check with your hospital admin.');
       return;
@@ -871,7 +674,7 @@ function DoctorPortalContent() {
   const [rxFrequency, setRxFrequency] = useState('Once daily (QD)');
   const [rxDuration, setRxDuration] = useState('30 days');
   const [rxPharmacy, setRxPharmacy] = useState('Pharmacare Pharmacy Ikeja');
-  const [issuedPrescriptions, setIssuedPrescriptions] = useState<IssuedPrescription[]>(INITIAL_PRESCRIPTIONS);
+  const [issuedPrescriptions, setIssuedPrescriptions] = useState<IssuedPrescription[]>([]);
 
   // Working Hours & Availability State (Doctor Editable Shifts)
   const DEFAULT_SCHEDULE = [
@@ -1017,7 +820,7 @@ function DoctorPortalContent() {
 
 
   // Patient Reviews & Doctor Replies
-  const [patientReviews, setPatientReviews] = useState<PatientReview[]>(INITIAL_PATIENT_REVIEWS);
+  const [patientReviews, setPatientReviews] = useState<PatientReview[]>([]);
   const [replyingReviewId, setReplyingReviewId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
 
@@ -1070,7 +873,7 @@ function DoctorPortalContent() {
   const [reviewPageSize, setReviewPageSize] = useState(5);
   const [reviewIsSeeAll, setReviewIsSeeAll] = useState(false);
 
-  const filteredPatients = [...liveConsults, ...TODAY_CONSULTATIONS].filter(pt =>
+  const filteredPatients = liveConsults.filter(pt =>
     !patientSearch ||
     pt.patientName.toLowerCase().includes(patientSearch.toLowerCase()) ||
     pt.id.toLowerCase().includes(patientSearch.toLowerCase()) ||
@@ -1110,7 +913,7 @@ function DoctorPortalContent() {
     setPainIntensity(3);
   };
 
-  const allConsultations = [...liveConsults, ...TODAY_CONSULTATIONS];
+  const allConsultations = liveConsults;
 
   const displayedAppts = apptIsSeeAll
     ? allConsultations
@@ -1367,7 +1170,7 @@ function DoctorPortalContent() {
                 padding: '4px 12px',
                 borderRadius: 999
               }}>
-                {TODAY_CONSULTATIONS.length} Consultations Today
+                {liveConsults.length} Consultations Today
               </span>
             </div>
 
@@ -1830,7 +1633,7 @@ function DoctorPortalContent() {
 
               {/* Patient Queue Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {TODAY_CONSULTATIONS.map((item) => {
+                {liveConsults.map((item) => {
                   const isCurNext = item.id === nextAppt?.id;
                   const statusColors: Record<string, { bg: string; color: string; label: string }> = {
                     in_progress: { bg: '#e0f2fe', color: '#0369a1', label: 'IN PROGRESS' },
@@ -2252,9 +2055,9 @@ function DoctorPortalContent() {
           {/* Pagination & See All Bar for Appointments */}
           <Pagination
             page={apptPage}
-            totalPages={Math.ceil(TODAY_CONSULTATIONS.length / apptPageSize)}
+            totalPages={Math.ceil(liveConsults.length / apptPageSize)}
             onPageChange={setApptPage}
-            total={TODAY_CONSULTATIONS.length}
+            total={liveConsults.length}
             pageSize={apptPageSize}
             onPageSizeChange={(newSize) => { setApptPageSize(newSize); setApptPage(1); }}
             isSeeAll={apptIsSeeAll}
@@ -2356,7 +2159,7 @@ function DoctorPortalContent() {
                     transition: 'all 150ms'
                   }}
                 >
-                  Private Telehealth ({TODAY_CONSULTATIONS.length})
+                  Private Telehealth ({liveConsults.length})
                 </button>
                 <button
                   type="button"
@@ -5057,7 +4860,7 @@ function DoctorPortalContent() {
                 onChange={(e) => setRxPatientName(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13 }}
               >
-                {TODAY_CONSULTATIONS.map(c => (
+                {liveConsults.map(c => (
                   <option key={c.id} value={`${c.patientName} (${c.patientAge}y · ${c.patientGender})`}>
                     {c.patientName} ({c.patientAge}y · {c.patientGender})
                   </option>

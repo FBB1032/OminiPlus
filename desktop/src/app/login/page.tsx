@@ -8,8 +8,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, Mail, Lock, Shield, Server, Activity, Users2, ShieldCheck, Smartphone, RefreshCw, KeyRound } from 'lucide-react';
-import { useAuthStore, MOCK_ADMINS } from '@/store/authStore';
-import { ROLE_LABELS, ROLE_COLORS } from '@/store/permissionStore';
+import { useAuthStore } from '@/store/authStore';
+import { ROLE_LABELS } from '@/store/permissionStore';
 import { Button } from '@/components/ui/Button';
 import type { AdminRole } from '@/types';
 
@@ -19,85 +19,29 @@ const loginSchema = z.object({
 });
 type LoginForm = z.infer<typeof loginSchema>;
 
-const ROLES: AdminRole[] = [
-  'admin',
-  'hospital_admin',
-  'doctor',
-  'nurse',
-  'receptionist',
-  'blood_officer',
-  'pharmacist',
-  'lab_technician',
-];
-
-const ROLE_CREDENTIALS: Record<AdminRole, { email: string; pass: string }> = {
-  admin:          { email: 'superadmin@ominipulse.ai',   pass: 'OminiAdmin2026!' },
-  hospital_admin: { email: 'admin@xyzspecialist.ng',     pass: 'HospAdmin2026!' },
-  doctor:         { email: 'doctor@ominipulse.ai',       pass: 'Doctor2026!' },
-  nurse:          { email: 'nurse@xyzspecialist.ng',     pass: 'Nurse2026!' },
-  receptionist:   { email: 'reception@xyzspecialist.ng', pass: 'Reception2026!' },
-  blood_officer:  { email: 'bloodbank@xyzspecialist.ng', pass: 'BloodBank2026!' },
-  pharmacist:     { email: 'pharmacist@xyzspecialist.ng', pass: 'Pharm2026!' },
-  lab_technician: { email: 'labtech@xyzspecialist.ng',  pass: 'LabTech2026!' },
-};
-
 export default function LoginPage() {
   const router = useRouter();
-  const setAdmin = useAuthStore(s => s.setAdmin);
   const login = useAuthStore(s => s.login);
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState('');
-  const [selectedRole, setSelectedRole] = useState<AdminRole>('admin');
 
-  const { register, handleSubmit, setValue, formState: { errors, isSubmitting } } = useForm<LoginForm>({
+  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: 'superadmin@ominipulse.ai', password: 'OminiAdmin2026!' },
   });
-
-  const handleSelectRole = (role: AdminRole) => {
-    setSelectedRole(role);
-    setValue('email', ROLE_CREDENTIALS[role].email);
-    setValue('password', ROLE_CREDENTIALS[role].pass);
-  };
 
   const onSubmit = async (data: LoginForm) => {
     setServerError('');
-    await new Promise(r => setTimeout(r, 600));
 
     let roleToAssign: AdminRole;
 
     try {
-      // ── Unified Supabase auth (same account as mobile app) ──
+      // Unified Supabase auth (same account as the mobile app) — the only
+      // login path; there is no offline/demo fallback.
       await login(data.email, data.password);
       roleToAssign = useAuthStore.getState().admin?.role ?? 'admin';
     } catch (err: any) {
-      // ── Demo fallback when Supabase is not configured ──
-      const isConfigError = String(err?.message ?? '').includes('not configured');
-      if (!isConfigError) {
-        setServerError(err?.message ?? 'Invalid email or password.');
-        return;
-      }
-
-      if (data.email.startsWith('c.okonkwo')) {
-        roleToAssign = 'pharmacist';
-      } else if (data.email.startsWith('e.nnamdi')) {
-        roleToAssign = 'lab_technician';
-      } else if (data.email.startsWith('a.yusuf')) {
-        roleToAssign = 'nurse';
-      } else if (data.email.startsWith('f.mohammed')) {
-        roleToAssign = 'receptionist';
-      } else if (data.email.startsWith('m.garba')) {
-        roleToAssign = 'blood_officer';
-      } else if (data.email.includes('doctor')) {
-        roleToAssign = 'doctor';
-      } else if (data.email.includes('xyzspecialist') || data.email.includes('hospital')) {
-        roleToAssign = 'hospital_admin';
-      } else {
-        roleToAssign = 'admin';
-      }
-
-      const presetAdmin = MOCK_ADMINS[roleToAssign] || MOCK_ADMINS.admin;
-      setAdmin({ ...presetAdmin, email: data.email }, `demo-token-${roleToAssign}`);
+      setServerError(err?.message ?? 'Invalid email or password.');
+      return;
     }
 
     if (roleToAssign === 'doctor') {
@@ -229,44 +173,6 @@ export default function LoginPage() {
             <p style={{ fontSize: 13.5, color: '#64748b', marginBottom: 24 }}>Enter your credentials to manage platform operations</p>
 
             <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              
-              {/* Role Selection Matrix */}
-              <div>
-                <label style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 8 }}>
-                  Console Role Profile
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {ROLES.map((role) => {
-                    const rc = ROLE_COLORS[role];
-                    const active = selectedRole === role;
-                    return (
-                      <button
-                        key={role}
-                        type="button"
-                        onClick={() => handleSelectRole(role)}
-                        style={{
-                          padding: '8px 6px',
-                          borderRadius: 8,
-                          fontSize: 11,
-                          fontWeight: active ? 700 : 500,
-                          border: active ? `1.5px solid ${rc.color}` : '1.5px solid #e2e8f0',
-                          background: active ? rc.bg : '#ffffff',
-                          color: active ? rc.color : '#64748b',
-                          cursor: 'pointer',
-                          transition: 'all 120ms',
-                          textAlign: 'center',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                        title={`Click to fill demo credentials for ${ROLE_LABELS[role]}`}
-                      >
-                        {ROLE_LABELS[role]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
 
               {/* Email */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -325,17 +231,9 @@ export default function LoginPage() {
                 isLoading={isSubmitting}
                 style={{ width: '100%', height: 44, fontSize: 14, fontWeight: 650, marginTop: 8 }}
               >
-                Sign In as {ROLE_LABELS[selectedRole]}
+                Sign In
               </Button>
             </form>
-
-            {/* Active Credentials Hint */}
-            <div style={{
-              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 12,
-              marginTop: 16, fontSize: 12, color: '#64748b', textAlign: 'center'
-            }}>
-              Active Role Credentials: <strong style={{ color: '#0f172a' }}>{ROLE_CREDENTIALS[selectedRole].email}</strong> · password: <strong style={{ color: '#0f172a' }}>{ROLE_CREDENTIALS[selectedRole].pass}</strong>
-            </div>
 
             {/* Phone & Desktop Sync / Mobile-Only Registration Notice */}
             <div style={{

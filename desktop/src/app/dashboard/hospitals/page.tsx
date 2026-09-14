@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
   Building2, Search, Download, Eye, CheckCircle, XCircle, 
   Award, FileText, Clock, Check, Plus, AlertCircle,
-  Key, ExternalLink, Copy, ShieldCheck, Phone, Mail, MapPin, UserPlus
+  Key, ExternalLink, Copy, ShieldCheck, Phone, Mail, MapPin, UserPlus, RefreshCw
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -15,7 +15,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
-import { liveApi } from '@/services/api';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import type { Hospital, PartnerStatus } from '@/types';
 
 interface VerificationHospital extends Hospital {
@@ -34,108 +34,6 @@ interface VerificationHospital extends Hospital {
   emergencyHotline?: string;
 }
 
-const INITIAL_HOSPITALS: VerificationHospital[] = [
-  {
-    id: 'h-100',
-    name: 'XYZ Specialist Hospital',
-    address: 'Plot 12 Muhammadu Buhari Way, Kaduna Central',
-    city: 'Kaduna',
-    country: 'Nigeria',
-    phone: '+234 803 444 8888',
-    emergencyHotline: '+234 800 999 0000',
-    email: 'info@xyzspecialist.ng',
-    website: 'https://xyzspecialist.ng',
-    partnerStatus: 'active',
-    doctorCount: 38,
-    facilityType: 'Specialist Referral Center',
-    adminName: 'Dr. Ibrahim Sani',
-    adminEmail: 'i.sani@xyzspecialist.ng',
-    adminPhone: '+234 803 111 0001',
-    adminTempPassword: 'AdminPass2026!',
-    createdAt: '2026-05-15T08:00:00Z',
-    verificationSubmittedAt: '2026-05-15T08:30:00Z',
-    verificationReviewedAt: '2026-05-15T12:00:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    documentsCount: 3,
-    permitUrl: 'hospital_premises_permit_xyz.png',
-    operationsLicenseUrl: 'healthcare_operations_license_xyz.pdf',
-  },
-  {
-    id: 'h-101',
-    name: 'Lagos General Hospital Marina',
-    address: '1-4 Broad Street, Lagos Island',
-    city: 'Lagos',
-    country: 'Nigeria',
-    phone: '+234 803 000 0001',
-    emergencyHotline: '+234 800 111 2222',
-    email: 'marina@lagosgeneral.gov.ng',
-    website: 'https://lagosgeneral.gov.ng',
-    partnerStatus: 'pending',
-    doctorCount: 42,
-    facilityType: 'General Hospital',
-    adminName: 'Dr. Babatunde Williams',
-    adminEmail: 'admin@lagosgeneral.gov.ng',
-    adminPhone: '+234 803 000 0001',
-    adminTempPassword: 'LagosGen2026!',
-    createdAt: '2026-06-04T10:00:00Z',
-    verificationSubmittedAt: '2026-06-04T10:15:00Z',
-    documentsCount: 2,
-    permitUrl: 'hospital_premises_permit_lagos.png',
-    operationsLicenseUrl: 'healthcare_operations_license_lagos.pdf',
-  },
-  {
-    id: 'h-102',
-    name: 'Victoria Island Medical Center',
-    address: 'Plot 24, Karimu Kotun Street',
-    city: 'Lagos',
-    country: 'Nigeria',
-    phone: '+234 805 987 0001',
-    emergencyHotline: '+234 800 333 4444',
-    email: 'info@vimc.ng',
-    website: 'https://vimc.ng',
-    partnerStatus: 'active',
-    doctorCount: 28,
-    facilityType: 'Private Tertiary Hospital',
-    adminName: 'Dr. Folashade Adeyemi',
-    adminEmail: 'admin@vimc.ng',
-    adminPhone: '+234 805 987 0001',
-    adminTempPassword: 'VIMCPass2026!',
-    createdAt: '2026-06-03T14:30:00Z',
-    verificationSubmittedAt: '2026-06-03T14:45:00Z',
-    verificationReviewedAt: '2026-06-04T09:00:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    documentsCount: 2,
-    permitUrl: 'hospital_premises_permit_vimc.png',
-    operationsLicenseUrl: 'healthcare_operations_license_vimc.pdf',
-  },
-  {
-    id: 'h-103',
-    name: 'Eko Medical Center Ikeja',
-    address: '31 Mobolaji Bank Anthony Way',
-    city: 'Lagos',
-    country: 'Nigeria',
-    phone: '+234 812 345 0002',
-    emergencyHotline: '+234 800 555 6666',
-    email: 'contact@ekomc.ng',
-    website: 'https://ekomc.ng',
-    partnerStatus: 'rejected',
-    doctorCount: 35,
-    facilityType: 'Medical Center',
-    adminName: 'Dr. Chukwuma Obi',
-    adminEmail: 'admin@ekomc.ng',
-    adminPhone: '+234 812 345 0002',
-    adminTempPassword: 'EkoMed2026!',
-    createdAt: '2026-06-02T09:15:00Z',
-    verificationSubmittedAt: '2026-06-02T09:30:00Z',
-    verificationReviewedAt: '2026-06-02T16:00:00Z',
-    verificationReviewedBy: 'verification_admin_1',
-    rejectionReason: 'The Health Facility Monitoring and Accreditation Agency (HEFAMAA) license was expired. Please upload the active 2026 renewal receipt.',
-    documentsCount: 2,
-    permitUrl: 'hospital_premises_permit_eko.png',
-    operationsLicenseUrl: 'healthcare_operations_license_eko.pdf',
-  }
-];
-
 const STATUS_VARIANTS: Record<PartnerStatus, 'success' | 'warning' | 'neutral' | 'error'> = {
   active: 'success',
   pending: 'warning',
@@ -147,9 +45,9 @@ const STATUS_VARIANTS: Record<PartnerStatus, 'success' | 'warning' | 'neutral' |
 export default function HospitalsPage() {
   const router = useRouter();
   // Live partner hospitals (https://ominipulse.onrender.com/api/admin/hospitals)
-  // with the built-in demo roster as offline fallback.
-  const [hospitals, setHospitals] = useState<VerificationHospital[]>(INITIAL_HOSPITALS);
-  const [isLive, setIsLive] = useState(false);
+  // — no fallback; failures render an explicit error state.
+  const [hospitals, setHospitals] = useState<VerificationHospital[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PartnerStatus>('all');
@@ -160,22 +58,24 @@ export default function HospitalsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [isSeeAll, setIsSeeAll] = useState(false);
 
-  // Load live hospital directory once; keep the demo roster on any failure.
-  useEffect(() => {
-    let cancelled = false;
-    liveApi.getHospitals().then((live) => {
-      if (!cancelled) {
-        if (live && live.length > 0) {
-          setHospitals(live.map((h) => ({ ...h, documentsCount: 0 })));
-          setIsLive(true);
-          setLoadError(null);
-        } else {
-          setLoadError('Live backend returned no data — showing demo roster');
-        }
-      }
-    });
-    return () => { cancelled = true; };
+  // Load the live hospital directory. Errors surface as an explicit error state.
+  const loadHospitals = useCallback(async () => {
+    try {
+      const live = await liveApi.getHospitals();
+      // Adapt plain Hospital rows to the verification view shape.
+      setHospitals(live.map((h) => ({ ...h, documentsCount: 0 })));
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadHospitals();
+  }, [loadHospitals]);
+
   
   // Onboard Modal states
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -327,13 +227,21 @@ export default function HospitalsPage() {
               <Building2 size={18} style={{ color: '#2563eb' }} />
             </div>
             <h1 className="page-title">Hospital Verification</h1>
-{ !isLive && <span style={{
-                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
-                  background: loadError ? '#fef2f2' : '#f8fafc',
-                  color: loadError ? '#dc2626' : '#64748b',
-                }}>
-                  {loadError ? 'Fallback mode' : 'Demo data'}
-                </span> }
+            {loadError ? (
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                background: '#fef2f2', color: '#dc2626',
+              }}>
+                Live data unavailable
+              </span>
+            ) : !isLoading ? (
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                background: '#f0fdf4', color: '#16a34a',
+              }}>
+                Live data
+              </span>
+            ) : null}
           </div>
           <p className="page-subtitle">Accredit healthcare systems, review clinical facility operations licenses, and activate partner networks.</p>
         </div>
@@ -363,6 +271,37 @@ export default function HospitalsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading hospital network from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load hospitals from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadHospitals(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>

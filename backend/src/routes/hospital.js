@@ -227,4 +227,72 @@ router.post(
   })
 );
 
+// ─── Blood donor registry (admin verification console) ────────────────────────
+
+router.get(
+  '/blood/donors',
+  requirePermission('blood:read'),
+  wrap(async (req, res) => {
+    const { supabase } = req.auth;
+    let query = supabase
+      .from('blood_donors')
+      .select('*')
+      .order('verification_submitted_at', { ascending: false, nullsFirst: false });
+    if (req.query.status) query = query.eq('partner_status', req.query.status);
+    const { data, error } = await query.limit(300);
+    if (error) throw new ApiError(500, 'db_error', error.message);
+    res.json({ donors: data ?? [] });
+  })
+);
+
+router.patch(
+  '/blood/donors/:id/status',
+  requirePermission('blood:write'),
+  wrap(async (req, res) => {
+    const { partnerStatus, rejectionReason } = req.body ?? {};
+    const allowed = ['active', 'pending', 'suspended', 'rejected'];
+    if (!partnerStatus || !allowed.includes(partnerStatus)) {
+      throw new ApiError(400, 'validation_error', `partnerStatus must be one of ${allowed.join(', ')}`);
+    }
+    const { supabase } = req.auth;
+    const { data, error } = await supabase
+      .from('blood_donors')
+      .update({
+        partner_status: partnerStatus,
+        verification_reviewed_at: new Date().toISOString(),
+        rejection_reason: partnerStatus === 'rejected' ? (rejectionReason ?? 'Verification rejected') : null,
+      })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+    if (error || !data) throw new ApiError(400, 'update_failed', error?.message ?? 'Donor not found');
+    res.json({ donor: data });
+  })
+);
+
+router.patch(
+  '/blood/donors/:id/status',
+  requirePermission('blood:write'),
+  wrap(async (req, res) => {
+    const { partnerStatus, rejectionReason } = req.body ?? {};
+    const allowed = ['active', 'pending', 'suspended', 'rejected'];
+    if (!partnerStatus || !allowed.includes(partnerStatus)) {
+      throw new ApiError(400, 'validation_error', `partnerStatus must be one of ${allowed.join(', ')}`);
+    }
+    const { supabase } = req.auth;
+    const { data, error } = await supabase
+      .from('blood_donors')
+      .update({
+        partner_status: partnerStatus,
+        verification_reviewed_at: new Date().toISOString(),
+        rejection_reason: partnerStatus === 'rejected' ? (rejectionReason ?? 'Verification rejected') : null,
+      })
+      .eq('id', req.params.id)
+      .select('*')
+      .single();
+    if (error || !data) throw new ApiError(400, 'update_failed', error?.message ?? 'Donor not found');
+    res.json({ donor: data });
+  })
+);
+
 module.exports = router;

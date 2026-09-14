@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Shield, Key, Lock, AlertTriangle, CheckCircle2, ShieldAlert,
   Plus, Download, Clock, Globe, ShieldCheck, UserCheck, RefreshCw,
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi, getApiErrorMessage, type ProfileUserRow } from '@/services/api';
 import type { Admin, AdminRole } from '@/types';
 
 export interface SecurityEvent {
@@ -84,99 +85,75 @@ const INITIAL_SECURITY_POLICIES: SecurityPolicy[] = [
   },
 ];
 
-const INITIAL_ADMINS: Admin[] = [
-  {
-    id: 'adm-01',
-    email: 'sarah.chen@ominipulse.ai',
-    firstName: 'Sarah',
-    lastName: 'Chen',
-    role: 'admin',
-    isTwoFactorEnabled: true,
-    createdAt: '2025-01-10',
-    lastLogin: '2 minutes ago',
-  },
-  {
-    id: 'adm-02',
-    email: 'mark.davis@ominipulse.ai',
-    firstName: 'Mark',
-    lastName: 'Davis',
-    role: 'admin',
-    isTwoFactorEnabled: true,
-    createdAt: '2025-02-15',
-    lastLogin: '45 minutes ago',
-  },
-  {
-    id: 'adm-03',
-    email: 'ibrahim.bello@ominipulse.ai',
-    firstName: 'Ibrahim',
-    lastName: 'Bello',
-    role: 'admin',
-    isTwoFactorEnabled: true,
-    createdAt: '2025-04-01',
-    lastLogin: '3 hours ago',
-  },
-];
-
-const INITIAL_EVENTS: SecurityEvent[] = [
-  {
-    id: 'sec-evt-101',
-    type: 'critical',
-    title: 'Brute-Force Login Attack Blocked',
-    message: '5 sequential failed administrator password attempts from unauthorized foreign IP.',
-    ipAddress: '45.132.22.1',
-    location: 'Bucharest, Romania',
-    time: '18 minutes ago',
-    mitigated: true,
-  },
-  {
-    id: 'sec-evt-102',
-    type: 'info',
-    title: 'Privileged Console Session Authenticated',
-    message: 'Sarah Chen logged in with WebAuthn YubiKey hardware token verification.',
-    ipAddress: '102.89.34.112',
-    location: 'Lagos, Nigeria',
-    time: '42 minutes ago',
-    mitigated: true,
-  },
-  {
-    id: 'sec-evt-103',
-    type: 'warning',
-    title: 'New Device Authentication Handshake',
-    message: 'Administrator login detected from new macOS device. 2FA push approved by user.',
-    ipAddress: '197.210.65.88',
-    location: 'Abuja, Nigeria',
-    time: '2 hours ago',
-    mitigated: true,
-  },
-  {
-    id: 'sec-evt-104',
-    type: 'success',
-    title: 'Automated TLS Certificate Renewal',
-    message: 'All API and telehealth WebSocket endpoints re-verified with Let’s Encrypt 4096-bit RSA.',
-    ipAddress: 'Internal System Gateway',
-    location: 'Cloud Infrastructure',
-    time: '5 hours ago',
-    mitigated: true,
-  },
-  {
-    id: 'sec-evt-105',
-    type: 'info',
-    title: 'NDPA Zero-Knowledge Vault Audit Completed',
-    message: 'Automated cryptographic check verified that zero clinical patient records leaked to admin console.',
-    ipAddress: '10.0.4.12',
-    location: 'Local Compliance Vault',
-    time: '8 hours ago',
-    mitigated: true,
-  },
-];
 
 export default function SecurityPage() {
+  // Security policies are console configuration (static defaults); admins and
+  // the event telemetry feed load live from the Supabase-backed API.
   const [policies, setPolicies] = useState<SecurityPolicy[]>(INITIAL_SECURITY_POLICIES);
-  const [admins, setAdmins] = useState<Admin[]>(INITIAL_ADMINS);
-  const [events, setEvents] = useState<SecurityEvent[]>(INITIAL_EVENTS);
+  const [admins, setAdmins] = useState<Admin[]>([]);
+  const [events, setEvents] = useState<SecurityEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [eventFilter, setEventFilter] = useState<'all' | 'critical' | 'warning' | 'info'>('all');
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
+
+  // Load the live admin roster + security event telemetry (from the
+  // hash-chained admin audit trail). Errors surface explicitly.
+  const loadSecurityData = useCallback(async () => {
+    try {
+      const [adminUsers, auditTrail] = await Promise.allSettled([
+        liveApi.getAdminUsers(),
+        liveApi.getAdminAuditLogs({ limit: 50 }),
+      ]);
+
+      if (adminUsers.status === 'fulfilled') {
+        setAdmins(
+          adminUsers.value.map((u) => ({
+            id: u.id,
+            email: u.email,
+            firstName: u.first_name ?? '',
+            lastName: u.last_name ?? '',
+            role: (u.role as Admin['role']) ?? 'admin',
+            isTwoFactorEnabled: false,
+            createdAt: u.created_at,
+            lastLogin: u.last_login ?? '—',
+          }))
+        );
+      }
+
+      if (auditTrail.status === 'fulfilled') {
+        setEvents(
+          auditTrail.value.map((l) => ({
+            id: l.id,
+            type: l.status === 'failure'
+              ? ('critical' as const)
+              : l.action.includes('suspend') || l.action.includes('reject')
+                ? ('warning' as const)
+                : ('info' as const),
+            title: l.action.replace(/_/g, ' '),
+            message: l.targetLabel ? `Target: ${l.targetLabel}` : l.action,
+            ipAddress: l.ipAddress ?? '—',
+            location: '—',
+            time: new Date(l.createdAt).toLocaleString(),
+            mitigated: true,
+          }))
+        );
+      }
+
+      if (adminUsers.status === 'rejected' && auditTrail.status === 'rejected') {
+        setLoadError(getApiErrorMessage(adminUsers.reason as Error));
+      }
+      setIsLoading(false);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSecurityData();
+  }, [loadSecurityData]);
 
   // Invite Admin State
   const [inviteEmail, setInviteEmail] = useState('');
@@ -260,6 +237,37 @@ export default function SecurityPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }} className="animate-fade-in">
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading security telemetry from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load security telemetry from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadSecurityData(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* Toast Feedback Notification */}
       {feedbackMsg && (

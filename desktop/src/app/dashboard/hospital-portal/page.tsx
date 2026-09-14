@@ -1,6 +1,6 @@
-'use client';
+﻿'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Building2, Calendar, Users, Stethoscope, Droplet, AlertTriangle,
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import type {
   HospitalStaffRole,
   HospitalDoctor,
@@ -211,283 +212,59 @@ export interface RegisteredFacility {
   cacNumber?: string;
 }
 
-export const ALL_FACILITIES: RegisteredFacility[] = [
-  {
-    id: 'h-100',
-    name: 'XYZ Specialist Hospital',
-    address: 'Plot 12 Muhammadu Buhari Way, Kaduna Central',
-    city: 'Kaduna State',
-    phone: '+234 803 444 8888',
-    emergencyHotline: '+234 800 999 0000',
-    email: 'info@xyzspecialist.ng',
-    type: 'Specialist Referral Center',
-    departments: ['Cardiology', 'Pediatrics', 'Emergency & Trauma', 'Laboratory & Blood Bank', 'General Surgery', 'Internal Medicine'],
-    isEmergencyAvailable: true,
-    isVerifiedFacility: true,
-    operatingHours: '24 Hours / 7 Days',
-    adminName: 'Dr. Ibrahim Sani',
-  },
-  {
-    id: 'h-101',
-    name: 'Lagos General Hospital Marina',
-    address: '1-4 Broad Street, Lagos Island',
-    city: 'Lagos State',
-    phone: '+234 803 000 0001',
-    emergencyHotline: '+234 800 111 2222',
-    email: 'marina@lagosgeneral.gov.ng',
-    type: 'General Public Hospital',
-    departments: ['General Medicine', 'Maternity & Child Health', 'Accident & Emergency', 'Blood Bank', 'Dentistry'],
-    isEmergencyAvailable: true,
-    isVerifiedFacility: true,
-    operatingHours: '24 Hours / 7 Days',
-    adminName: 'Dr. Babatunde Williams',
-  },
-  {
-    id: 'h-102',
-    name: 'Victoria Island Medical Center',
-    address: 'Plot 24, Karimu Kotun Street, Victoria Island',
-    city: 'Lagos State',
-    phone: '+234 805 987 0001',
-    emergencyHotline: '+234 800 333 4444',
-    email: 'info@vimc.ng',
-    type: 'Private Tertiary Hospital',
-    departments: ['Cardiology', 'Neurology', 'Executive Health', 'Blood Transfusion', 'ICU'],
-    isEmergencyAvailable: true,
-    isVerifiedFacility: true,
-    operatingHours: '24 Hours / 7 Days',
-    adminName: 'Dr. Folashade Adeyemi',
-  },
-  {
-    id: 'h-103',
-    name: 'Eko Medical Center Ikeja',
-    address: '31 Mobolaji Bank Anthony Way, Ikeja',
-    city: 'Lagos State',
-    phone: '+234 812 345 0002',
-    emergencyHotline: '+234 800 555 6666',
-    email: 'contact@ekomc.ng',
-    type: 'Medical Center',
-    departments: ['General Practice', 'Pediatrics', 'Obstetrics & Gynecology', 'Clinical Diagnostics'],
-    isEmergencyAvailable: false,
-    isVerifiedFacility: true,
-    operatingHours: '08:00 AM - 10:00 PM',
-    adminName: 'Dr. Chukwuma Obi',
-  },
-];
+// Registered facilities — fetched live from the database; the portal binds to
+// the admin's first affiliated facility.
+const EMPTY_FACILITY: RegisteredFacility = {
+  id: '',
+  name: 'Loading facility…',
+  address: '—',
+  city: '—',
+  phone: '—',
+  emergencyHotline: '—',
+  email: '—',
+  type: '—',
+  departments: [],
+  isEmergencyAvailable: false,
+  isVerifiedFacility: false,
+  operatingHours: '—',
+  adminName: '—',
+};
 
-const FACILITY_INFO = ALL_FACILITIES[0];
+export const ALL_FACILITIES: RegisteredFacility[] = [EMPTY_FACILITY];
 
-// Facility-Scoped Appointments
-const FACILITY_APPOINTMENTS = [
-  {
-    id: 'h-apt-01',
-    patientName: 'Aisha Okonkwo',
-    patientRef: 'PAT-4901',
-    doctorAssigned: 'Dr. Ahmed Bello',
-    doctorSpecialty: 'Cardiology',
-    appointmentType: 'In-Person Consultation',
-    scheduledTime: 'Today, 10:00 AM',
-    status: 'Active',
-    checkInStatus: 'Checked-In (Waiting)',
-    room: 'Consultation Suite 4B',
-  },
-  {
-    id: 'h-apt-02',
-    patientName: 'Babatunde Balogun',
-    patientRef: 'PAT-4902',
-    doctorAssigned: 'Dr. Musa Aliyu',
-    doctorSpecialty: 'General Practice',
-    appointmentType: 'Tele-Consultation Review',
-    scheduledTime: 'Yesterday, 02:30 PM',
-    status: 'Completed',
-    checkInStatus: 'Concluded',
-    room: 'Virtual Clinic 2',
-  },
-  {
-    id: 'h-apt-03',
-    patientName: 'Chioma Nwachukwu',
-    patientRef: 'PAT-4903',
-    doctorAssigned: 'Dr. Sarah Danladi',
-    doctorSpecialty: 'Dermatology',
-    appointmentType: 'In-Person Follow-up',
-    scheduledTime: 'Tomorrow, 11:15 AM',
-    status: 'Upcoming',
-    checkInStatus: 'Scheduled',
-    room: 'Consultation Suite 1A',
-  },
-  {
-    id: 'h-apt-04',
-    patientName: 'Ibrahim Danjuma',
-    patientRef: 'PAT-4910',
-    doctorAssigned: 'Dr. Ahmed Bello',
-    doctorSpecialty: 'Cardiology',
-    appointmentType: 'Emergency ECG Review',
-    scheduledTime: 'Today, 03:00 PM',
-    status: 'Upcoming',
-    checkInStatus: 'Confirmed',
-    room: 'Cardiac Wing Suite 2',
-  },
-];
+// Facility-Scoped Appointments — live from /api/appointments.
+interface FacilityAppointment {
+  id: string;
+  patientName: string;
+  patientRef: string;
+  doctorAssigned: string;
+  doctorSpecialty: string;
+  appointmentType: string;
+  scheduledTime: string;
+  status: string;
+  checkInStatus: string;
+  room: string;
+}
 
-// Facility-Scoped Patients
-const FACILITY_PATIENTS = [
-  {
-    id: 'pat-4901',
-    name: 'Aisha Okonkwo',
-    gender: 'Female',
-    age: 32,
-    bloodGroup: 'O+',
-    lastVisit: 'Today, 10:00 AM',
-    assignedDoctor: 'Dr. Ahmed Bello',
-    activePrescription: 'Amlodipine 5mg Daily',
-    allergies: 'Penicillin',
-    vitals: { bp: '128/82 mmHg', hr: '74 bpm', temp: '36.8°C' },
-    consultationNotes: 'Hypertension follow-up. Blood pressure stabilization noted on current therapy.',
-  },
-  {
-    id: 'pat-4902',
-    name: 'Babatunde Balogun',
-    gender: 'Male',
-    age: 37,
-    bloodGroup: 'A+',
-    lastVisit: 'Yesterday',
-    assignedDoctor: 'Dr. Musa Aliyu',
-    activePrescription: 'Metformin 500mg Twice Daily',
-    allergies: 'None recorded',
-    vitals: { bp: '120/80 mmHg', hr: '70 bpm', temp: '36.6°C' },
-    consultationNotes: 'Routine metabolic panel review. Glycemic control within target range.',
-  },
-  {
-    id: 'pat-4903',
-    name: 'Chioma Nwachukwu',
-    gender: 'Female',
-    age: 27,
-    bloodGroup: 'B+',
-    lastVisit: 'May 28, 2026',
-    assignedDoctor: 'Dr. Sarah Danladi',
-    activePrescription: 'Topical Hydrocortisone 1%',
-    allergies: 'Sulfa Drugs',
-    vitals: { bp: '115/75 mmHg', hr: '68 bpm', temp: '36.7°C' },
-    consultationNotes: 'Allergic contact dermatitis improving. Scheduled follow-up skin test.',
-  },
-];
+// Facility-Scoped Patients — derived live from the appointments feed.
+interface FacilityPatient {
+  id: string;
+  name: string;
+  gender: string;
+  age: number;
+  bloodGroup: string;
+  lastVisit: string;
+  assignedDoctor: string;
+  activePrescription: string;
+  allergies: string;
+  vitals: { bp: string; hr: string; temp: string };
+  consultationNotes: string;
+}
 
-// Hospital Doctors & Staff
-const FACILITY_DOCTORS: HospitalDoctor[] = [
-  {
-    id: 'doc-ahm',
-    name: 'Dr. Ahmed Bello',
-    specialization: 'Cardiologist',
-    department: 'Cardiology',
-    licenseNo: 'MDCN-LIC-88291',
-    isMdcnVerified: true,
-    facilityStatus: 'active',
-    availabilityDays: ['Mon', 'Tue', 'Wed', 'Fri'],
-    shifts: 'Morning (08:00 - 14:00)',
-    syncWithMobileApp: true,
-    phone: '+234 803 100 2001',
-  },
-  {
-    id: 'doc-mus',
-    name: 'Dr. Musa Aliyu',
-    specialization: 'General Practitioner',
-    department: 'Internal Medicine',
-    licenseNo: 'MDCN-LIC-67492',
-    isMdcnVerified: true,
-    facilityStatus: 'active',
-    availabilityDays: ['Daily'],
-    shifts: 'Full Day (09:00 - 17:00)',
-    syncWithMobileApp: true,
-    phone: '+234 805 200 3002',
-  },
-  {
-    id: 'doc-sar',
-    name: 'Dr. Sarah Danladi',
-    specialization: 'Dermatologist',
-    department: 'Dermatology',
-    licenseNo: 'MDCN-LIC-44109',
-    isMdcnVerified: true,
-    facilityStatus: 'on_call',
-    availabilityDays: ['Tue', 'Thu', 'Sat'],
-    shifts: 'Afternoon (14:00 - 18:00)',
-    syncWithMobileApp: true,
-    phone: '+234 812 300 4003',
-  },
-];
+// Hospital Doctors & Staff — live from /api/doctors (facility roster).
 
 // Blood Requests with 6-Step Verification Pipeline
-const INITIAL_BLOOD_REQUESTS: HospitalBloodRequest[] = [
-  {
-    id: 'BR-2026-101',
-    patientRef: 'HSP-KAD-8841',
-    patientName: 'Zainab Kabir (Post-Partum)',
-    bloodGroup: 'O+',
-    unitsNeeded: 2,
-    unitsCollected: 1,
-    urgency: 'emergency',
-    requiredBy: 'Today, 06:00 PM',
-    status: 'donors_notified',
-    hospitalNotes: 'Acute maternal hemorrhage in surgical ward. Requires immediate compatible packed red blood cells.',
-    requestedBy: 'Dr. Ahmed Bello',
-    hospitalConfirmedAt: '2026-06-04T10:35:00Z',
-    ominipulseVerifiedAt: '2026-06-04T10:45:00Z',
-    createdAt: '2026-06-04T10:20:00Z',
-  },
-  {
-    id: 'BR-2026-102',
-    patientRef: 'HSP-KAD-8842',
-    patientName: 'Emeka Obi (Trauma)',
-    bloodGroup: 'O-',
-    unitsNeeded: 3,
-    unitsCollected: 0,
-    urgency: 'emergency',
-    requiredBy: 'Today, 04:00 PM',
-    status: 'hospital_confirmed',
-    hospitalNotes: 'Motor vehicle accident with splenic laceration. Universal donor red cells required urgently.',
-    requestedBy: 'Nurse Amina Yusuf',
-    hospitalConfirmedAt: '2026-06-04T11:15:00Z',
-    createdAt: '2026-06-04T11:00:00Z',
-  },
-  {
-    id: 'BR-2026-103',
-    patientRef: 'HSP-KAD-8843',
-    patientName: 'Hadiza Sani (Elective Surgery)',
-    bloodGroup: 'B+',
-    unitsNeeded: 2,
-    unitsCollected: 2,
-    urgency: 'routine',
-    requiredBy: 'June 06, 2026',
-    status: 'fulfilled',
-    hospitalNotes: 'Pre-operative crossmatching for orthopedic femur reconstruction.',
-    requestedBy: 'Dr. Musa Aliyu',
-    hospitalConfirmedAt: '2026-06-02T09:00:00Z',
-    ominipulseVerifiedAt: '2026-06-02T09:30:00Z',
-    createdAt: '2026-06-02T08:45:00Z',
-  },
-];
-
 // Controlled Emergency Requests
-const INITIAL_EMERGENCY_REQUESTS: HospitalEmergencyRequest[] = [
-  {
-    id: 'EMG-01',
-    type: 'blood_critical',
-    title: 'Critical Blood Shortage: O- Negative',
-    details: 'Urgent need for 3 units of O- Negative blood in emergency resuscitation ward.',
-    severity: 'critical',
-    status: 'active',
-    createdAt: '2026-06-04T10:00:00Z',
-  },
-  {
-    id: 'EMG-02',
-    type: 'icu_bed',
-    title: 'Adult ICU Bed Availability Alert',
-    details: '2 ICU Ventilator Beds currently available for regional transfers.',
-    severity: 'moderate',
-    availableSlots: 2,
-    status: 'active',
-    createdAt: '2026-06-04T08:00:00Z',
-  },
-];
-
 // Facility Audit Trail Log - NDPA 2023 & FMOH Verified Cryptographic Ledger
 const INITIAL_AUDIT_LOGS: HospitalAuditEntry[] = [
   {
@@ -639,69 +416,6 @@ export interface HospitalService {
   description: string;
 }
 
-const INITIAL_SERVICES: HospitalService[] = [
-  {
-    id: 'srv-1',
-    name: 'Comprehensive Cardiology Consultation & ECG',
-    department: 'Cardiology',
-    fee: 25000,
-    duration: '45 mins',
-    emergencyAvailable: true,
-    status: 'active',
-    description: 'Specialist physician cardiac evaluation, 12-lead resting ECG, blood pressure mapping.',
-  },
-  {
-    id: 'srv-2',
-    name: 'General Outpatient Triage & Treatment',
-    department: 'General Medicine',
-    fee: 10000,
-    duration: '30 mins',
-    emergencyAvailable: true,
-    status: 'active',
-    description: 'Primary care diagnosis, routine vital signs triage, prescription and follow-up plan.',
-  },
-  {
-    id: 'srv-3',
-    name: 'Pediatric Wellness & Immunization',
-    department: 'Pediatrics',
-    fee: 15000,
-    duration: '30 mins',
-    emergencyAvailable: false,
-    status: 'active',
-    description: 'Childhood developmental assessment, vaccine administration, and growth tracking.',
-  },
-  {
-    id: 'srv-4',
-    name: '24/7 Trauma & Emergency Casualty Care',
-    department: 'Emergency',
-    fee: 35000,
-    duration: 'Immediate',
-    emergencyAvailable: true,
-    status: 'active',
-    description: 'Immediate trauma resuscitation, wound suture, hemorrhage control, and stabilization.',
-  },
-  {
-    id: 'srv-5',
-    name: 'Automated Blood Grouping & Crossmatch Panel',
-    department: 'Laboratory',
-    fee: 8500,
-    duration: '60 mins',
-    emergencyAvailable: true,
-    status: 'active',
-    description: 'ABO/Rh typing, major and minor cross-matching, antibody screening prior to transfusion.',
-  },
-  {
-    id: 'srv-6',
-    name: 'Digital Ultrasound & Doppler Echocardiography',
-    department: 'Radiology',
-    fee: 22000,
-    duration: '40 mins',
-    emergencyAvailable: false,
-    status: 'active',
-    description: 'High-definition abdominal, pelvic, and transthoracic cardiac diagnostic ultrasound.',
-  },
-];
-
 // ─── 2. Blood Donor Screening & Donation Register ───────────────────────────
 export interface DonorScreeningAppointment {
   id: string;
@@ -716,53 +430,6 @@ export interface DonorScreeningAppointment {
   unitsCollected?: number;
 }
 
-const INITIAL_SCREENING_APPOINTMENTS: DonorScreeningAppointment[] = [
-  {
-    id: 'SCR-401',
-    donorName: 'Ibrahim Danladi',
-    bloodGroup: 'O+',
-    appointmentTime: 'Today, 02:30 PM',
-    targetAppealRef: 'HSP-KAD-8841 (Zainab Kabir)',
-    phone: '+234 803 111 2233',
-    screeningStatus: 'cleared_for_donation',
-    vitals: { hb: '14.2 g/dL', bp: '120/80 mmHg', weight: '72 kg' },
-    screeningNotes: 'HIV 1/2, HBsAg, HCV, VDRL all non-reactive. Cleared for 450ml whole blood donation.',
-    unitsCollected: 1,
-  },
-  {
-    id: 'SCR-402',
-    donorName: 'Chinedu Eze',
-    bloodGroup: 'B+',
-    appointmentTime: 'Today, 04:00 PM',
-    targetAppealRef: 'HSP-KAD-8843 (Hadiza Sani)',
-    phone: '+234 802 444 5566',
-    screeningStatus: 'pending_screening',
-    vitals: { hb: 'Pending triage', bp: 'Pending triage', weight: '68 kg' },
-  },
-  {
-    id: 'SCR-403',
-    donorName: 'Zainab Kabir',
-    bloodGroup: 'O+',
-    appointmentTime: 'Tomorrow, 10:00 AM',
-    targetAppealRef: 'HSP-KAD-8841 (Zainab Kabir)',
-    phone: '+234 809 777 8899',
-    screeningStatus: 'pending_screening',
-    vitals: { hb: 'Pending triage', bp: 'Pending triage', weight: '64 kg' },
-  },
-  {
-    id: 'SCR-404',
-    donorName: 'Babajide Adeleke',
-    bloodGroup: 'A+',
-    appointmentTime: 'Yesterday, 11:30 AM',
-    targetAppealRef: 'Routine Blood Bank Stocking',
-    phone: '+234 814 333 9900',
-    screeningStatus: 'donation_completed',
-    vitals: { hb: '13.8 g/dL', bp: '124/82 mmHg', weight: '76 kg' },
-    screeningNotes: 'Successfully collected 1 unit whole blood into CPDA-1 triple bag. Donor rested with refreshments.',
-    unitsCollected: 1,
-  },
-];
-
 // ─── 3. Hospital Real-Time Notifications ────────────────────────────────────
 export interface HospitalNotification {
   id: string;
@@ -774,227 +441,45 @@ export interface HospitalNotification {
   priority: 'urgent' | 'normal';
 }
 
-const INITIAL_NOTIFICATIONS: HospitalNotification[] = [
-  {
-    id: 'notif-1',
-    timestamp: '10 mins ago',
-    type: 'appointment',
-    title: 'New Patient Appointment Booked',
-    message: 'Mariam Oladosu scheduled a Cardiology In-Person visit with Dr. Ahmed Bello for Tomorrow at 10:00 AM.',
-    read: false,
-    priority: 'normal',
-  },
-  {
-    id: 'notif-2',
-    timestamp: '35 mins ago',
-    type: 'blood',
-    title: 'Blood Appeal Verification Approved',
-    message: 'OminiPulse Central Blood Desk verified Request BR-2026-101 (O+ Emergency). 14 eligible community donors notified.',
-    read: false,
-    priority: 'urgent',
-  },
-  {
-    id: 'notif-3',
-    timestamp: '1 hour ago',
-    type: 'blood',
-    title: 'Donor Screening Appointment Booked',
-    message: 'Volunteer donor Ibrahim Danladi booked a pre-donation screening appointment at the blood bank for Today at 02:30 PM.',
-    read: false,
-    priority: 'normal',
-  },
-  {
-    id: 'notif-4',
-    timestamp: '2 hours ago',
-    type: 'staff',
-    title: 'Doctor Shift Availability Updated',
-    message: 'Dr. Musa Aliyu updated his General Practice availability for Friday: On-Call 08:00 AM – 04:00 PM.',
-    read: true,
-    priority: 'normal',
-  },
-  {
-    id: 'notif-5',
-    timestamp: 'Yesterday',
-    type: 'appointment',
-    title: 'Appointment Cancelled by Patient',
-    message: 'Grace Eze cancelled her follow-up appointment with Dr. Sarah Danladi scheduled for yesterday.',
-    read: true,
-    priority: 'normal',
-  },
-  {
-    id: 'notif-6',
-    timestamp: '2 days ago',
-    type: 'system',
-    title: 'Facility License Renewal Confirmation',
-    message: 'Kaduna State Ministry of Health inspection clearance confirmed and active in OminiPulse partner registry.',
-    read: true,
-    priority: 'normal',
-  },
-];
-
 // ─── Hospital Wards & Beds Mock Dataset ──────────────────────────────────────
-const INITIAL_BEDS: HospitalBed[] = [
-  // Intensive Care Unit (ICU)
-  { id: 'bed-icu-01', bedNumber: 'ICU-01', ward: 'icu', wardLabel: 'Intensive Care Unit (ICU)', status: 'occupied', currentPatientId: 'PAT-4903', currentPatientName: 'Chinedu Okafor', patientAge: 46, patientGender: 'Male', admissionDate: '2026-06-03', attendingDoctor: 'Dr. Ahmed Bello', diagnosis: 'Acute Respiratory Distress / Post-MI Observation', assignedNurse: 'Nurse Amina Yusuf', lastCleanedAt: '2026-06-03 08:00' },
-  { id: 'bed-icu-02', bedNumber: 'ICU-02', ward: 'icu', wardLabel: 'Intensive Care Unit (ICU)', status: 'available', lastCleanedAt: '2026-06-04 06:30' },
-  { id: 'bed-icu-03', bedNumber: 'ICU-03', ward: 'icu', wardLabel: 'Intensive Care Unit (ICU)', status: 'cleaning_required', lastCleanedAt: '2026-06-03 18:00' },
-  { id: 'bed-icu-04', bedNumber: 'ICU-04', ward: 'icu', wardLabel: 'Intensive Care Unit (ICU)', status: 'available', lastCleanedAt: '2026-06-04 07:00' },
-
-  // Emergency Casualty Ward
-  { id: 'bed-emg-01', bedNumber: 'EMG-01', ward: 'emergency', wardLabel: 'Emergency Casualty Ward', status: 'occupied', currentPatientId: 'PAT-4901', currentPatientName: 'Aisha Okonkwo', patientAge: 32, patientGender: 'Female', admissionDate: '2026-06-04', attendingDoctor: 'Dr. Musa Aliyu', diagnosis: 'Motorcycle Road Traffic Accident / Right Tibia Fracture', assignedNurse: 'Nurse Amina Yusuf', lastCleanedAt: '2026-06-04 09:00' },
-  { id: 'bed-emg-02', bedNumber: 'EMG-02', ward: 'emergency', wardLabel: 'Emergency Casualty Ward', status: 'available', lastCleanedAt: '2026-06-04 10:00' },
-  { id: 'bed-emg-03', bedNumber: 'EMG-03', ward: 'emergency', wardLabel: 'Emergency Casualty Ward', status: 'available', lastCleanedAt: '2026-06-04 08:45' },
-
-  // Male Surgical Ward
-  { id: 'bed-msw-01', bedNumber: 'MSW-01', ward: 'male_surgical', wardLabel: 'Male Surgical Ward', status: 'occupied', currentPatientId: 'PAT-4904', currentPatientName: 'Ibrahim Danjuma', patientAge: 29, patientGender: 'Male', admissionDate: '2026-06-02', attendingDoctor: 'Dr. Ibrahim Sani', diagnosis: 'Post-Appendectomy Day 2 / Wound Drain Intact', assignedNurse: 'Nurse Boma Douglas', lastCleanedAt: '2026-06-02 11:00' },
-  { id: 'bed-msw-02', bedNumber: 'MSW-02', ward: 'male_surgical', wardLabel: 'Male Surgical Ward', status: 'available', lastCleanedAt: '2026-06-03 14:00' },
-  { id: 'bed-msw-03', bedNumber: 'MSW-03', ward: 'male_surgical', wardLabel: 'Male Surgical Ward', status: 'cleaning_required', lastCleanedAt: '2026-06-04 08:00' },
-  { id: 'bed-msw-04', bedNumber: 'MSW-04', ward: 'male_surgical', wardLabel: 'Male Surgical Ward', status: 'maintenance', lastCleanedAt: '2026-05-30 09:00' },
-
-  // Female Medical Ward
-  { id: 'bed-fmw-01', bedNumber: 'FMW-01', ward: 'female_medical', wardLabel: 'Female Medical Ward', status: 'occupied', currentPatientId: 'PAT-4902', currentPatientName: 'Zainab Kabir', patientAge: 28, patientGender: 'Female', admissionDate: '2026-06-03', attendingDoctor: 'Dr. Ahmed Bello', diagnosis: 'Complicated Malaria / Severe Anemia (Transfusion in progress)', assignedNurse: 'Nurse Amina Yusuf', lastCleanedAt: '2026-06-03 10:30' },
-  { id: 'bed-fmw-02', bedNumber: 'FMW-02', ward: 'female_medical', wardLabel: 'Female Medical Ward', status: 'available', lastCleanedAt: '2026-06-04 07:15' },
-  { id: 'bed-fmw-03', bedNumber: 'FMW-03', ward: 'female_medical', wardLabel: 'Female Medical Ward', status: 'available', lastCleanedAt: '2026-06-04 09:30' },
-
-  // Pediatric Ward
-  { id: 'bed-ped-01', bedNumber: 'PED-01', ward: 'pediatric', wardLabel: 'Pediatric Ward', status: 'occupied', currentPatientId: 'PAT-4905', currentPatientName: 'Baby Fatima Bello', patientAge: 3, patientGender: 'Female', admissionDate: '2026-06-03', attendingDoctor: 'Dr. Sarah Danladi', diagnosis: 'Acute Bronchiolitis / Nebulization & IV Fluids', assignedNurse: 'Nurse Boma Douglas', lastCleanedAt: '2026-06-03 12:00' },
-  { id: 'bed-ped-02', bedNumber: 'PED-02', ward: 'pediatric', wardLabel: 'Pediatric Ward', status: 'available', lastCleanedAt: '2026-06-04 06:00' },
-
-  // Maternity Ward
-  { id: 'bed-mat-01', bedNumber: 'MAT-01', ward: 'maternity', wardLabel: 'Maternity & Labor Ward', status: 'occupied', currentPatientId: 'PAT-4906', currentPatientName: 'Maryam Bello', patientAge: 26, patientGender: 'Female', admissionDate: '2026-06-04', attendingDoctor: 'Dr. Sarah Danladi', diagnosis: '38 Weeks Gestation / Early Stage Latent Labor', assignedNurse: 'Nurse Amina Yusuf', lastCleanedAt: '2026-06-04 08:00' },
-  { id: 'bed-mat-02', bedNumber: 'MAT-02', ward: 'maternity', wardLabel: 'Maternity & Labor Ward', status: 'available', lastCleanedAt: '2026-06-04 07:45' },
-];
-
 // ─── Hospital Internal Pharmacy Mock Dataset ────────────────────────────────
-const INITIAL_MEDICATIONS: HospitalMedicationItem[] = [
-  { id: 'med-01', name: 'Paracetamol IV Infusion 1000mg/100ml', category: 'IV Fluids', dosageForm: 'IV Infusion Bottle', batchNumber: 'PARA-2026-09', stockQuantity: 240, minimumThreshold: 50, unitPrice: 2500, expiryDate: '2027-08-30', status: 'in_stock' },
-  { id: 'med-02', name: 'Ceftriaxone Sodium Injection 1g Powder', category: 'Antibiotics', dosageForm: 'Vial + Water for Inj', batchNumber: 'CEF-2025-14', stockQuantity: 85, minimumThreshold: 30, unitPrice: 3800, expiryDate: '2026-12-15', status: 'in_stock' },
-  { id: 'med-03', name: 'Normal Saline (0.9% NaCl) 500ml', category: 'IV Fluids', dosageForm: 'IV Infusion Bag', batchNumber: 'NS-2026-02', stockQuantity: 18, minimumThreshold: 40, unitPrice: 1800, expiryDate: '2027-03-20', status: 'low_stock' },
-  { id: 'med-04', name: 'Diclofenac Sodium 75mg/3ml Ampoule', category: 'Analgesics', dosageForm: 'IM Injection Ampoule', batchNumber: 'DIC-2025-88', stockQuantity: 150, minimumThreshold: 40, unitPrice: 1500, expiryDate: '2026-11-10', status: 'in_stock' },
-  { id: 'med-05', name: 'Artemether/Lumefantrine 80/480mg Tabs', category: 'Emergency', dosageForm: 'Blister Pack (6 tabs)', batchNumber: 'AL-2024-51', stockQuantity: 32, minimumThreshold: 25, unitPrice: 2200, expiryDate: '2026-07-28', status: 'expiring_soon' },
-  { id: 'med-06', name: 'Intravenous Cannula Gauge 20 (Pink)', category: 'Consumables', dosageForm: 'Sterile Piece', batchNumber: 'CAN-2026-01', stockQuantity: 420, minimumThreshold: 100, unitPrice: 800, expiryDate: '2028-01-01', status: 'in_stock' },
-  { id: 'med-07', name: 'Metronidazole Infusion 500mg/100ml', category: 'Antibiotics', dosageForm: 'IV Bottle', batchNumber: 'MET-2025-33', stockQuantity: 64, minimumThreshold: 25, unitPrice: 2000, expiryDate: '2026-10-05', status: 'in_stock' },
-];
-
-const INITIAL_PRESCRIPTIONS: HospitalPrescriptionOrder[] = [
-  {
-    id: 'rx-01',
-    prescriptionNumber: 'RX-2026-081',
-    patientId: 'PAT-4902',
-    patientName: 'Zainab Kabir (FMW Bed 01)',
-    doctorName: 'Dr. Ahmed Bello',
-    department: 'Female Medical Ward',
-    prescribedAt: 'Today, 10:15 AM',
-    medications: [
-      { drugName: 'Ceftriaxone 1g IV', dosage: '1g IV Stat then BD', duration: '5 days', instructions: 'Reconstitute with 10ml WFI, administer slowly' },
-      { drugName: 'Paracetamol IV 1000mg', dosage: '1000mg IV', duration: '3 days', instructions: 'Infuse over 15 mins for temperature > 38.5C' },
-    ],
-    status: 'pending',
-  },
-  {
-    id: 'rx-02',
-    prescriptionNumber: 'RX-2026-082',
-    patientId: 'PAT-4904',
-    patientName: 'Ibrahim Danjuma (MSW Bed 01)',
-    doctorName: 'Dr. Musa Aliyu',
-    department: 'Male Surgical Ward',
-    prescribedAt: 'Today, 08:30 AM',
-    medications: [
-      { drugName: 'Diclofenac Sodium 75mg IM', dosage: '75mg IM BD', duration: '2 days', instructions: 'Deep intragluteal injection post-op' },
-      { drugName: 'Normal Saline 0.9% 500ml', dosage: '500ml IV', duration: '24 hrs', instructions: 'Run at 30 drops/min' },
-    ],
-    status: 'dispensed',
-    dispensedBy: 'Pharm. Chioma Okonkwo',
-    dispensedAt: 'Today, 09:15 AM',
-  },
-  {
-    id: 'rx-03',
-    prescriptionNumber: 'RX-2026-083',
-    patientId: 'PAT-4903',
-    patientName: 'Chinedu Okafor (ICU Bed 01)',
-    doctorName: 'Dr. Ahmed Bello',
-    department: 'Intensive Care Unit (ICU)',
-    prescribedAt: 'Today, 11:20 AM',
-    medications: [
-      { drugName: 'Metronidazole 500mg IV', dosage: '500mg IV TDS', duration: '5 days', instructions: 'Protect from direct sunlight during infusion' },
-    ],
-    status: 'pending',
-  },
-];
-
 // ─── Hospital Laboratory Mock Dataset ───────────────────────────────────────
-const INITIAL_LAB_ORDERS: HospitalLabOrder[] = [
-  {
-    id: 'lab-01',
-    orderNumber: 'LAB-2026-101',
-    patientId: 'PAT-4902',
-    patientName: 'Zainab Kabir (FMW Bed 01)',
-    doctorName: 'Dr. Ahmed Bello',
-    testName: 'Full Blood Count (FBC) + ESR',
-    testCategory: 'Hematology',
-    sampleType: 'Blood',
-    urgency: 'urgent',
-    orderedAt: 'Today, 09:10 AM',
-    status: 'results_ready',
-    resultsSummary: 'Hb: 8.2 g/dL (Mild-Moderate Anemia), WBC: 12,400 /mm3 (Leukocytosis), Platelets: 180,000 /mm3.',
-    normalRange: 'Hb: 12.0 - 15.5 g/dL | WBC: 4,000 - 10,000 /mm3',
-    findings: 'Microcytic hypochromic picture consistent with ongoing hemolysis from severe malaria.',
-    technicianName: 'MLS. Emeka Nnamdi',
-    verifiedAt: 'Today, 10:45 AM',
-  },
-  {
-    id: 'lab-02',
-    orderNumber: 'LAB-2026-102',
-    patientId: 'PAT-4904',
-    patientName: 'Ibrahim Danjuma (MSW Bed 01)',
-    doctorName: 'Dr. Musa Aliyu',
-    testName: 'Malaria Parasite (MP / Blood Film)',
-    testCategory: 'Parasitology',
-    sampleType: 'Blood',
-    urgency: 'routine',
-    orderedAt: 'Today, 09:40 AM',
-    status: 'results_ready',
-    resultsSummary: '3+ Plasmodium falciparum ring forms detected.',
-    normalRange: 'Nil seen',
-    findings: 'High parasitemia count. Antimalarial therapy advised.',
-    technicianName: 'MLS. Emeka Nnamdi',
-    verifiedAt: 'Today, 10:30 AM',
-  },
-  {
-    id: 'lab-03',
-    orderNumber: 'LAB-2026-103',
-    patientId: 'PAT-4903',
-    patientName: 'Chinedu Okafor (ICU Bed 01)',
-    doctorName: 'Dr. Ahmed Bello',
-    testName: 'Serum Electrolytes, Urea & Creatinine (E/U/Cr)',
-    testCategory: 'Biochemistry',
-    sampleType: 'Blood',
-    urgency: 'stat_emergency',
-    orderedAt: 'Today, 10:50 AM',
-    status: 'in_testing',
-    findings: 'Sample running in automated chemistry analyzer.',
-    technicianName: 'MLS. Emeka Nnamdi',
-  },
-  {
-    id: 'lab-04',
-    orderNumber: 'LAB-2026-104',
-    patientId: 'PAT-4901',
-    patientName: 'Aisha Okonkwo (EMG Bed 01)',
-    doctorName: 'Dr. Musa Aliyu',
-    testName: 'Urinalysis Dipstick 10-Parameter',
-    testCategory: 'Urinalysis',
-    sampleType: 'Urine',
-    urgency: 'routine',
-    orderedAt: 'Today, 11:05 AM',
-    status: 'sample_pending',
-  },
-];
-
 export default function HospitalPortalPage() {
   const searchParams = useSearchParams();
-  // One hospital admin has exactly one hospital - no hospital dropdown or switching
-  const currentFacility = ALL_FACILITIES[0];
+  // One hospital admin has exactly one hospital - no hospital dropdown or switching.
+  // The facility record loads live from the database (no mock roster).
+  const [currentFacility, setCurrentFacility] = useState<RegisteredFacility>(EMPTY_FACILITY);
+  const [facilityLoaded, setFacilityLoaded] = useState(false);
   const initialTab = searchParams?.get('tab') || 'appointments';
   const [currentTab, setCurrentTab] = useState(initialTab);
+
+  // Load the affiliated facility record live (first registered hospital).
+  useEffect(() => {
+    let cancelled = false;
+    liveApi.getHospitals().then((hospitals) => {
+      if (cancelled || hospitals.length === 0) return;
+      const h = hospitals[0];
+      setCurrentFacility({
+        id: h.id,
+        name: h.name,
+        address: h.address ?? '—',
+        city: h.city,
+        phone: h.phone,
+        emergencyHotline: '—',
+        email: h.email,
+        type: 'Hospital',
+        departments: [],
+        isEmergencyAvailable: h.partnerStatus === 'active',
+        isVerifiedFacility: h.partnerStatus === 'active',
+        operatingHours: '—',
+        adminName: '—',
+      });
+      setFacilityLoaded(true);
+    }).catch(() => {
+      setFacilityLoaded(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const tabParam = searchParams?.get('tab');
   useEffect(() => {
@@ -1067,8 +552,10 @@ export default function HospitalPortalPage() {
     badge: 'HOSPITAL ADMIN',
   };
 
-  // Blood Requests state
-  const [bloodRequests, setBloodRequests] = useState<HospitalBloodRequest[]>(INITIAL_BLOOD_REQUESTS);
+  // Blood Requests state — live from /api/hospital/blood/requests (no fallback).
+  const [bloodRequests, setBloodRequests] = useState<HospitalBloodRequest[]>([]);
+  const [portalLoadError, setPortalLoadError] = useState<string | null>(null);
+  const [portalIsLoading, setPortalIsLoading] = useState(true);
   const [selectedPatientModal, setSelectedPatientModal] = useState<any | null>(null);
   const [newBloodModalOpen, setNewBloodModalOpen] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -1104,8 +591,8 @@ export default function HospitalPortalPage() {
     );
   };
 
-  // ── Wards & Beds State ──────────────────────────────────────────────────────
-  const [bedsList, setBedsList] = useState<HospitalBed[]>(INITIAL_BEDS);
+  // ── Wards & Beds State — live from /api/hospital/beds ─────────────────────
+  const [bedsList, setBedsList] = useState<HospitalBed[]>([]);
   const [selectedWardFilter, setSelectedWardFilter] = useState<'all' | HospitalWardType>('all');
   const [assignBedModalBed, setAssignBedModalBed] = useState<HospitalBed | null>(null);
   const [assignPatientName, setAssignPatientName] = useState('');
@@ -1114,9 +601,9 @@ export default function HospitalPortalPage() {
   const [transferBedModalBed, setTransferBedModalBed] = useState<HospitalBed | null>(null);
   const [targetTransferWard, setTargetTransferWard] = useState<HospitalWardType>('icu');
 
-  // ── Pharmacy State ──────────────────────────────────────────────────────────
-  const [medicationsList, setMedicationsList] = useState<HospitalMedicationItem[]>(INITIAL_MEDICATIONS);
-  const [prescriptionsList, setPrescriptionsList] = useState<HospitalPrescriptionOrder[]>(INITIAL_PRESCRIPTIONS);
+  // ── Pharmacy State — live from /api/hospital/pharmacy/* ────────────────────
+  const [medicationsList, setMedicationsList] = useState<HospitalMedicationItem[]>([]);
+  const [prescriptionsList, setPrescriptionsList] = useState<HospitalPrescriptionOrder[]>([]);
   const [pharmacySubTab, setPharmacySubTab] = useState<'prescriptions' | 'inventory'>('prescriptions');
   const [addMedModalOpen, setAddMedModalOpen] = useState(false);
   const [newMedName, setNewMedName] = useState('');
@@ -1127,13 +614,218 @@ export default function HospitalPortalPage() {
   const [newMedPrice, setNewMedPrice] = useState('2500');
   const [newMedExpiry, setNewMedExpiry] = useState('2027-06-30');
 
-  // ── Laboratory State ────────────────────────────────────────────────────────
-  const [labOrdersList, setLabOrdersList] = useState<HospitalLabOrder[]>(INITIAL_LAB_ORDERS);
+  // ── Laboratory State — live from /api/hospital/lab/orders ──────────────────
+  const [labOrdersList, setLabOrdersList] = useState<HospitalLabOrder[]>([]);
   const [labSubTab, setLabSubTab] = useState<'orders' | 'completed'>('orders');
   const [enterResultModalOrder, setEnterResultModalOrder] = useState<HospitalLabOrder | null>(null);
   const [resultSummaryInput, setResultSummaryInput] = useState('');
   const [resultFindingsInput, setResultFindingsInput] = useState('');
   const [resultNormalRangeInput, setResultNormalRangeInput] = useState('');
+
+  // ── Live data loading (appointments, patients, doctors, blood, beds,
+  //    pharmacy, laboratory) ─────────────────────────────────────────────────
+  // All tabs fetch from the Supabase-backed Express API — no fallbacks.
+  const loadPortalData = useCallback(async () => {
+    try {
+      const [blood, beds, queue, inventory, lab, appts, patients, doctors] = await Promise.allSettled([
+        liveApi.getBloodRequests(),
+        liveApi.getHospitalBeds(),
+        liveApi.getPharmacyQueue(),
+        liveApi.getPharmacyInventory(),
+        liveApi.getLabOrders(),
+        liveApi.getAppointments(),
+        liveApi.getPatients(),
+        liveApi.getDoctors(),
+      ]);
+
+      if (blood.status === 'fulfilled') {
+        setBloodRequests(
+          blood.value.map((r) => ({
+            id: r.id,
+            patientRef: r.patient_id ?? '—',
+            patientName: r.patient_name,
+            bloodGroup: r.blood_group,
+            unitsNeeded: r.units_needed,
+            unitsCollected: r.status === 'fulfilled' ? r.units_needed : 0,
+            urgency: 'urgent' as const,
+            requiredBy: '—',
+            status: r.status as HospitalBloodRequest['status'],
+            requestedBy: 'Hospital Staff',
+            createdAt: r.created_at,
+          }))
+        );
+      }
+
+      if (beds.status === 'fulfilled') {
+        setBedsList(
+          beds.value.map((b) => ({
+            id: b.id,
+            bedNumber: b.bed_number,
+            ward: (b.ward as HospitalWardType) ?? 'icu',
+            wardLabel: (b.ward ?? 'ICU').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+            status: (b.status as HospitalBed['status']) ?? 'available',
+            currentPatientId: b.patient_id ?? undefined,
+          }))
+        );
+      }
+
+      if (queue.status === 'fulfilled') {
+        setPrescriptionsList(
+          queue.value.map((o) => ({
+            id: o.id,
+            prescriptionNumber: o.prescription_id ?? o.id.slice(0, 8),
+            patientId: o.patient_id ?? '—',
+            patientName: 'Patient',
+            doctorName: '—',
+            department: '—',
+            prescribedAt: o.created_at,
+            medications: [],
+            status: (o.status as HospitalPrescriptionOrder['status']) ?? 'pending',
+            dispensedAt: o.dispensed_at ?? undefined,
+          }))
+        );
+      }
+
+      if (inventory.status === 'fulfilled') {
+        setMedicationsList(
+          inventory.value.map((m) => ({
+            id: m.id,
+            name: m.name,
+            category: 'Consumables' as const,
+            dosageForm: [m.form, m.strength, m.unit].filter(Boolean).join(' ') || '—',
+            batchNumber: '—',
+            stockQuantity: m.stock_qty,
+            minimumThreshold: m.reorder_level,
+            unitPrice: 0,
+            expiryDate: '—',
+            status:
+              m.stock_qty <= 0
+                ? ('out_of_stock' as const)
+                : m.stock_qty <= m.reorder_level
+                  ? ('low_stock' as const)
+                  : ('in_stock' as const),
+          }))
+        );
+      }
+
+      if (lab.status === 'fulfilled') {
+        setLabOrdersList(
+          lab.value.map((o) => ({
+            id: o.id,
+            orderNumber: o.id.slice(0, 8),
+            patientId: o.patient_id ?? '—',
+            patientName: 'Patient',
+            doctorName: '—',
+            testName: o.test_type,
+            testCategory: 'Biochemistry' as const,
+            sampleType: 'Blood' as const,
+            urgency: 'routine' as const,
+            orderedAt: o.created_at,
+            status: (o.status as HospitalLabOrder['status']) ?? 'sample_pending',
+            resultsSummary: o.results_summary ?? undefined,
+            findings: o.findings ?? undefined,
+            verifiedAt: o.verified_at ?? undefined,
+          }))
+        );
+      }
+
+      // Appointments tab (facility schedule) + derived patient roster.
+      if (appts.status === 'fulfilled') {
+        const mappedAppts: FacilityAppointment[] = appts.value.map((a) => ({
+          id: a.id,
+          patientName: `${a.patient.firstName} ${a.patient.lastName}`.trim() || 'Unknown Patient',
+          patientRef: a.patient.id.slice(0, 8).toUpperCase(),
+          doctorAssigned: `Dr. ${a.doctor.lastName}`,
+          doctorSpecialty: a.doctor.specialization,
+          appointmentType: a.type === 'video' ? 'Tele-Consultation Review' : a.type === 'phone' ? 'Phone Consultation' : 'In-Person Consultation',
+          scheduledTime: new Date(a.scheduledAt).toLocaleString(undefined, {
+            weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+          }),
+          status:
+            a.status === 'completed' ? 'Completed'
+            : a.status === 'cancelled' ? 'Cancelled'
+            : new Date(a.scheduledAt) > new Date() ? 'Upcoming' : 'Active',
+          checkInStatus: a.status === 'completed' ? 'Concluded' : a.status === 'scheduled' ? 'Confirmed' : 'Scheduled',
+          room: a.type === 'in_person' ? 'Consultation Suite' : 'Virtual Clinic',
+        }));
+        setFacilityAppointments(mappedAppts);
+
+        // Derive the patient roster from the appointment feed (live).
+        const seen = new Map<string, FacilityPatient>();
+        for (const a of appts.value) {
+          if (seen.has(a.patient.id)) continue;
+          seen.set(a.patient.id, {
+            id: a.patient.id,
+            name: `${a.patient.firstName} ${a.patient.lastName}`.trim() || 'Unknown Patient',
+            gender: '—',
+            age: 0,
+            bloodGroup: '—',
+            lastVisit: new Date(a.scheduledAt).toLocaleDateString(),
+            assignedDoctor: `Dr. ${a.doctor.lastName}`,
+            activePrescription: '—',
+            allergies: 'Not yet documented',
+            vitals: { bp: '—', hr: '—', temp: '—' },
+            consultationNotes: a.reason || '—',
+          });
+        }
+        setFacilityPatients([...seen.values()]);
+      }
+
+      // Doctors tab (facility roster) — live from the doctor registry.
+      if (doctors.status === 'fulfilled') {
+        setFacilityDoctors(
+          doctors.value.map((d) => ({
+            id: d.id,
+            name: `Dr. ${d.firstName} ${d.lastName}`,
+            specialization: d.specialization,
+            department: d.specialization,
+            licenseNo: d.licenseNo ?? '—',
+            isMdcnVerified: d.verificationStatus === 'approved',
+            facilityStatus: d.isApproved ? 'active' : 'on_leave',
+            availabilityDays: [],
+            shifts: '—',
+            syncWithMobileApp: true,
+            phone: d.phone ?? '—',
+          }))
+        );
+      }
+
+      // Patients directory (fallback roster enrichment) — live.
+      if (patients.status === 'fulfilled' && appts.status === 'fulfilled' && appts.value.length === 0) {
+        setFacilityPatients(
+          patients.value.map((p) => ({
+            id: p.id,
+            name: `${p.firstName} ${p.lastName}`.trim() || 'Unknown Patient',
+            gender: '—',
+            age: 0,
+            bloodGroup: '—',
+            lastVisit: new Date(p.createdAt).toLocaleDateString(),
+            assignedDoctor: '—',
+            activePrescription: '—',
+            allergies: 'Not yet documented',
+            vitals: { bp: '—', hr: '—', temp: '—' },
+            consultationNotes: 'Registered via the OmniPulse mobile application.',
+          }))
+        );
+      }
+
+      if (blood.status === 'rejected' && beds.status === 'rejected') {
+        setPortalLoadError(
+          getApiErrorMessage((blood.reason as Error) ?? (beds.reason as Error))
+        );
+      } else {
+        setPortalLoadError(null);
+      }
+      setPortalIsLoading(false);
+    } catch (err) {
+      setPortalLoadError(getApiErrorMessage(err));
+      setPortalIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPortalData();
+  }, [loadPortalData]);
 
   // ── Custom In-App Modal States (replacing browser alerts) ───────────────────
   const [systemNoticeModal, setSystemNoticeModal] = useState<{ title: string; message: string; type?: 'warning' | 'info' | 'success' | 'error' } | null>(null);
@@ -1393,7 +1085,7 @@ export default function HospitalPortalPage() {
   const [regStaffPassword, setRegStaffPassword] = useState('HospitalPass2026!');
 
   // Clinical Services State
-  const [servicesList, setServicesList] = useState<HospitalService[]>(INITIAL_SERVICES);
+  const [servicesList, setServicesList] = useState<HospitalService[]>([]);
   const [newServiceModalOpen, setNewServiceModalOpen] = useState(false);
   const [newServiceName, setNewServiceName] = useState('');
   const [newServiceDept, setNewServiceDept] = useState('Cardiology');
@@ -1427,7 +1119,7 @@ export default function HospitalPortalPage() {
   };
 
   // Blood Donor Screening Appointments State
-  const [screeningAppointments, setScreeningAppointments] = useState<DonorScreeningAppointment[]>(INITIAL_SCREENING_APPOINTMENTS);
+  const [screeningAppointments, setScreeningAppointments] = useState<DonorScreeningAppointment[]>([]);
   const [bloodSubTab, setBloodSubTab] = useState<'appeals' | 'screening'>('appeals');
   const [newScreeningModalOpen, setNewScreeningModalOpen] = useState(false);
   const [conductScreeningDonor, setConductScreeningDonor] = useState<DonorScreeningAppointment | null>(null);
@@ -1477,7 +1169,7 @@ export default function HospitalPortalPage() {
   };
 
   // Facility Notifications State
-  const [notificationsList, setNotificationsList] = useState<HospitalNotification[]>(INITIAL_NOTIFICATIONS);
+  const [notificationsList, setNotificationsList] = useState<HospitalNotification[]>([]);
   const [notifFilter, setNotifFilter] = useState<'all' | 'appointment' | 'blood' | 'staff' | 'system'>('all');
 
   const handleMarkAllNotificationsRead = () => {
@@ -1489,7 +1181,10 @@ export default function HospitalPortalPage() {
   };
 
   // Doctor Management Actions State
-  const [facilityDoctors, setFacilityDoctors] = useState<HospitalDoctor[]>(FACILITY_DOCTORS);
+  const [facilityDoctors, setFacilityDoctors] = useState<HospitalDoctor[]>([]);
+  // Facility appointments + patients — live from /api/appointments.
+  const [facilityAppointments, setFacilityAppointments] = useState<FacilityAppointment[]>([]);
+  const [facilityPatients, setFacilityPatients] = useState<FacilityPatient[]>([]);
   const [assignDeptDoctor, setAssignDeptDoctor] = useState<HospitalDoctor | null>(null);
   const [selectedDeptToAssign, setSelectedDeptToAssign] = useState('Cardiology');
   const [manageAvailabilityDoctor, setManageAvailabilityDoctor] = useState<HospitalDoctor | null>(null);
@@ -1621,6 +1316,37 @@ export default function HospitalPortalPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Live data connection state */}
+      {portalIsLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '12px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading facility operations from the live database…
+        </div>
+      )}
+      {portalLoadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load live facility data
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {portalLoadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setPortalIsLoading(true); void loadPortalData(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* ── Hospital Facility Header ────────────────────────────────────────── */}
       <div style={{
         background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
@@ -1863,7 +1589,7 @@ export default function HospitalPortalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {FACILITY_APPOINTMENTS.map((apt) => (
+                  {facilityAppointments.map((apt) => (
                     <tr key={apt.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '14px 16px' }}>
                         <p style={{ margin: 0, fontWeight: 600, color: '#0f172a' }}>{apt.patientName}</p>
@@ -1890,7 +1616,7 @@ export default function HospitalPortalPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            const p = FACILITY_PATIENTS.find(pt => pt.name === apt.patientName);
+                            const p = facilityPatients.find(pt => pt.name === apt.patientName);
                             if (p) setSelectedPatientModal(p);
                           }}
                         >
@@ -1958,7 +1684,7 @@ export default function HospitalPortalPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {FACILITY_PATIENTS.map((p) => (
+                  {facilityPatients.map((p) => (
                     <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -2081,7 +1807,7 @@ export default function HospitalPortalPage() {
                 borderBottom: staffSubTab === 'doctors' ? '2px solid #2563eb' : '2px solid transparent',
               }}
             >
-              Clinical Doctors & MDCN Schedules ({FACILITY_DOCTORS.length})
+              Clinical Doctors & MDCN Schedules ({facilityDoctors.length})
             </button>
           </div>
 
@@ -2574,33 +2300,62 @@ export default function HospitalPortalPage() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
-            {INITIAL_EMERGENCY_REQUESTS.map((emg) => (
-              <Card key={emg.id} style={{ padding: 18, borderLeft: '4px solid #ef4444' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>{emg.title}</h3>
-                  <Badge variant={emg.severity === 'critical' ? 'error' : 'warning'}>
-                    {emg.severity.toUpperCase()}
-                  </Badge>
-                </div>
-                <p style={{ margin: '8px 0 12px', fontSize: 13, color: '#475569' }}>{emg.details}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: '#94a3b8' }}>
-                  <span>Logged: {new Date(emg.createdAt).toLocaleTimeString()}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      if (emg.title.toLowerCase().includes('blood')) {
-                        setCurrentTab('blood');
-                      } else {
-                        setCurrentTab('wards');
-                      }
-                    }}
-                  >
-                    Manage Slots
-                  </Button>
-                </div>
+            {/* Emergency alerts derived live from blood requests + bed capacity. */}
+            {bloodRequests
+              .filter((r) => ['pending_hospital_confirmation', 'hospital_confirmed'].includes(r.status))
+              .slice(0, 4)
+              .map((r) => (
+                <Card key={r.id} style={{ padding: 18, borderLeft: '4px solid #ef4444' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>Critical Blood Shortage — {r.bloodGroup}</h3>
+                    <Badge variant="error">CRITICAL</Badge>
+                  </div>
+                  <p style={{ margin: '8px 0 12px', fontSize: 13, color: '#475569' }}>
+                    {r.unitsNeeded} unit(s) required for {r.patientName}. Status: {r.status.replace(/_/g, ' ')}.
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: '#94a3b8' }}>
+                    <span>Logged: {new Date(r.createdAt).toLocaleTimeString()}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentTab('blood')}
+                    >
+                      Manage Slots
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            {bedsList
+              .filter((b) => b.ward === 'icu' && b.status === 'available')
+              .slice(0, 2)
+              .map((b) => (
+                <Card key={`bed-${b.id}`} style={{ padding: 18, borderLeft: '4px solid #f59e0b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0f172a' }}>ICU Capacity Slot Open</h3>
+                    <Badge variant="warning">HIGH</Badge>
+                  </div>
+                  <p style={{ margin: '8px 0 12px', fontSize: 13, color: '#475569' }}>
+                    Bed {b.bedNumber} in {b.wardLabel} is available for emergency admission intake.
+                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11.5, color: '#94a3b8' }}>
+                    <span>Ward: {b.wardLabel}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentTab('wards')}
+                    >
+                      Manage Slots
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            {bloodRequests.length === 0 && bedsList.length === 0 && (
+              <Card style={{ padding: 24, textAlign: 'center' }}>
+                <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+                  No active emergency alerts. Facility operations are nominal.
+                </p>
               </Card>
-            ))}
+            )}
           </div>
         </div>
       )}
@@ -2671,7 +2426,7 @@ export default function HospitalPortalPage() {
               Facility Operational Analytics
             </h2>
             <p style={{ margin: '2px 0 0', fontSize: 12.5, color: '#64748b' }}>
-              Summary metrics for visits and blood fulfillment at {FACILITY_INFO.name}
+              Summary metrics for visits and blood fulfillment at {currentFacility.name}
             </p>
           </div>
 

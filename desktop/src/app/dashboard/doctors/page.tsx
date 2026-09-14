@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Stethoscope, Search, Download, Eye, CheckCircle, XCircle, 
   AlertCircle, ShieldAlert, Award, FileText, Calendar, 
-  Clock, Check, UserCheck, ShieldOff, AlertTriangle, ArrowRight
+  Clock, Check, UserCheck, ShieldOff, AlertTriangle, ArrowRight, RefreshCw
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -13,149 +13,14 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
-import { liveApi } from '@/services/api';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import { realtimeService } from '@/services/realtimeService';
 import type { Doctor, VerificationStatus } from '@/types';
 
-// Mock comprehensive doctor registrations with all verification assets
-const INITIAL_DOCTORS: Doctor[] = [
-  {
-    id: 'doc-101',
-    firstName: 'Amina',
-    lastName: 'Bello',
-    email: 'amina.bello@ominipulse.ai',
-    phone: '+234 803 123 4567',
-    specialization: 'Cardiology',
-    licenseNo: 'LIC-98347102',
-    hospital: 'Lagos General Hospital',
-    yearsExp: 8,
-    rating: 4.8,
-    verificationStatus: 'pending',
-    isApproved: false,
-    createdAt: '2026-06-04T10:00:00Z',
-    verificationSubmittedAt: '2026-06-04T10:15:00Z',
-    documentsCount: 3,
-    govIdUrl: 'gov_id_bello.png',
-    licenseUrl: 'license_bello.pdf',
-    selfieUrl: 'selfie_bello.png',
-  },
-  {
-    id: 'doc-102',
-    firstName: 'Felix',
-    lastName: 'Okafor',
-    email: 'felix.okafor@ominipulse.ai',
-    phone: '+234 805 987 6543',
-    specialization: 'Pediatrics',
-    licenseNo: 'LIC-10492837',
-    hospital: 'Victoria Island Specialist Clinic',
-    yearsExp: 12,
-    rating: 4.9,
-    verificationStatus: 'approved',
-    isApproved: true,
-    createdAt: '2026-06-03T14:30:00Z',
-    verificationSubmittedAt: '2026-06-03T14:45:00Z',
-    verificationReviewedAt: '2026-06-04T09:00:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    documentsCount: 3,
-    govIdUrl: 'gov_id_okafor.png',
-    licenseUrl: 'license_okafor.pdf',
-    selfieUrl: 'selfie_okafor.png',
-  },
-  {
-    id: 'doc-103',
-    firstName: 'Blessing',
-    lastName: 'Okoro',
-    email: 'blessing.okoro@ominipulse.ai',
-    phone: '+234 812 345 6789',
-    specialization: 'Neurology',
-    licenseNo: 'LIC-49381029',
-    hospital: 'Eko Medical Center',
-    yearsExp: 5,
-    rating: 4.0,
-    verificationStatus: 'rejected',
-    isApproved: false,
-    createdAt: '2026-06-02T09:15:00Z',
-    verificationSubmittedAt: '2026-06-02T09:30:00Z',
-    verificationReviewedAt: '2026-06-02T16:00:00Z',
-    verificationReviewedBy: 'verification_admin_1',
-    rejectionReason: 'The submitted Medical License certificate is expired (validity ended Dec 2025). Please re-submit a current document.',
-    documentsCount: 3,
-    govIdUrl: 'gov_id_okoro.png',
-    licenseUrl: 'license_okoro.pdf',
-    selfieUrl: 'selfie_okoro.png',
-  },
-  {
-    id: 'doc-104',
-    firstName: 'David',
-    lastName: 'Okoye',
-    email: 'david.okoye@ominipulse.ai',
-    phone: '+234 901 234 5678',
-    specialization: 'Dermatology',
-    licenseNo: 'LIC-38491024',
-    hospital: 'Lagos General Hospital',
-    yearsExp: 6,
-    rating: 4.6,
-    verificationStatus: 'approved',
-    isApproved: true,
-    createdAt: '2026-05-30T11:20:00Z',
-    verificationSubmittedAt: '2026-05-30T11:40:00Z',
-    verificationReviewedAt: '2026-05-30T15:10:00Z',
-    verificationReviewedBy: 'verification_admin_2',
-    documentsCount: 3,
-    govIdUrl: 'gov_id_okoye.png',
-    licenseUrl: 'license_okoye.pdf',
-    selfieUrl: 'selfie_okoye.png',
-  },
-  {
-    id: 'doc-105',
-    firstName: 'Oluwaseun',
-    lastName: 'Adeyemi',
-    email: 'seun.adeyemi@ominipulse.ai',
-    phone: '+234 802 888 9999',
-    specialization: 'Orthopedics',
-    licenseNo: 'LIC-77491028',
-    hospital: 'Lekki Orthopedic Center',
-    yearsExp: 15,
-    rating: 4.7,
-    verificationStatus: 'suspended',
-    isApproved: false,
-    createdAt: '2026-05-28T08:10:00Z',
-    verificationSubmittedAt: '2026-05-28T08:30:00Z',
-    verificationReviewedAt: '2026-05-28T14:00:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    rejectionReason: 'Suspended due to reported operational malpractice, pending internal medical board investigation.',
-    documentsCount: 3,
-    govIdUrl: 'gov_id_adeyemi.png',
-    licenseUrl: 'license_adeyemi.pdf',
-    selfieUrl: 'selfie_adeyemi.png',
-  },
-  {
-    id: 'doc-106',
-    firstName: 'Maria',
-    lastName: 'Ezenwa',
-    email: 'maria.ezenwa@ominipulse.ai',
-    phone: '+234 810 555 4444',
-    specialization: 'Psychiatry',
-    licenseNo: 'LIC-55102938',
-    hospital: 'Eko Medical Center',
-    yearsExp: 9,
-    rating: 4.2,
-    verificationStatus: 'pending',
-    isApproved: false,
-    createdAt: '2026-06-05T16:40:00Z',
-    verificationSubmittedAt: '2026-06-05T17:00:00Z',
-    documentsCount: 3,
-    govIdUrl: 'gov_id_ezenwa.png',
-    licenseUrl: 'license_ezenwa.pdf',
-    selfieUrl: 'selfie_ezenwa.png',
-  }
-];
-
 export default function DoctorsPage() {
-  // Live doctor registry (https://ominipulse.onrender.com/api) with the
-  // built-in demo roster as offline fallback.
-  const [doctors, setDoctors] = useState<Doctor[]>(INITIAL_DOCTORS);
-  const [isLive, setIsLive] = useState(false);
+  // Live doctor registry (https://ominipulse.onrender.com/api) — no fallback.
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | VerificationStatus>('all');
@@ -172,40 +37,29 @@ export default function DoctorsPage() {
     docId: string;
   } | null>(null);
 
-  // Load live doctor registry once; keep the demo roster on any failure.
-  // Realtime: moderation events from any admin session refresh this list.
-  useEffect(() => {
-    let cancelled = false;
-    liveApi.getDoctors().then((live) => {
-      if (!cancelled) {
-        if (live && live.length > 0) {
-          setDoctors(live);
-          setIsLive(true);
-          setLoadError(null);
-        } else {
-          setLoadError('Live backend returned no data — showing demo roster');
-        }
-      }
-    });
-    return () => { cancelled = true; };
+  // Load the live doctor registry. Errors surface as an explicit error state.
+  const loadDoctors = useCallback(async () => {
+    try {
+      const live = await liveApi.getDoctors();
+      setDoctors(live);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
+  // Realtime: moderation events from any admin session refresh this list.
   useEffect(() => {
+    void loadDoctors();
     const unsubscribe = realtimeService.subscribe((msg) => {
       if (msg.event === 'admin.users.changed') {
-        liveApi.getDoctors().then((live) => {
-          if (live && live.length > 0) {
-            setDoctors(live);
-            setIsLive(true);
-            setLoadError(null);
-          } else {
-            setLoadError('Live refresh returned empty — using cached data');
-          }
-        });
+        void loadDoctors();
       }
     });
     return unsubscribe;
-  }, []);
+  }, [loadDoctors]);
 
   // Filter & Search Logic
   const filteredDocs = doctors.filter((doc) => {
@@ -272,12 +126,10 @@ export default function DoctorsPage() {
     }
 
     // Live backend sync: verification decision (approve/reject) or suspension
-    if (isLive) {
-      if (type === 'suspend') {
-        void liveApi.setUserStatus(docId, false);
-      } else {
-        void liveApi.verifyDoctor(docId, type, reason);
-      }
+    if (type === 'suspend') {
+      void liveApi.setUserStatus(docId, false);
+    } else {
+      void liveApi.verifyDoctor(docId, type, reason);
     }
 
     setConfirmAction(null);
@@ -296,13 +148,21 @@ export default function DoctorsPage() {
               <Stethoscope size={18} style={{ color: '#2563eb' }} />
             </div>
             <h1 className="page-title">Doctor Verification</h1>
-<span style={{
-                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
-                  background: isLive ? '#f0fdf4' : loadError ? '#fef2f2' : '#f8fafc',
-                  color: isLive ? '#16a34a' : loadError ? '#dc2626' : '#64748b',
-                }}>
-                  {isLive ? 'Live data' : loadError ? 'Fallback mode' : 'Demo data'}
-                </span>
+            {loadError ? (
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                background: '#fef2f2', color: '#dc2626',
+              }}>
+                Live data unavailable
+              </span>
+            ) : !isLoading ? (
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                background: '#f0fdf4', color: '#16a34a',
+              }}>
+                Live data
+              </span>
+            ) : null}
           </div>
           <p className="page-subtitle">Verify doctor credentials, certificates, and review platform registration requests.</p>
         </div>
@@ -326,6 +186,37 @@ export default function DoctorsPage() {
           <Download size={14} /> Export CSV
         </button>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading doctor registry from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load doctors from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadDoctors(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>

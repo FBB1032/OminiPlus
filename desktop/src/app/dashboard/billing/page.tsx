@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Building2, Stethoscope, Receipt, DollarSign, CreditCard,
   Download, Plus, Search, Filter, CheckCircle2, Clock,
@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
+import { liveApi, getApiErrorMessage } from '@/services/api';
+import type { Hospital, PaymentTransaction, Doctor } from '@/types';
 
 interface HospitalContract {
   id: string;
@@ -30,64 +32,23 @@ interface HospitalContract {
   facilityCode: string;
 }
 
-const INITIAL_HOSPITAL_CONTRACTS: HospitalContract[] = [
-  {
-    id: 'CTR-HSP-001',
-    hospitalName: 'National Hospital Abuja',
-    state: 'FCT Abuja',
-    tier: 'Enterprise Multi-Dept',
-    annualFee: 2500000,
-    contractStartDate: '2026-01-01',
-    nextRenewalDate: '2027-01-01',
-    status: 'active',
-    beds: 250,
-    staffSeats: 120,
-    contactEmail: 'admin@nationalhospital.gov.ng',
-    facilityCode: 'NHA-FCT-01',
-  },
-  {
-    id: 'CTR-HSP-002',
-    hospitalName: 'Lagos University Teaching Hospital (LUTH)',
-    state: 'Lagos',
-    tier: 'Enterprise Multi-Dept',
-    annualFee: 2200000,
-    contractStartDate: '2026-02-15',
-    nextRenewalDate: '2027-02-15',
-    status: 'active',
-    beds: 200,
-    staffSeats: 90,
-    contactEmail: 'accounts@luth.org.ng',
-    facilityCode: 'LUTH-LOS-02',
-  },
-  {
-    id: 'CTR-HSP-003',
-    hospitalName: 'XYZ Specialist Hospital Kaduna',
-    state: 'Kaduna',
-    tier: 'Standard Clinic',
-    annualFee: 1200000,
-    contractStartDate: '2026-01-15',
-    nextRenewalDate: '2027-01-15',
-    status: 'active',
-    beds: 80,
-    staffSeats: 45,
-    contactEmail: 'i.sani@xyzspecialist.ng',
-    facilityCode: 'XYZ-KAD-03',
-  },
-  {
-    id: 'CTR-HSP-004',
-    hospitalName: 'Aminu Kano Teaching Hospital',
-    state: 'Kano',
+/** Maps a live hospital row onto the contract view shape. */
+function mapContract(h: Hospital): HospitalContract {
+  return {
+    id: h.id,
+    hospitalName: h.name,
+    state: h.city,
     tier: 'Regional Medical Center',
-    annualFee: 1800000,
-    contractStartDate: '2025-06-01',
-    nextRenewalDate: '2026-06-01',
-    status: 'overdue',
-    beds: 180,
-    staffSeats: 70,
-    contactEmail: 'billing@akth.gov.ng',
-    facilityCode: 'AKTH-KAN-04',
-  },
-];
+    annualFee: 0,
+    contractStartDate: h.createdAt,
+    nextRenewalDate: '—',
+    status: h.partnerStatus === 'active' ? 'active' : h.partnerStatus === 'pending' ? 'pending_invoice' : 'overdue',
+    beds: 0,
+    staffSeats: 0,
+    contactEmail: h.email,
+    facilityCode: h.id.slice(0, 8).toUpperCase(),
+  };
+}
 
 interface DoctorCommissionRecord {
   id: string;
@@ -104,64 +65,27 @@ interface DoctorCommissionRecord {
   bankAccount: string;
 }
 
-const INITIAL_DOCTOR_COMMISSIONS: DoctorCommissionRecord[] = [
-  {
-    id: 'DOC-COM-01',
-    doctorName: 'Dr. Folake Adeyemi',
-    specialization: 'Consultant Physician & Cardiology',
-    mdcnLicense: 'MDCN-74821-B',
-    consultationFee: 20000,
-    totalAppointments: 184,
-    grossBookings: 3680000,
-    platformCut: 552000,
-    doctorNetEarnings: 3128000,
-    payoutStatus: 'settled',
-    lastPayoutDate: '2026-08-30',
-    bankAccount: 'Access Bank •••• 4912',
-  },
-  {
-    id: 'DOC-COM-02',
-    doctorName: 'Dr. Ahmed Bello',
-    specialization: 'Cardiology Specialist',
-    mdcnLicense: 'MDCN-51920-C',
-    consultationFee: 25000,
-    totalAppointments: 142,
-    grossBookings: 3550000,
-    platformCut: 532500,
-    doctorNetEarnings: 3017500,
-    payoutStatus: 'settled',
-    lastPayoutDate: '2026-08-28',
-    bankAccount: 'GTBank •••• 8104',
-  },
-  {
-    id: 'DOC-COM-03',
-    doctorName: 'Dr. Sarah Danladi',
-    specialization: 'Pediatrics & Neonatology',
-    mdcnLicense: 'MDCN-68314-A',
-    consultationFee: 15000,
-    totalAppointments: 210,
-    grossBookings: 3150000,
-    platformCut: 472500,
-    doctorNetEarnings: 2677500,
-    payoutStatus: 'pending_batch',
-    lastPayoutDate: 'Pending Cycle',
-    bankAccount: 'Zenith Bank •••• 3021',
-  },
-  {
-    id: 'DOC-COM-04',
-    doctorName: 'Dr. Emeka Eze',
-    specialization: 'General Practice & Family Medicine',
-    mdcnLicense: 'MDCN-42099-D',
-    consultationFee: 10000,
-    totalAppointments: 295,
-    grossBookings: 2950000,
-    platformCut: 442500,
-    doctorNetEarnings: 2507500,
-    payoutStatus: 'settled',
-    lastPayoutDate: '2026-08-25',
-    bankAccount: 'First Bank •••• 7739',
-  },
-];
+/** Derives a commission record from live doctor + payment ledger rows. */
+function mapCommission(doctor: Doctor, payments: PaymentTransaction[]): DoctorCommissionRecord {
+  const doctorTxs = payments.filter((tx) => tx.doctorId === doctor.id);
+  const gross = doctorTxs.reduce((acc, tx) => acc + (tx.status !== 'refunded' ? tx.amount : 0), 0);
+  const platformCut = doctorTxs.reduce((acc, tx) => acc + (tx.status !== 'refunded' ? tx.platformFee : 0), 0);
+  const hasSettled = doctorTxs.some((tx) => tx.status === 'released');
+  return {
+    id: doctor.id,
+    doctorName: `Dr. ${doctor.firstName} ${doctor.lastName}`,
+    specialization: doctor.specialization,
+    mdcnLicense: doctor.licenseNo ?? '—',
+    consultationFee: doctor.consultationFee ?? 0,
+    totalAppointments: doctorTxs.length,
+    grossBookings: gross,
+    platformCut,
+    doctorNetEarnings: gross - platformCut,
+    payoutStatus: hasSettled ? 'settled' : 'pending_batch',
+    lastPayoutDate: doctorTxs.find((tx) => tx.escrowReleasedAt)?.escrowReleasedAt?.slice(0, 10) ?? '—',
+    bankAccount: '•••• (managed)',
+  };
+}
 
 interface InvoiceRecord {
   id: string;
@@ -177,64 +101,15 @@ interface InvoiceRecord {
   transactionRef?: string;
 }
 
-const INITIAL_INVOICES: InvoiceRecord[] = [
-  {
-    id: 'INV-001',
-    invoiceNumber: 'OMP-INV-2026-084',
-    recipient: 'National Hospital Abuja',
-    type: 'Hospital Enterprise License',
-    amount: 2500000,
-    vatAmount: 187500,
-    issueDate: '2026-01-02',
-    dueDate: '2026-02-02',
-    status: 'paid',
-    paymentMethod: 'NIBSS Instant Transfer',
-    transactionRef: 'NIBSS-TX-984021-NHA',
-  },
-  {
-    id: 'INV-002',
-    invoiceNumber: 'OMP-INV-2026-092',
-    recipient: 'XYZ Specialist Hospital Kaduna',
-    type: 'Hospital Enterprise License',
-    amount: 1200000,
-    vatAmount: 90000,
-    issueDate: '2026-01-15',
-    dueDate: '2026-02-15',
-    status: 'paid',
-    paymentMethod: 'Direct Virtual Account Settlement',
-    transactionRef: 'NIBSS-TX-310944-XYZ',
-  },
-  {
-    id: 'INV-003',
-    invoiceNumber: 'OMP-INV-2026-105',
-    recipient: 'Lagos University Teaching Hospital',
-    type: 'Hospital Enterprise License',
-    amount: 2200000,
-    vatAmount: 165000,
-    issueDate: '2026-02-15',
-    dueDate: '2026-03-15',
-    status: 'paid',
-    paymentMethod: 'Treasury Single Account (TSA)',
-    transactionRef: 'TSA-FED-550182-LUT',
-  },
-  {
-    id: 'INV-004',
-    invoiceNumber: 'OMP-INV-2026-118',
-    recipient: 'Aminu Kano Teaching Hospital',
-    type: 'Hospital Enterprise License',
-    amount: 1800000,
-    vatAmount: 135000,
-    issueDate: '2026-05-15',
-    dueDate: '2026-06-01',
-    status: 'overdue',
-  },
-];
-
 export default function PlatformBillingManagementPage() {
   const [activeTab, setActiveTab] = useState<'hospitals' | 'doctors' | 'invoices'>('hospitals');
-  const [contracts, setContracts] = useState<HospitalContract[]>(INITIAL_HOSPITAL_CONTRACTS);
-  const [doctors, setDoctors] = useState<DoctorCommissionRecord[]>(INITIAL_DOCTOR_COMMISSIONS);
-  const [invoices, setInvoices] = useState<InvoiceRecord[]>(INITIAL_INVOICES);
+  // Live financial data (hospitals + doctor commission ledger derived from
+  // the payments table) — no fallback; failures render an explicit error state.
+  const [contracts, setContracts] = useState<HospitalContract[]>([]);
+  const [doctors, setDoctors] = useState<DoctorCommissionRecord[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'overdue' | 'pending'>('all');
 
@@ -252,6 +127,44 @@ export default function PlatformBillingManagementPage() {
   const [invoicePage, setInvoicePage] = useState(1);
   const [invoicePageSize, setInvoicePageSize] = useState(10);
   const [invoiceIsSeeAll, setInvoiceIsSeeAll] = useState(false);
+
+  // Load live billing data: hospital contracts, the payments ledger, and the
+  // doctor registry (commissions are derived from payments per doctor).
+  const loadBillingData = useCallback(async () => {
+    try {
+      const [hospitalsResult, paymentsResult, doctorsResult] = await Promise.allSettled([
+        liveApi.getHospitals(),
+        liveApi.getPayments(),
+        liveApi.getDoctors(),
+      ]);
+
+      if (hospitalsResult.status === 'fulfilled') {
+        setContracts(hospitalsResult.value.map(mapContract));
+      }
+      if (paymentsResult.status === 'fulfilled' && doctorsResult.status === 'fulfilled') {
+        setDoctors(
+          doctorsResult.value.map((d) => mapCommission(d, paymentsResult.value))
+        );
+      }
+
+      const failed = [hospitalsResult, paymentsResult, doctorsResult].filter(
+        (r) => r.status === 'rejected'
+      );
+      if (failed.length === 3) {
+        setLoadError(getApiErrorMessage((failed[0] as PromiseRejectedResult).reason as Error));
+      } else {
+        setLoadError(null);
+      }
+      setIsLoading(false);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBillingData();
+  }, [loadBillingData]);
 
   const handleSearchChange = (val: string) => {
     setSearchTerm(val);
@@ -273,7 +186,7 @@ export default function PlatformBillingManagementPage() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   // New Invoice Form state
-  const [invHospital, setInvHospital] = useState(contracts[0]?.hospitalName || '');
+  const [invHospital, setInvHospital] = useState('');
   const [invType, setInvType] = useState<'Hospital Enterprise License' | 'Hospital Bed Module' | 'Blood Screening Extension'>('Hospital Enterprise License');
   const [invAmount, setInvAmount] = useState('1500000');
   const [invDueDate, setInvDueDate] = useState('2026-08-15');
@@ -358,7 +271,38 @@ export default function PlatformBillingManagementPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }} className="animate-fade-in">
-      
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading billing records from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load billing records from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadBillingData(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
+
       {/* Toast Notification */}
       {successToast && (
         <div style={{

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Calendar, Video, Phone, MapPin, Clock, Search, Eye, Filter, Download, AlertCircle, Building2 } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Calendar, Video, Phone, MapPin, Clock, Search, Eye, Filter, Download, AlertCircle, Building2, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Table, Column } from '@/components/ui/Table';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import type { Appointment, AppointmentStatus } from '@/types';
 
 // Helper to format patient identity into initials + masked ID
@@ -17,28 +18,6 @@ function getMaskedPatient(id: string, firstName: string, lastName: string) {
   const numericId = id.replace(/\D/g, '') || id.substring(1, 6);
   return `${initials} — P-${numericId}`;
 }
-
-const MOCK_APPOINTMENTS: Appointment[] = Array.from({ length: 25 }, (_, i) => ({
-  id: `appt-${1000 + i}`,
-  patient: { 
-    id: `pat-${4800 + i}`, 
-    firstName: ['Aisha', 'Babatunde', 'Chioma', 'David', 'Efe', 'Funmi', 'Grace', 'Henry'][i % 8], 
-    lastName: ['Okonkwo', 'Balogun', 'Nwachukwu', 'Adebayo', 'Eze', 'Okeke', 'Ojo', 'Bello'][i % 8] 
-  },
-  doctor: { 
-    id: `doc-${200 + i}`, 
-    firstName: 'Dr.', 
-    lastName: ['Alao', 'Nwachukwu', 'Yusuf', 'Okafor', 'Bello', 'Okoye', 'Adeyemi', 'Ezenwa'][i % 8], 
-    specialization: ['Cardiology', 'Pediatrics', 'Neurology', 'Dermatology', 'Orthopedics', 'Psychiatry', 'General Practice', 'Oncology'][i % 8] 
-  },
-  scheduledAt: new Date(Date.now() + (i - 5) * 86400000 + (i * 3600000)).toISOString(),
-  duration: [15, 20, 30, 45][i % 4],
-  type: (['video', 'in_person', 'phone'] as const)[i % 3],
-  status: (['pending', 'approved', 'completed', 'cancelled', 'completed'] as const)[i % 5],
-  reason: ['General Checkup', 'Follow-up consultation', 'Prescription renewal', 'Lab results review', 'Second opinion'][i % 5],
-  consultationFee: 50 + (i % 5) * 25,
-  createdAt: new Date(Date.now() - i * 86400000).toISOString(),
-}));
 
 const STATUS_VARIANTS: Record<AppointmentStatus, 'warning' | 'info' | 'success' | 'error' | 'neutral'> = {
   pending: 'warning',
@@ -56,13 +35,34 @@ const TYPE_ICONS = {
 };
 
 export default function AppointmentsPage() {
-  const [appointments, setAppointments] = useState<Appointment[]>(MOCK_APPOINTMENTS);
+  // Live appointments (https://ominipulse.onrender.com/api/appointments)
+  // — no fallback; failures render an explicit error state.
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | AppointmentStatus>('all');
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isSeeAll, setIsSeeAll] = useState(false);
+
+  // Load the live appointments feed. Errors surface as an explicit error state.
+  const loadAppointments = useCallback(async () => {
+    try {
+      const live = await liveApi.getAppointments();
+      setAppointments(live);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadAppointments();
+  }, [loadAppointments]);
 
   const filtered = appointments.filter((a) => {
     // Privacy-aware search (only search Doctor's name or Patient Initials/ID representation)
@@ -109,10 +109,6 @@ export default function AppointmentsPage() {
       key: 'doctor',
       label: 'Doctor & Hospital Affiliation',
       render: (a) => {
-        const mockHospitals = ['Evercare Hospital Lekki', 'LUTH Surulere', 'Reddington Hospital', 'Independent Specialist'];
-        const charCode = a.id.charCodeAt(a.id.length - 1) || 0;
-        const hospitalName = mockHospitals[charCode % mockHospitals.length];
-        const isAffiliated = hospitalName !== 'Independent Specialist';
         return (
           <div>
             <p style={{ fontWeight: 550, color: '#1e293b' }}>Dr. {a.doctor.lastName}</p>
@@ -121,9 +117,9 @@ export default function AppointmentsPage() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              background: isAffiliated ? '#e6f4f4' : '#f1f5f9',
-              color: isAffiliated ? '#0f6e6e' : '#475569',
-              border: `1px solid ${isAffiliated ? '#b2dfdb' : '#e2e8f0'}`,
+              background: '#e6f4f4',
+              color: '#0f6e6e',
+              border: '1px solid #b2dfdb',
               padding: '1px 6px',
               borderRadius: 4,
               fontSize: 10.5,
@@ -131,7 +127,7 @@ export default function AppointmentsPage() {
               marginTop: 3
             }}>
               <Building2 size={10} />
-              <span>{hospitalName}</span>
+              <span>Verified Facility</span>
             </div>
           </div>
         );
@@ -223,6 +219,37 @@ export default function AppointmentsPage() {
             Export CSV
           </Button>
         </div>
+
+        {/* Live data connection state */}
+        {isLoading && (
+          <div style={{
+            background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+            borderRadius: 10, padding: '12px 16px', fontSize: 13, fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: 10, marginTop: 16,
+          }}>
+            <RefreshCw size={15} className="animate-spin" />
+            Loading appointments from the live database…
+          </div>
+        )}
+        {loadError && (
+          <div style={{
+            background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+            padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, marginTop: 16,
+          }}>
+            <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+                Failed to load appointments from the live database
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+                {loadError} — check your connection and role, then retry.
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadAppointments(); }}>
+              Retry
+            </Button>
+          </div>
+        )}
       </Card>
 
       {/* Minimal Controls + Table Card */}

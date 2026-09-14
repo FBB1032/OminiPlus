@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   CreditCard, Search, Download, Eye, CheckCircle, XCircle,
   AlertTriangle, Clock, ArrowUpRight, ArrowDownLeft, ShieldCheck,
-  Building2, Stethoscope, RefreshCcw, DollarSign, Wallet
+  Building2, Stethoscope, RefreshCcw, DollarSign, Wallet, RefreshCw
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -12,144 +12,15 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import type { PaymentTransaction, PaymentStatus } from '@/types';
 
-const INITIAL_TRANSACTIONS: PaymentTransaction[] = [
-  {
-    id: 'tx-101',
-    reference: 'PAY-2026-88102',
-    patientId: 'pat-4901',
-    patientName: 'Aisha Okonkwo',
-    doctorId: 'doc-101',
-    doctorName: 'Dr. Folake Ademola',
-    appointmentId: 'APT-2026-8841',
-    serviceType: 'Video Consultation (Cardiology)',
-    amount: 15000,
-    currency: 'NGN',
-    platformFee: 2250, // 15%
-    doctorPayout: 12750, // 85%
-    status: 'escrowed',
-    method: 'card',
-    escrowReleased: false,
-    createdAt: '2026-06-04T10:15:00Z',
-  },
-  {
-    id: 'tx-102',
-    reference: 'PAY-2026-88103',
-    patientId: 'pat-4902',
-    patientName: 'Babatunde Balogun',
-    doctorId: 'doc-102',
-    doctorName: 'Dr. Tunde Adewale',
-    appointmentId: 'APT-2026-8842',
-    serviceType: 'In-Person Consultation (Neurology)',
-    amount: 20000,
-    currency: 'NGN',
-    platformFee: 3000,
-    doctorPayout: 17000,
-    status: 'completed',
-    method: 'bank_transfer',
-    escrowReleased: true,
-    escrowReleasedAt: '2026-06-03T16:00:00Z',
-    createdAt: '2026-06-03T14:30:00Z',
-  },
-  {
-    id: 'tx-103',
-    reference: 'PAY-2026-88104',
-    patientId: 'pat-4903',
-    patientName: 'Chioma Nwachukwu',
-    doctorId: 'doc-103',
-    doctorName: 'Dr. Amina Bello',
-    appointmentId: 'APT-2026-8843',
-    serviceType: 'Video Consultation (Pediatrics)',
-    amount: 18000,
-    currency: 'NGN',
-    platformFee: 2700,
-    doctorPayout: 15300,
-    status: 'completed',
-    method: 'card',
-    escrowReleased: true,
-    escrowReleasedAt: '2026-06-02T12:00:00Z',
-    createdAt: '2026-06-02T09:15:00Z',
-  },
-  {
-    id: 'tx-104',
-    reference: 'PAY-2026-88105',
-    patientId: 'pat-4904',
-    patientName: 'David Adebayo',
-    doctorId: 'doc-104',
-    doctorName: 'Dr. David Okoye',
-    appointmentId: 'APT-2026-8844',
-    serviceType: 'Chat Consultation (Dermatology)',
-    amount: 12000,
-    currency: 'NGN',
-    platformFee: 1800,
-    doctorPayout: 10200,
-    status: 'refunded',
-    method: 'ussd',
-    escrowReleased: false,
-    refundReason: 'Doctor missed consultation time slot without prior rescheduling notice.',
-    refundedAt: '2026-06-01T15:20:00Z',
-    createdAt: '2026-06-01T11:00:00Z',
-  },
-  {
-    id: 'tx-105',
-    reference: 'PAY-2026-88106',
-    patientId: 'pat-4905',
-    patientName: 'Efe Eze',
-    doctorId: 'doc-105',
-    doctorName: 'Dr. Oluwaseun Adeyemi',
-    appointmentId: 'APT-2026-8845',
-    serviceType: 'In-Person Consultation (Orthopedics)',
-    amount: 25000,
-    currency: 'NGN',
-    platformFee: 3750,
-    doctorPayout: 21250,
-    status: 'escrowed',
-    method: 'card',
-    escrowReleased: false,
-    createdAt: '2026-06-04T12:30:00Z',
-  },
-  {
-    id: 'tx-106',
-    reference: 'PAY-2026-88107',
-    patientId: 'pat-4906',
-    patientName: 'Funmi Okeke',
-    doctorId: 'doc-106',
-    doctorName: 'Dr. Maria Ezenwa',
-    appointmentId: 'APT-2026-8846',
-    serviceType: 'Video Consultation (Psychiatry)',
-    amount: 16000,
-    currency: 'NGN',
-    platformFee: 2400,
-    doctorPayout: 13600,
-    status: 'completed',
-    method: 'wallet',
-    escrowReleased: true,
-    escrowReleasedAt: '2026-06-03T18:00:00Z',
-    createdAt: '2026-06-03T16:20:00Z',
-  },
-  {
-    id: 'tx-107',
-    reference: 'PAY-2026-88108',
-    patientId: 'pat-4907',
-    patientName: 'Grace Ojo',
-    doctorId: 'doc-101',
-    doctorName: 'Dr. Folake Ademola',
-    appointmentId: 'APT-2026-8847',
-    serviceType: 'ECG Heart Tele-Review',
-    amount: 22000,
-    currency: 'NGN',
-    platformFee: 3300,
-    doctorPayout: 18700,
-    status: 'escrowed',
-    method: 'card',
-    escrowReleased: false,
-    createdAt: '2026-06-04T14:00:00Z',
-  },
-];
-
 export default function PaymentsPage() {
-  const [transactions, setTransactions] = useState<PaymentTransaction[]>(INITIAL_TRANSACTIONS);
+  // Live escrow ledger (https://ominipulse.onrender.com/api/admin/payments)
+  // — no fallback; failures render an explicit error state.
+  const [transactions, setTransactions] = useState<PaymentTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PaymentStatus>('all');
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null);
@@ -166,6 +37,23 @@ export default function PaymentsPage() {
     amount: number;
     doctorName: string;
   } | null>(null);
+
+  // Load the live payments ledger. Errors surface as an explicit error state.
+  const loadPayments = useCallback(async () => {
+    try {
+      const live = await liveApi.getPayments();
+      setTransactions(live);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPayments();
+  }, [loadPayments]);
 
   // Filter & Search Logic
   const filteredTransactions = transactions.filter((tx) => {
@@ -274,6 +162,37 @@ export default function PaymentsPage() {
           Export Financial Ledger
         </Button>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading the escrow ledger from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load payments from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadPayments(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* ── KPI Financial Metrics ────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>

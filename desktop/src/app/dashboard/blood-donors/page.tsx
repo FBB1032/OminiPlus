@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Droplet, Search, Download, Eye, CheckCircle, XCircle,
   AlertCircle, Award, FileText, Calendar, MapPin,
-  Clock, Check, UserCheck, ShieldOff, AlertTriangle, Plus, Phone
+  Clock, Check, UserCheck, ShieldOff, AlertTriangle, Plus, Phone, RefreshCw
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi, getApiErrorMessage, type BloodDonorRow } from '@/services/api';
 
 interface VerificationBloodDonor {
   id: string;
@@ -38,192 +39,40 @@ interface VerificationBloodDonor {
   medicalCheckUrl?: string;
 }
 
-const INITIAL_DONORS: VerificationBloodDonor[] = [
-  {
-    id: 'bd-101',
-    name: 'Samuel Okon',
-    bloodGroup: 'O-',
-    genotype: 'AA',
-    city: 'Ikeja',
-    region: 'Lagos',
-    phone: '+234 802 345 6789',
-    email: 'samuel.okon@gmail.com',
-    availabilityStatus: 'Available Anytime',
-    partnerStatus: 'active',
-    lastDonationDate: '2025-11-10',
-    donationsCount: 6,
-    gender: 'Male',
-    verificationSubmittedAt: '2025-11-01T10:00:00Z',
-    verificationReviewedAt: '2025-11-02T14:30:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    donorCardUrl: 'blood_donor_card_samuel.pdf',
-    medicalCheckUrl: 'medical_clearance_samuel.pdf',
-  },
-  {
-    id: 'bd-102',
-    name: 'Grace Nwosu',
-    bloodGroup: 'O+',
-    genotype: 'AA',
-    city: 'Victoria Island',
-    region: 'Lagos',
-    phone: '+234 803 987 6543',
-    email: 'grace.nwosu@yahoo.com',
-    availabilityStatus: 'Available Anytime',
-    partnerStatus: 'active',
-    lastDonationDate: '2025-12-01',
-    donationsCount: 4,
-    gender: 'Female',
-    verificationSubmittedAt: '2025-11-20T09:15:00Z',
-    verificationReviewedAt: '2025-11-21T11:00:00Z',
-    verificationReviewedBy: 'verification_admin_1',
-    donorCardUrl: 'blood_donor_card_grace.pdf',
-    medicalCheckUrl: 'medical_clearance_grace.pdf',
-  },
-  {
-    id: 'bd-103',
-    name: 'Emmanuel Adebayo',
-    bloodGroup: 'A+',
-    genotype: 'AS',
-    city: 'Yaba',
-    region: 'Lagos',
-    phone: '+234 812 444 5555',
-    email: 'e.adebayo@healthnet.ng',
-    availabilityStatus: 'On-Call Emergency',
-    partnerStatus: 'pending',
-    lastDonationDate: '2025-09-15',
-    donationsCount: 9,
-    gender: 'Male',
-    verificationSubmittedAt: '2026-06-01T12:00:00Z',
-    donorCardUrl: 'blood_donor_card_emmanuel.pdf',
-    medicalCheckUrl: 'medical_clearance_emmanuel.pdf',
-  },
-  {
-    id: 'bd-104',
-    name: 'Kemi Fatimah',
-    bloodGroup: 'B+',
-    genotype: 'AA',
-    city: 'Surulere',
-    region: 'Lagos',
-    phone: '+234 809 111 2233',
-    email: 'kemi.fatimah@outlook.com',
-    availabilityStatus: 'Available Anytime',
-    partnerStatus: 'active',
-    lastDonationDate: '2025-10-20',
-    donationsCount: 3,
-    gender: 'Female',
-    verificationSubmittedAt: '2025-10-15T08:30:00Z',
-    verificationReviewedAt: '2025-10-15T16:20:00Z',
-    verificationReviewedBy: 'verification_admin_2',
-    donorCardUrl: 'blood_donor_card_kemi.pdf',
-    medicalCheckUrl: 'medical_clearance_kemi.pdf',
-  },
-  {
-    id: 'bd-105',
-    name: 'David Chidi',
-    bloodGroup: 'AB+',
-    genotype: 'AA',
-    city: 'Lekki',
-    region: 'Lagos',
-    phone: '+234 701 555 7788',
-    email: 'david.chidi@gmail.com',
-    availabilityStatus: 'Available Anytime',
-    partnerStatus: 'pending',
-    lastDonationDate: '2025-08-05',
-    donationsCount: 2,
-    gender: 'Male',
-    verificationSubmittedAt: '2026-06-03T15:40:00Z',
-    donorCardUrl: 'blood_donor_card_david.pdf',
-    medicalCheckUrl: 'medical_clearance_david.pdf',
-  },
-  {
-    id: 'bd-106',
-    name: 'Chinedu Eze',
-    bloodGroup: 'O-',
-    genotype: 'AA',
-    city: 'Maitama',
-    region: 'Abuja',
-    phone: '+234 805 777 8899',
-    email: 'chinedu.eze@abuja.gov.ng',
-    availabilityStatus: 'Available Anytime',
-    partnerStatus: 'active',
-    lastDonationDate: '2025-12-14',
-    donationsCount: 11,
-    gender: 'Male',
-    verificationSubmittedAt: '2025-12-10T11:00:00Z',
-    verificationReviewedAt: '2025-12-11T09:30:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    donorCardUrl: 'blood_donor_card_chinedu.pdf',
-    medicalCheckUrl: 'medical_clearance_chinedu.pdf',
-  },
-  {
-    id: 'bd-107',
-    name: 'Aisha Bello',
-    bloodGroup: 'A-',
-    genotype: 'AA',
-    city: 'Garki',
-    region: 'Abuja',
-    phone: '+234 818 222 3344',
-    email: 'aisha.bello@fct.gov.ng',
-    availabilityStatus: 'On-Call Emergency',
-    partnerStatus: 'rejected',
-    lastDonationDate: '2025-11-28',
-    donationsCount: 5,
-    gender: 'Female',
-    verificationSubmittedAt: '2025-11-25T14:00:00Z',
-    verificationReviewedAt: '2025-11-26T10:15:00Z',
-    verificationReviewedBy: 'verification_admin_1',
-    rejectionReason: 'Hemoglobin levels fell below minimum threshold requirement during medical evaluation.',
-    donorCardUrl: 'blood_donor_card_aisha.pdf',
-    medicalCheckUrl: 'medical_clearance_aisha.pdf',
-  },
-  {
-    id: 'bd-108',
-    name: 'Tunde Olawale',
-    bloodGroup: 'B-',
-    genotype: 'AS',
-    city: 'Bodija',
-    region: 'Ibadan',
-    phone: '+234 803 333 4455',
-    email: 'tunde.olawale@ibadan.edu.ng',
-    availabilityStatus: 'Available Anytime',
-    partnerStatus: 'active',
-    lastDonationDate: '2025-10-10',
-    donationsCount: 7,
-    gender: 'Male',
-    verificationSubmittedAt: '2025-10-01T16:00:00Z',
-    verificationReviewedAt: '2025-10-02T12:00:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    donorCardUrl: 'blood_donor_card_tunde.pdf',
-    medicalCheckUrl: 'medical_clearance_tunde.pdf',
-  },
-  {
-    id: 'bd-109',
-    name: 'Ngozi Okafor',
-    bloodGroup: 'AB-',
-    genotype: 'AA',
-    city: 'GRA',
-    region: 'Port Harcourt',
-    phone: '+234 806 666 9988',
-    email: 'ngozi.okafor@ph-health.org',
-    availabilityStatus: 'On-Call Emergency',
-    partnerStatus: 'suspended',
-    lastDonationDate: '2025-07-30',
-    donationsCount: 8,
-    gender: 'Female',
-    verificationSubmittedAt: '2025-07-20T10:00:00Z',
-    verificationReviewedAt: '2025-07-21T15:30:00Z',
-    verificationReviewedBy: 'super_admin_1',
-    rejectionReason: 'Temporary medical suspension following post-donation iron level evaluation.',
-    donorCardUrl: 'blood_donor_card_ngozi.pdf',
-    medicalCheckUrl: 'medical_clearance_ngozi.pdf',
-  },
-];
+/** Maps a live blood_donors row onto the verification view shape. */
+function mapDonor(row: BloodDonorRow): VerificationBloodDonor {
+  return {
+    id: row.id,
+    name: row.full_name,
+    bloodGroup: (row.blood_group as VerificationBloodDonor['bloodGroup']) ?? 'O+',
+    genotype: row.genotype ?? '—',
+    city: row.city,
+    region: row.region ?? '—',
+    phone: row.phone,
+    email: row.email ?? '—',
+    availabilityStatus: (row.availability_status as VerificationBloodDonor['availabilityStatus']) ?? 'Available Anytime',
+    partnerStatus: row.partner_status,
+    lastDonationDate: row.last_donation_date ?? '—',
+    donationsCount: row.donations_count ?? 0,
+    gender: row.gender ?? '—',
+    verificationSubmittedAt: row.verification_submitted_at ?? undefined,
+    verificationReviewedAt: row.verification_reviewed_at ?? undefined,
+    verificationReviewedBy: row.verification_reviewed_by ?? undefined,
+    rejectionReason: row.rejection_reason ?? undefined,
+    donorCardUrl: row.donor_card_url ?? undefined,
+    medicalCheckUrl: row.medical_check_url ?? undefined,
+  };
+}
 
 const REGIONS = ['All Regions', 'Lagos', 'Abuja', 'Ibadan', 'Port Harcourt'];
 const BLOOD_GROUPS = ['All Groups', 'O-', 'O+', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
 
 export default function BloodDonorsPage() {
-  const [donors, setDonors] = useState<VerificationBloodDonor[]>(INITIAL_DONORS);
+  // Live blood donor registry (https://ominipulse.onrender.com/api/hospital/
+  // blood/donors) — no fallback; failures render an explicit error state.
+  const [donors, setDonors] = useState<VerificationBloodDonor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'active' | 'rejected' | 'suspended'>('all');
   const [regionFilter, setRegionFilter] = useState('All Regions');
@@ -249,6 +98,23 @@ export default function BloodDonorsPage() {
     type: 'approve' | 'reject' | 'suspend';
     donorId: string;
   } | null>(null);
+
+  // Load the live donor registry. Errors surface explicitly.
+  const loadDonors = useCallback(async () => {
+    try {
+      const rows = await liveApi.getBloodDonors();
+      setDonors(rows.map(mapDonor));
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadDonors();
+  }, [loadDonors]);
 
   const handleCreateDonor = (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,6 +182,11 @@ export default function BloodDonorsPage() {
     if (!confirmAction) return;
 
     const { type, donorId } = confirmAction;
+
+    // Live backend sync: donor verification decision.
+    const nextStatus = type === 'approve' ? 'active' : type === 'reject' ? 'rejected' : 'suspended';
+    void liveApi.updateBloodDonorStatus(donorId, nextStatus as VerificationBloodDonor['partnerStatus'], reason);
+
     setDonors((prev) =>
       prev.map((d) => {
         if (d.id !== donorId) return d;
@@ -388,6 +259,37 @@ export default function BloodDonorsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading the donor registry from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertCircle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load blood donors from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadDonors(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* KPI Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Flag, Eye, CheckCircle, XCircle, Download, AlertTriangle, ShieldAlert,
   FileText, ShieldOff, UserX, Send, Printer, FileCheck, Paperclip, Clock,
-  Building2, Stethoscope, Search, ExternalLink
+  Building2, Stethoscope, Search, ExternalLink, RefreshCw
 } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -13,6 +13,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import type { Report, ReportEvidence } from '@/types';
 
 // Anonymize patient helper
@@ -23,125 +24,6 @@ function getMaskedReporter(id: string, name: string) {
   return `${initials} — Patient #${numericId}`;
 }
 
-const INITIAL_REPORTS: Report[] = [
-  {
-    id: 'REP-2026-901',
-    reporterId: 'pat-4901',
-    reporterName: 'Aisha Okonkwo',
-    targetId: 'doc-101',
-    targetName: 'Dr. Tunde Alao',
-    targetType: 'doctor',
-    targetLicenseNo: 'MDCN-LIC-88291',
-    targetSpecialty: 'Cardiologist',
-    targetHospital: 'Lagos University Teaching Hospital (LUTH)',
-    consultationId: 'APT-2026-8841',
-    category: 'malpractice',
-    description: 'Patient reported severe prescription overdose and unverified dosage instructions during tele-consultation. Consultation chat log transcript attached shows contradictory advice.',
-    status: 'pending',
-    severity: 'critical',
-    createdAt: '2026-06-04T10:15:00Z',
-    evidenceFiles: [
-      {
-        id: 'ev-1',
-        fileName: 'chat_transcript_apt8841.pdf',
-        fileType: 'transcript',
-        fileUrl: '/evidence/chat_transcript_apt8841.pdf',
-        uploadedAt: '2026-06-04T10:16:00Z',
-        sizeBytes: '2.4 MB',
-      },
-      {
-        id: 'ev-2',
-        fileName: 'prescription_dosages_photo.png',
-        fileType: 'image',
-        fileUrl: '/evidence/prescription_dosages_photo.png',
-        uploadedAt: '2026-06-04T10:17:00Z',
-        sizeBytes: '1.8 MB',
-      },
-    ],
-  },
-  {
-    id: 'REP-2026-902',
-    reporterId: 'pat-4902',
-    reporterName: 'Babatunde Balogun',
-    targetId: 'doc-102',
-    targetName: 'Dr. Amina Bello',
-    targetType: 'doctor',
-    targetLicenseNo: 'MDCN-LIC-44321',
-    targetSpecialty: 'Pediatrician',
-    targetHospital: 'National Hospital Abuja',
-    consultationId: 'APT-2026-7712',
-    category: 'inappropriate_behavior',
-    description: 'Use of unprofessional and dismissive language during video consultation. Audio evidence transcript recorded by patient during session.',
-    status: 'under_review',
-    severity: 'high',
-    createdAt: '2026-06-03T14:30:00Z',
-    evidenceFiles: [
-      {
-        id: 'ev-3',
-        fileName: 'audio_consultation_recording.mp3',
-        fileType: 'audio',
-        fileUrl: '/evidence/audio_recording.mp3',
-        uploadedAt: '2026-06-03T14:35:00Z',
-        sizeBytes: '5.6 MB',
-      },
-    ],
-  },
-  {
-    id: 'REP-2026-903',
-    reporterId: 'pat-4903',
-    reporterName: 'Chioma Nwachukwu',
-    targetId: 'ph-101',
-    targetName: 'HealthPlus Pharmacy VI',
-    targetType: 'pharmacy',
-    targetLicenseNo: 'PH-LIC-20091',
-    consultationId: 'APT-2026-6631',
-    category: 'fraud',
-    description: 'Pharmacy attempted to substitute prescribed antibiotic with expired batch. Photo evidence of drug packaging expiry date attached.',
-    status: 'pending',
-    severity: 'high',
-    createdAt: '2026-06-02T11:20:00Z',
-    evidenceFiles: [
-      {
-        id: 'ev-4',
-        fileName: 'expired_packaging_batch.jpg',
-        fileType: 'image',
-        fileUrl: '/evidence/expired_batch.jpg',
-        uploadedAt: '2026-06-02T11:22:00Z',
-        sizeBytes: '3.1 MB',
-      },
-    ],
-  },
-  {
-    id: 'REP-2026-904',
-    reporterId: 'pat-4904',
-    reporterName: 'Efe Adebayo',
-    targetId: 'doc-104',
-    targetName: 'Dr. Chidi Nnamdi',
-    targetType: 'doctor',
-    targetLicenseNo: 'MDCN-LIC-99120',
-    targetSpecialty: 'General Practitioner',
-    targetHospital: 'UCH Ibadan',
-    consultationId: 'APT-2026-5590',
-    category: 'fake_credentials',
-    description: 'Suspicious medical license credentials. System audit flagged invalid MDCN registration state.',
-    status: 'handover_to_board',
-    severity: 'critical',
-    createdAt: '2026-05-30T09:00:00Z',
-    boardHandoverAt: '2026-05-30T16:00:00Z',
-    disciplinaryActionNote: 'Case formally transferred to Medical Disciplinary Board of Doctors for license revocation audit.',
-    evidenceFiles: [
-      {
-        id: 'ev-5',
-        fileName: 'mdcn_verification_audit.pdf',
-        fileType: 'pdf',
-        fileUrl: '/evidence/mdcn_audit.pdf',
-        uploadedAt: '2026-05-30T09:10:00Z',
-        sizeBytes: '1.2 MB',
-      },
-    ],
-  },
-];
-
 const SEVERITY_VARIANTS: Record<string, 'error' | 'warning' | 'neutral'> = {
   critical: 'error',
   high: 'error',
@@ -150,13 +32,34 @@ const SEVERITY_VARIANTS: Record<string, 'error' | 'warning' | 'neutral'> = {
 };
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState<Report[]>(INITIAL_REPORTS);
+  // Live incident reports (https://ominipulse.onrender.com/api/admin/incidents)
+  // — no fallback; failures render an explicit error state.
+  const [reports, setReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'under_review' | 'handover_to_board' | 'resolved' | 'dismissed'>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [isSeeAll, setIsSeeAll] = useState(false);
+
+  // Load the live incident reports feed. Errors surface explicitly.
+  const loadReports = useCallback(async () => {
+    try {
+      const live = await liveApi.getIncidents();
+      setReports(live);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadReports();
+  }, [loadReports]);
 
   // Disciplinary Modal Actions State
   const [isTempSuspendModalOpen, setIsTempSuspendModalOpen] = useState(false);
@@ -194,6 +97,9 @@ export default function ReportsPage() {
   const handleApplyTempSuspension = () => {
     if (!selectedReport) return;
 
+    // Live backend sync: incident status transition.
+    void liveApi.updateIncidentStatus(selectedReport.id, 'temp_suspended');
+
     setReports(prev =>
       prev.map(r =>
         r.id === selectedReport.id
@@ -225,6 +131,13 @@ export default function ReportsPage() {
     if (!confirmAction || !selectedReport) return;
 
     const { type, reportId } = confirmAction;
+
+    // Live backend sync: incident status transition.
+    const liveStatus: Report['status'] =
+      type === 'perm_suspend' ? 'perm_suspended'
+      : type === 'handover_to_board' ? 'handover_to_board'
+      : 'dismissed';
+    void liveApi.updateIncidentStatus(reportId, liveStatus);
 
     setReports(prev =>
       prev.map(r => {
@@ -427,6 +340,37 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading incident reports from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load incident reports from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadReports(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>

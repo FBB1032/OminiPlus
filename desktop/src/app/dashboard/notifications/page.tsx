@@ -1,23 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Bell, Send, Users, Stethoscope, Globe, Plus, Download, Mail, Clock, CheckCheck } from 'lucide-react';
+import { Bell, Send, Users, Stethoscope, Globe, Plus, Download, Mail, Clock, CheckCheck, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { exportToCsv } from '@/lib/exportCsv';
-import { liveApi } from '@/services/api';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import { realtimeService } from '@/services/realtimeService';
 import type { Notification } from '@/types';
-
-const INITIAL_NOTIFICATIONS: (Notification & { isRead?: boolean })[] = [
-  { id: 'n1', title: 'App Maintenance Window', body: 'We will be performing scheduled maintenance on June 10th from 2AM–4AM WAT. Services may be briefly unavailable.', type: 'system', targetAudience: 'all', status: 'sent', sentAt: '2026-06-04T09:00:00Z', createdAt: '2026-06-04T08:00:00Z', isRead: false },
-  { id: 'n2', title: 'New Feature: Video Consultations', body: 'We\'ve launched HD video consultations! Book your next appointment as a video call.', type: 'announcement', targetAudience: 'patients', status: 'sent', sentAt: '2026-06-03T12:00:00Z', createdAt: '2026-06-03T11:00:00Z', isRead: false },
-  { id: 'n3', title: 'Doctor Verification Reminder', body: 'Please complete your profile verification to start accepting consultations.', type: 'reminder', targetAudience: 'doctors', status: 'sent', sentAt: '2026-06-02T10:00:00Z', createdAt: '2026-06-02T09:00:00Z', isRead: true },
-  { id: 'n4', title: 'Holiday Hours Notice', body: 'Support hours will be limited on June 12th for the public holiday.', type: 'announcement', targetAudience: 'all', status: 'draft', createdAt: '2026-06-05T08:00:00Z', isRead: true },
-  { id: 'n5', title: 'Scheduled Maintenance', body: 'Routine server maintenance scheduled for June 15th midnight.', type: 'system', targetAudience: 'all', status: 'scheduled', scheduledAt: '2026-06-15T00:00:00Z', createdAt: '2026-06-05T10:00:00Z', isRead: false },
-];
 
 const AUDIENCE_ICONS: Record<string, React.ReactNode> = {
   all: <Globe size={13} style={{ color: '#2563eb' }} />,
@@ -40,10 +32,13 @@ const TYPE_VARIANTS: Record<string, 'primary' | 'warning' | 'info' | 'neutral'> 
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<(Notification & { isRead?: boolean; recipients?: number })[]>(INITIAL_NOTIFICATIONS);
+  // Live broadcast history (https://ominipulse.onrender.com/api/broadcasts)
+  // — no fallback; failures render an explicit error state.
+  const [notifications, setNotifications] = useState<(Notification & { isRead?: boolean; recipients?: number })[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showCompose, setShowCompose] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  const [isLive, setIsLive] = useState(false);
   const [feedback, setFeedback] = useState('');
 
   const triggerFeedback = useCallback((msg: string) => {
@@ -51,10 +46,10 @@ export default function NotificationsPage() {
     setTimeout(() => setFeedback(''), 4000);
   }, []);
 
-  // Load live broadcast history; keep the demo set on any failure.
+  // Load the live broadcast history. Errors surface explicitly.
   const loadBroadcasts = useCallback(async () => {
-    const live = await liveApi.getBroadcasts();
-    if (live && live.length > 0) {
+    try {
+      const live = await liveApi.getBroadcasts();
       const mapped: (Notification & { isRead: boolean; recipients?: number })[] = live.map((b) => ({
         id: b.id,
         title: b.title,
@@ -69,7 +64,11 @@ export default function NotificationsPage() {
         recipients: b.recipientCount || undefined,
       }));
       setNotifications(mapped);
-      setIsLive(true);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -107,47 +106,22 @@ export default function NotificationsPage() {
   const handleSendNotification = async (status: 'sent' | 'draft') => {
     if (!title.trim() || !body.trim()) return;
 
-    if (isLive) {
-      // Live path: create the broadcast server-side, then dispatch it.
-      // The fan-out writes one notifications row per recipient and pushes
-      // a realtime event to every connected admin/desktop session.
+    // Live path: create the broadcast server-side, then dispatch it.
+    // The fan-out writes one notifications row per recipient and pushes
+    // a realtime event to every connected admin/desktop session.
+    try {
       const created = await liveApi.createBroadcast({ title, body, type, targetAudience: audience });
-      if (created) {
-        if (status === 'sent') {
-          const dispatched = await liveApi.dispatchBroadcast(created.id);
-          triggerFeedback(
-            dispatched
-              ? `Broadcast dispatched to ${dispatched.recipients} recipients.`
-              : 'Broadcast saved but dispatch failed — retry from the log.'
-          );
-        } else {
-          triggerFeedback('Broadcast draft saved.');
-        }
-        await loadBroadcasts();
-        setShowCompose(false);
-        setTitle('');
-        setBody('');
-        setAudience('all');
-        setType('announcement');
-        return;
+      if (status === 'sent') {
+        const dispatched = await liveApi.dispatchBroadcast(created.id);
+        triggerFeedback(`Broadcast dispatched to ${dispatched.recipients} recipients.`);
+      } else {
+        triggerFeedback('Broadcast draft saved.');
       }
-      triggerFeedback('Live backend unreachable — broadcast saved locally only.');
+      await loadBroadcasts();
+    } catch (err) {
+      triggerFeedback(`Broadcast failed: ${getApiErrorMessage(err)}`);
+      return;
     }
-
-    // Demo/offline fallback (local state only)
-    const newNotif: Notification & { isRead?: boolean } = {
-      id: `n-${Date.now()}`,
-      title,
-      body,
-      type,
-      targetAudience: audience,
-      status,
-      createdAt: new Date().toISOString(),
-      sentAt: status === 'sent' ? new Date().toISOString() : undefined,
-      isRead: false,
-    };
-
-    setNotifications(prev => [newNotif, ...prev]);
     setShowCompose(false);
     setTitle('');
     setBody('');
@@ -217,6 +191,37 @@ export default function NotificationsPage() {
           borderRadius: 10, padding: '10px 14px', fontSize: 13, fontWeight: 600,
         }}>
           {feedback}
+        </div>
+      )}
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading broadcast history from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load broadcasts from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadBroadcasts(); }}>
+            Retry
+          </Button>
         </div>
       )}
 

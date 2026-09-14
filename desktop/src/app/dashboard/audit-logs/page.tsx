@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   ScrollText, Search, Download, Globe, Clock, User, ShieldAlert,
   ShieldCheck, Lock, CheckCircle2, AlertTriangle, Info, Filter,
@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Pagination } from '@/components/ui/Pagination';
 import { exportToCsv } from '@/lib/exportCsv';
-import { liveApi } from '@/services/api';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import { realtimeService } from '@/services/realtimeService';
 import type { AuditLog } from '@/types';
 
@@ -37,150 +37,11 @@ export interface EnhancedAuditLog extends AuditLog {
   actorRole: string;
 }
 
-const MOCK_ENHANCED_LOGS: EnhancedAuditLog[] = [
-  {
-    id: 'log-8001',
-    adminId: 'adm-101',
-    adminName: 'Sarah Chen',
-    actorRole: 'Platform Super-Admin',
-    category: 'facility',
-    action: 'Approved Hospital Facility License & Accreditation',
-    resource: 'Hospital',
-    resourceId: 'hosp-evercare-lekki',
-    ipAddress: '102.89.34.112',
-    location: 'Lagos, Nigeria (Secure Gateway)',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/124.0',
-    severity: 'success',
-    sha256Hash: 'a7f38290c44b912389d4e5f6172839405162738495a6b7c8d9e0f1a2b3c4d5e6',
-    details: 'Verified Ministry of Health Operating Permit and CAC documentation. Facility status transitioned from Pending to Active Verified Partner.',
-    createdAt: new Date(Date.now() - 4 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8002',
-    adminId: 'adm-system',
-    adminName: 'Security Automation Engine',
-    actorRole: 'Automated Daemon',
-    category: 'security',
-    action: 'Brute Force Defense Triggered - Remote IP Blocked',
-    resource: 'Security',
-    resourceId: 'ip-block-45.132.22.1',
-    ipAddress: '45.132.22.1',
-    location: 'Bucharest, Romania (Unauthorized Proxy)',
-    userAgent: 'Python-Requests/2.31.0',
-    severity: 'critical',
-    sha256Hash: 'f4e3d2c1b0a99887766554433221100ffeeddccbbaa99887766554433221100f',
-    details: '5 consecutive invalid administrator credential attempts detected within 30 seconds. Temporary firewall rate-limit engaged for 24 hours.',
-    createdAt: new Date(Date.now() - 18 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8003',
-    adminId: 'adm-102',
-    adminName: 'Mark Davis',
-    actorRole: 'Platform Super-Admin',
-    category: 'doctor',
-    action: 'Verified Doctor MDCN Practicing License',
-    resource: 'Doctor',
-    resourceId: 'doc-ademola-folake',
-    ipAddress: '197.210.65.88',
-    location: 'Abuja, Nigeria (Platform VPN)',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-    severity: 'success',
-    sha256Hash: '1a2b3c4d5e6f708192a3b4c5d6e7f8091a2b3c4d5e6f708192a3b4c5d6e7f809',
-    details: 'Cross-checked Medical and Dental Council of Nigeria annual folio LIC-98754-C3. Verified specialty status: Cardiology.',
-    createdAt: new Date(Date.now() - 45 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8004',
-    adminId: 'adm-101',
-    adminName: 'Sarah Chen',
-    actorRole: 'Platform Super-Admin',
-    category: 'security',
-    action: 'Enforced Platform-Wide 2FA Requirement for Staff',
-    resource: 'Settings',
-    resourceId: 'sec-policy-mfa-all',
-    ipAddress: '102.89.34.112',
-    location: 'Lagos, Nigeria (Secure Gateway)',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    severity: 'info',
-    sha256Hash: '9876543210fedcba9876543210fedcba9876543210fedcba9876543210fedcba',
-    details: 'System policy updated: All administrative and hospital coordinator accounts now mandate hardware or authenticator TOTP MFA.',
-    createdAt: new Date(Date.now() - 90 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8005',
-    adminId: 'adm-system',
-    adminName: 'NDPA Privacy Engine',
-    actorRole: 'Compliance Worker',
-    category: 'system',
-    action: 'Automated PHI / PII Scrubbing Audit Passed',
-    resource: 'System',
-    resourceId: 'ndpa-scrub-job-941',
-    ipAddress: '10.0.4.12',
-    location: 'Private Cloud Infrastructure (Local Zone)',
-    userAgent: 'OmniPulse-Internal-NDPA/3.2',
-    severity: 'success',
-    sha256Hash: 'b5c4d3e2f1a099887766554433221100ffeeddccbbaa99887766554433221100',
-    details: 'Routine zero-knowledge audit confirmed that patient clinical records and 3D body maps remain encrypted and inaccessible to platform admin consoles.',
-    createdAt: new Date(Date.now() - 140 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8006',
-    adminId: 'adm-103',
-    adminName: 'Ibrahim Bello',
-    actorRole: 'Compliance Officer',
-    category: 'auth',
-    action: 'Admin Console Login - 2FA Verified',
-    resource: 'Security',
-    resourceId: 'auth-session-8819',
-    ipAddress: '105.112.98.22',
-    location: 'Kaduna, Nigeria (Office Network)',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    severity: 'info',
-    sha256Hash: 'c4d3e2f1a0b9887766554433221100ffeeddccbbaa99887766554433221100aa',
-    details: 'Successful administrator authentication via WebAuthn security key. Session token dispatched with 8-hour inactivity expiry.',
-    createdAt: new Date(Date.now() - 210 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8007',
-    adminId: 'adm-102',
-    adminName: 'Mark Davis',
-    actorRole: 'Platform Super-Admin',
-    category: 'doctor',
-    action: 'Suspended Unverified Practitioner Account',
-    resource: 'Doctor',
-    resourceId: 'doc-okoro-blessing',
-    ipAddress: '197.210.65.88',
-    location: 'Abuja, Nigeria (Platform VPN)',
-    userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
-    severity: 'warning',
-    sha256Hash: 'd3e2f1a0b9c87766554433221100ffeeddccbbaa99887766554433221100bbcc',
-    details: 'Flagged expired medical practicing certificate (validity ended Dec 2025). Account temporarily locked from patient teleconsultations pending re-credentialing.',
-    createdAt: new Date(Date.now() - 320 * 60000).toISOString(),
-  },
-  {
-    id: 'log-8008',
-    adminId: 'adm-101',
-    adminName: 'Sarah Chen',
-    actorRole: 'Platform Super-Admin',
-    category: 'facility',
-    action: 'Generated 6-Digit Hospital Affiliation Batch',
-    resource: 'Hospital',
-    resourceId: 'hosp-luth-surulere',
-    ipAddress: '102.89.34.112',
-    location: 'Lagos, Nigeria (Secure Gateway)',
-    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-    severity: 'info',
-    sha256Hash: 'e2f1a0b9c8d766554433221100ffeeddccbbaa99887766554433221100ccddee',
-    details: 'Dispatched encrypted 6-digit affiliation tokens (Code: 715392) for authorized Cardiology department specialists linking to LUTH.',
-    createdAt: new Date(Date.now() - 480 * 60000).toISOString(),
-  },
-];
-
 export default function AuditLogsPage() {
-  // Live audit trail (https://ominipulse.onrender.com/api/admin/audit-logs)
-  // with the built-in demo trail as offline fallback.
-  const [logs, setLogs] = useState<EnhancedAuditLog[]>(MOCK_ENHANCED_LOGS);
-  const [isLive, setIsLive] = useState(false);
+  // Live audit trail (https://ominipulse.onrender.com/api/admin/audit-logs +
+  // /admin/admin-audit-logs) — no fallback; failures render an error state.
+  const [logs, setLogs] = useState<EnhancedAuditLog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<AuditCategory>('all');
@@ -192,18 +53,14 @@ export default function AuditLogsPage() {
   const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
   // Load the live administrative audit trail (hash-chained admin_audit_logs)
-  // first, then the NDPA patient-record trail; demo data is the fallback.
+  // first, then the NDPA patient-record trail. Errors surface explicitly.
   // Realtime: any admin action taken in another session appears here live.
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadLive() {
+  const loadLive = useCallback(async () => {
+    try {
       const [adminTrail, ndpaTrail] = await Promise.all([
         liveApi.getAdminAuditLogs({ limit: 200 }),
         liveApi.getAuditLogs(),
       ]);
-
-      if (cancelled) return;
 
       if (adminTrail && adminTrail.length > 0) {
         // Map the administrative action trail onto the enhanced view shape.
@@ -237,11 +94,9 @@ export default function AuditLogsPage() {
           actorRole: 'staff',
         }));
         setLogs([...mappedAdmin, ...mappedNdpa]);
-        setIsLive(true);
-        setLoadError(null);
-      } else if (ndpaTrail && ndpaTrail.length > 0) {
+      } else {
         setLogs(
-          ndpaTrail.map((l) => ({
+          (ndpaTrail ?? []).map((l) => ({
             ...l,
             adminName: l.adminName === 'Staff' && l.adminId !== 'system' ? l.adminId : l.adminName,
             category: 'system' as const,
@@ -252,24 +107,24 @@ export default function AuditLogsPage() {
             actorRole: 'staff',
           }))
         );
-        setIsLive(true);
-        setLoadError(null);
-      } else {
-        setLoadError('Live backend returned no audit data — showing demo trail');
       }
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
     }
+  }, []);
 
+  useEffect(() => {
     void loadLive();
     const unsubscribe = realtimeService.subscribe((msg) => {
       if (msg.event === 'admin.users.changed' || msg.event === 'broadcast.delivered') {
         void loadLive();
       }
     });
-    return () => {
-      cancelled = true;
-      unsubscribe();
-    };
-  }, []);
+    return unsubscribe;
+  }, [loadLive]);
 
   const handleCopyHash = (hash: string) => {
     navigator.clipboard.writeText(hash);
@@ -387,13 +242,21 @@ export default function AuditLogsPage() {
               <h1 style={{ fontSize: 22, fontWeight: 900, color: '#0f172a', margin: 0 }}>
                 Audit & Compliance Governance
               </h1>
-              {!isLive && <span style={{
-                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
-                background: loadError ? '#fef2f2' : '#f8fafc',
-                color: loadError ? '#dc2626' : '#64748b',
-              }}>
-                {loadError ? 'Fallback mode' : 'Demo data'}
-              </span>}
+              {loadError ? (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                  background: '#fef2f2', color: '#dc2626',
+                }}>
+                  Live data unavailable
+                </span>
+              ) : !isLoading ? (
+                <span style={{
+                  fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 100,
+                  background: '#f0fdf4', color: '#16a34a',
+                }}>
+                  Live data
+                </span>
+              ) : null}
               <p style={{ fontSize: 13, color: '#64748b', margin: '2px 0 0' }}>
                 Immutable, SHA-256 cryptographic audit trail under NDPA 2023 Section 30 and ISO 27001 standards
               </p>
@@ -410,6 +273,37 @@ export default function AuditLogsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading the audit trail from the live database…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load audit logs from the live database
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={12} />} onClick={() => { setIsLoading(true); void loadLive(); }}>
+            Retry
+          </Button>
+        </div>
+      )}
 
       {/* ── Cryptographic Chain Proof Status Bar ─────────────────────────────── */}
       <div style={{

@@ -1,12 +1,12 @@
 /**
  * Omini Pulse Desktop — Live backend services (https://ominipulse.onrender.com/api)
  *
- * Maps the deployed Express contract onto the console's domain types. Every
- * fetcher falls back to `null` on failure (permission, network, cold start)
- * so pages can keep rendering their built-in demo data.
+ * Maps the deployed Express contract onto the console's domain types. All data
+ * is fetched live from the Supabase-backed API. Failures throw (getApiErrorMessage)
+ * so pages render explicit error states — there are no mock fallbacks.
  */
 
-import apiClient from './apiClient';
+import apiClient, { getApiErrorMessage } from './apiClient';
 import type {
   DashboardStats,
   Doctor,
@@ -19,11 +19,12 @@ import type {
   Broadcast,
   PaymentTransaction,
   Appointment,
+  IncidentReport,
 } from '@/types';
 
 // ─── Row shapes from the live backend ───────────────────────────────────────
 
-interface ProfileRow {
+export interface ProfileRow {
   id: string;
   email: string;
   first_name: string | null;
@@ -34,8 +35,12 @@ interface ProfileRow {
   verification_status?: string | null;
   is_active?: boolean | null;
   is_approved?: boolean | null;
+  last_login?: string | null;
   created_at: string;
 }
+
+/** Public alias for admin roster consumers (security console). */
+export type ProfileUserRow = ProfileRow;
 
 interface HospitalRow {
   id: string;
@@ -90,6 +95,9 @@ interface PaymentRow {
   status: string;
   method: string;
   escrow_released: boolean | null;
+  escrow_released_at?: string | null;
+  refund_reason?: string | null;
+  refunded_at?: string | null;
   created_at: string;
 }
 
@@ -103,7 +111,7 @@ interface AppointmentRow {
   type: string;
   reason: string | null;
   created_at: string;
-  doctor?: { id: string; specialization: string | null; profile?: { first_name: string | null; last_name: string | null } | null } | null;
+  doctor?: { id: string; specialization: string | null; consultation_fee?: number | null; profile?: { first_name: string | null; last_name: string | null } | null } | null;
   patient?: { id: string; profile?: { first_name: string | null; last_name: string | null } | null } | null;
 }
 
@@ -119,6 +127,101 @@ interface BroadcastRow {
   sent_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface IncidentRow {
+  id: string;
+  reporter_id: string | null;
+  reporter_name: string | null;
+  target_id: string | null;
+  target_name: string | null;
+  target_type: string;
+  category: string;
+  description: string;
+  status: string;
+  severity: string;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+// Raw blood donor registry rows (hospital/blood/donors).
+export interface BloodDonorRow {
+  id: string;
+  profile_id: string | null;
+  full_name: string;
+  blood_group: string;
+  genotype: string | null;
+  city: string;
+  region: string | null;
+  phone: string;
+  email: string | null;
+  availability_status: string;
+  partner_status: 'active' | 'pending' | 'suspended' | 'rejected';
+  last_donation_date: string | null;
+  donations_count: number;
+  gender: string | null;
+  verification_submitted_at: string | null;
+  verification_reviewed_at: string | null;
+  verification_reviewed_by: string | null;
+  rejection_reason: string | null;
+  donor_card_url: string | null;
+  medical_check_url: string | null;
+}
+
+// Raw hospital operations rows (hospital/* endpoints).
+export interface HospitalBedRow {
+  id: string;
+  hospital_id: string;
+  ward: string;
+  bed_number: string;
+  status: string;
+  patient_id: string | null;
+  occupied_since: string | null;
+}
+
+export interface PharmacyOrderRow {
+  id: string;
+  prescription_id: string | null;
+  patient_id: string | null;
+  medication_id: string | null;
+  quantity: number;
+  status: string;
+  created_at: string;
+  dispensed_at: string | null;
+}
+
+export interface MedicationItemRow {
+  id: string;
+  hospital_id: string;
+  name: string;
+  form: string | null;
+  strength: string | null;
+  unit: string | null;
+  stock_qty: number;
+  reorder_level: number;
+}
+
+export interface LabOrderRow {
+  id: string;
+  patient_id: string | null;
+  doctor_id: string | null;
+  test_type: string;
+  status: string;
+  results_summary: string | null;
+  findings: string | null;
+  created_at: string;
+  verified_at: string | null;
+}
+
+export interface BloodRequestRow {
+  id: string;
+  patient_id: string | null;
+  patient_name: string;
+  blood_group: string;
+  units_needed: number;
+  status: string;
+  hospital_id: string | null;
+  created_at: string;
 }
 
 // ─── Mappers ─────────────────────────────────────────────────────────────────
@@ -216,6 +319,9 @@ function mapPayment(row: PaymentRow): PaymentTransaction {
     status: (row.status as PaymentTransaction['status']) ?? 'pending',
     method: (row.method as PaymentTransaction['method']) ?? 'card',
     escrowReleased: row.escrow_released ?? row.status === 'released',
+    escrowReleasedAt: row.escrow_released_at ?? undefined,
+    refundReason: row.refund_reason ?? undefined,
+    refundedAt: row.refunded_at ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -239,6 +345,7 @@ function mapAppointment(row: AppointmentRow): Appointment {
     type: (row.type as Appointment['type']) ?? 'video',
     status: (row.status as Appointment['status']) ?? 'pending',
     reason: row.reason ?? '',
+    consultationFee: row.doctor?.consultation_fee ?? undefined,
     createdAt: row.created_at,
   };
 }
@@ -259,6 +366,23 @@ function mapBroadcast(row: BroadcastRow): Broadcast {
   };
 }
 
+export function mapIncident(row: IncidentRow): IncidentReport {
+  return {
+    id: row.id,
+    reporterId: row.reporter_id ?? '—',
+    reporterName: row.reporter_name ?? 'Anonymous',
+    targetId: row.target_id ?? '—',
+    targetName: row.target_name ?? 'Unknown',
+    targetType: (row.target_type as IncidentReport['targetType']) ?? 'doctor',
+    category: (row.category as IncidentReport['category']) ?? 'other',
+    description: row.description,
+    status: (row.status as IncidentReport['status']) ?? 'pending',
+    severity: (row.severity as IncidentReport['severity']) ?? 'low',
+    createdAt: row.created_at,
+    resolvedAt: row.resolved_at ?? undefined,
+  };
+}
+
 interface DoctorDirectoryRow {
   id: string;
   specialization: string;
@@ -273,25 +397,17 @@ interface DoctorDirectoryRow {
 
 // ─── Services ─────────────────────────────────────────────────────────────────
 
-async function safeGet<T>(path: string, params?: Record<string, unknown>): Promise<T | null> {
-  try {
-    const { data } = await apiClient.get<T>(path, { params });
-    return data;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    const status = (err as { response?: { status?: number } })?.response?.status;
-    console.warn(`[liveApi] GET ${path} failed (${status ?? 'no status'}): ${msg}`);
-    return null; // network / 403 / cold start — caller falls back to demo data
-  }
+async function requireGet<T>(path: string, params?: Record<string, unknown>): Promise<T> {
+  const { data } = await apiClient.get<T>(path, { params });
+  return data;
 }
 
 export const liveApi = {
-  /** Platform KPI counts. Returns null if unreachable (page falls back). */
-  async getDashboardStats(): Promise<DashboardStats | null> {
-    const data = await safeGet<{ totals: Record<string, number>; pendingDoctorVerifications: number }>(
+  /** Platform KPI counts. */
+  async getDashboardStats(): Promise<DashboardStats> {
+    const data = await requireGet<{ totals: Record<string, number>; pendingDoctorVerifications: number }>(
       '/admin/dashboard'
     );
-    if (!data) return null;
     const t = data.totals ?? {};
     return {
       totalDoctors: 0,
@@ -306,18 +422,17 @@ export const liveApi = {
     };
   },
 
-  async getDoctors(): Promise<Doctor[] | null> {
+  async getDoctors(): Promise<Doctor[]> {
     const [users, directory] = await Promise.all([
-      safeGet<{ users: ProfileRow[] }>('/admin/users', { role: 'doctor' }),
-      safeGet<{ doctors: DoctorDirectoryRow[] | null }>('/doctors'),
+      requireGet<{ users: ProfileRow[] }>('/admin/users', { role: 'doctor' }),
+      requireGet<{ doctors: DoctorDirectoryRow[] | null }>('/doctors'),
     ]);
-    if (!users && !directory) return null;
 
     const dirByProfileId = new Map(
       (directory?.doctors ?? []).map((d) => [d.profile?.id ?? '', d])
     );
 
-    const mapped = (users?.users ?? []).map((u) => {
+    return (users?.users ?? []).map((u) => {
       const doctor = mapDoctorFromUsers(u);
       const dir = dirByProfileId.get(u.id);
       if (dir) {
@@ -334,24 +449,26 @@ export const liveApi = {
       }
       return doctor;
     });
-    return mapped;
   },
 
-  async getPatients(): Promise<Patient[] | null> {
-    const data = await safeGet<{ users: ProfileRow[] }>('/admin/users', { role: 'patient' });
-    if (!data) return null;
+  async getPatients(): Promise<Patient[]> {
+    const data = await requireGet<{ users: ProfileRow[] }>('/admin/users', { role: 'patient' });
     return data.users.map(mapPatient);
   },
 
-  async getHospitals(): Promise<Hospital[] | null> {
-    const data = await safeGet<{ hospitals: HospitalRow[] }>('/admin/hospitals');
-    if (!data) return null;
+  /** Administrator roster (security console). */
+  async getAdminUsers(): Promise<ProfileRow[]> {
+    const data = await requireGet<{ users: ProfileRow[] }>('/admin/users', { role: 'admin' });
+    return data.users ?? [];
+  },
+
+  async getHospitals(): Promise<Hospital[]> {
+    const data = await requireGet<{ hospitals: HospitalRow[] }>('/admin/hospitals');
     return (data.hospitals ?? []).map(mapHospital);
   },
 
-  async getAIFlags(): Promise<AIFlag[] | null> {
-    const data = await safeGet<{ flags: AiFlagRow[] }>('/admin/ai-flags');
-    if (!data) return null;
+  async getAIFlags(): Promise<AIFlag[]> {
+    const data = await requireGet<{ flags: AiFlagRow[] }>('/admin/ai-flags');
     return (data.flags ?? []).map(mapAiFlag);
   },
 
@@ -359,26 +476,24 @@ export const liveApi = {
     try {
       await apiClient.patch(`/admin/ai-flags/${id}`, { status });
       return true;
-    } catch {
+    } catch (err) {
+      console.warn(`[liveApi] PATCH /admin/ai-flags/${id} failed: ${getApiErrorMessage(err)}`);
       return false;
     }
   },
 
-  async getAuditLogs(): Promise<AuditLog[] | null> {
-    const data = await safeGet<{ logs: AuditLogRow[] }>('/admin/audit-logs');
-    if (!data) return null;
+  async getAuditLogs(): Promise<AuditLog[]> {
+    const data = await requireGet<{ logs: AuditLogRow[] }>('/admin/audit-logs');
     return (data.logs ?? []).map(mapAuditLog);
   },
 
-  async getPayments(): Promise<PaymentTransaction[] | null> {
-    const data = await safeGet<{ payments: PaymentRow[] }>('/admin/payments');
-    if (!data) return null;
+  async getPayments(): Promise<PaymentTransaction[]> {
+    const data = await requireGet<{ payments: PaymentRow[] }>('/admin/payments');
     return (data.payments ?? []).map(mapPayment);
   },
 
-  async getAppointments(): Promise<Appointment[] | null> {
-    const data = await safeGet<{ appointments: AppointmentRow[] }>('/appointments');
-    if (!data) return null;
+  async getAppointments(): Promise<Appointment[]> {
+    const data = await requireGet<{ appointments: AppointmentRow[] }>('/appointments');
     return (data.appointments ?? []).map(mapAppointment);
   },
 
@@ -386,7 +501,8 @@ export const liveApi = {
     try {
       await apiClient.patch(`/admin/users/${id}/status`, { isActive });
       return true;
-    } catch {
+    } catch (err) {
+      console.warn(`[liveApi] PATCH /admin/users/${id}/status failed: ${getApiErrorMessage(err)}`);
       return false;
     }
   },
@@ -396,15 +512,77 @@ export const liveApi = {
     try {
       await apiClient.post(`/admin/users/${id}/verify`, { decision, reason });
       return true;
-    } catch {
+    } catch (err) {
+      console.warn(`[liveApi] POST /admin/users/${id}/verify failed: ${getApiErrorMessage(err)}`);
       return false;
     }
   },
 
+  /** Incident reports (Reports console). */
+  async getIncidents(params?: { status?: string }): Promise<IncidentReport[]> {
+    const data = await requireGet<{ incidents: IncidentRow[] }>('/admin/incidents', params);
+    return (data.incidents ?? []).map(mapIncident);
+  },
+
+  async updateIncidentStatus(id: string, status: IncidentReport['status']): Promise<boolean> {
+    try {
+      await apiClient.patch(`/admin/incidents/${id}`, { status });
+      return true;
+    } catch (err) {
+      console.warn(`[liveApi] PATCH /admin/incidents/${id} failed: ${getApiErrorMessage(err)}`);
+      return false;
+    }
+  },
+
+  /** Blood donor registry (Blood Donor verification console). */
+  async getBloodDonors(params?: { status?: string }): Promise<BloodDonorRow[]> {
+    const data = await requireGet<{ donors: BloodDonorRow[] }>('/hospital/blood/donors', params);
+    return data.donors ?? [];
+  },
+
+  async updateBloodDonorStatus(
+    id: string,
+    partnerStatus: 'active' | 'pending' | 'suspended' | 'rejected',
+    rejectionReason?: string
+  ): Promise<boolean> {
+    try {
+      await apiClient.patch(`/hospital/blood/donors/${id}/status`, { partnerStatus, rejectionReason });
+      return true;
+    } catch (err) {
+      console.warn(`[liveApi] PATCH /hospital/blood/donors/${id}/status failed: ${getApiErrorMessage(err)}`);
+      return false;
+    }
+  },
+
+  /** Hospital portal operations (beds, pharmacy, lab, blood requests). */
+  async getHospitalBeds(): Promise<HospitalBedRow[]> {
+    const data = await requireGet<{ beds: HospitalBedRow[] }>('/hospital/beds');
+    return data.beds ?? [];
+  },
+
+  async getPharmacyQueue(): Promise<PharmacyOrderRow[]> {
+    const data = await requireGet<{ orders: PharmacyOrderRow[] }>('/hospital/pharmacy/queue');
+    return data.orders ?? [];
+  },
+
+  async getPharmacyInventory(): Promise<MedicationItemRow[]> {
+    const data = await requireGet<{ items: MedicationItemRow[] }>('/hospital/pharmacy/inventory');
+    return data.items ?? [];
+  },
+
+  async getLabOrders(): Promise<LabOrderRow[]> {
+    const data = await requireGet<{ orders: LabOrderRow[] }>('/hospital/lab/orders');
+    return data.orders ?? [];
+  },
+
+  async getBloodRequests(): Promise<BloodRequestRow[]> {
+    const data = await requireGet<{ requests: BloodRequestRow[] }>('/hospital/blood/requests');
+    return data.requests ?? [];
+  },
+
   /** Hash-chained administrative action trail (compliance). */
-  async getAdminAuditLogs(params?: { action?: string; actorId?: string; limit?: number }): Promise<AdminAuditLog[] | null> {
-    const data = await safeGet<{ logs: AdminAuditLog[] }>('/admin/admin-audit-logs', params);
-    if (!data) return null;
+  async getAdminAuditLogs(params?: { action?: string; actorId?: string; limit?: number }): Promise<AdminAuditLog[]> {
+    const data = await requireGet<{ logs: AdminAuditLog[] }>('/admin/admin-audit-logs', params);
     return (data.logs ?? []).map((row) => ({
       ...row,
       actorId: row.actorId ?? (row as unknown as { actor_id?: string }).actor_id ?? null,
@@ -421,9 +599,8 @@ export const liveApi = {
   },
 
   /** User↔AI prompt/response interaction logs (admin review). */
-  async getAIInteractions(params?: { feature?: string; search?: string; limit?: number }): Promise<AIInteraction[] | null> {
-    const data = await safeGet<{ interactions: AIInteraction[] }>('/admin/ai-interactions', params);
-    if (!data) return null;
+  async getAIInteractions(params?: { feature?: string; search?: string; limit?: number }): Promise<AIInteraction[]> {
+    const data = await requireGet<{ interactions: AIInteraction[] }>('/admin/ai-interactions', params);
     return (data.interactions ?? []).map((row) => ({
       ...row,
       profileId: row.profileId ?? (row as unknown as { profile_id?: string }).profile_id ?? null,
@@ -435,9 +612,8 @@ export const liveApi = {
 
   // ─── Broadcast Center ────────────────────────────────────────────────────────
 
-  async getBroadcasts(): Promise<Broadcast[] | null> {
-    const data = await safeGet<{ broadcasts: BroadcastRow[] }>('/broadcasts');
-    if (!data) return null;
+  async getBroadcasts(): Promise<Broadcast[]> {
+    const data = await requireGet<{ broadcasts: BroadcastRow[] }>('/broadcasts');
     return (data.broadcasts ?? []).map((row) => mapBroadcast(row));
   },
 
@@ -447,29 +623,22 @@ export const liveApi = {
     type?: 'announcement' | 'reminder' | 'alert' | 'system';
     targetAudience?: 'all' | 'doctors' | 'patients' | 'staff';
     scheduledAt?: string;
-  }): Promise<Broadcast | null> {
-    try {
-      const { data } = await apiClient.post<{ broadcast: BroadcastRow }>('/broadcasts', payload);
-      return mapBroadcast(data.broadcast);
-    } catch {
-      return null;
-    }
+  }): Promise<Broadcast> {
+    const { data } = await apiClient.post<{ broadcast: BroadcastRow }>('/broadcasts', payload);
+    return mapBroadcast(data.broadcast);
   },
 
-  async dispatchBroadcast(id: string): Promise<{ recipients: number } | null> {
-    try {
-      const { data } = await apiClient.post<{ broadcastId: string; recipients: number }>(`/broadcasts/${id}/dispatch`);
-      return { recipients: data.recipients };
-    } catch {
-      return null;
-    }
+  async dispatchBroadcast(id: string): Promise<{ recipients: number }> {
+    const { data } = await apiClient.post<{ broadcastId: string; recipients: number }>(`/broadcasts/${id}/dispatch`);
+    return { recipients: data.recipients };
   },
 
   async deleteBroadcast(id: string): Promise<boolean> {
     try {
       await apiClient.delete(`/broadcasts/${id}`);
       return true;
-    } catch {
+    } catch (err) {
+      console.warn(`[liveApi] DELETE /broadcasts/${id} failed: ${getApiErrorMessage(err)}`);
       return false;
     }
   },
@@ -486,3 +655,5 @@ export const liveApi = {
     }
   },
 };
+
+export { getApiErrorMessage };

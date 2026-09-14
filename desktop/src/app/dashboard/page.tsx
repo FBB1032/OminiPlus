@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Stethoscope, Building2, Pill, Calendar, Bot, Users, Activity,
   TrendingUp, TrendingDown, Clock, CheckCircle2, AlertTriangle,
-  ArrowRight, Eye, Zap, Shield, BarChart3, Globe, Star, FileText,
+  ArrowRight, Eye, Zap, Shield, BarChart3, Globe, Star, FileText, RefreshCw,
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -14,41 +14,9 @@ import {
 } from 'recharts';
 import { useAuthStore } from '@/store/authStore';
 import { ROLE_PERMISSIONS, ROLE_LABELS, ROLE_COLORS, NAV_SECTIONS } from '@/store/permissionStore';
-import { liveApi } from '@/services/api';
+import { liveApi, getApiErrorMessage } from '@/services/api';
 import { timeAgo } from '@/lib/utils';
-import type { AdminRole, DashboardStats } from '@/types';
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const CHART_DATA = [
-  { day: 'Mon', booked: 420, completed: 380 },
-  { day: 'Tue', booked: 490, completed: 440 },
-  { day: 'Wed', booked: 530, completed: 500 },
-  { day: 'Thu', booked: 720, completed: 660 },
-  { day: 'Fri', booked: 650, completed: 590 },
-  { day: 'Sat', booked: 380, completed: 350 },
-  { day: 'Sun', booked: 280, completed: 260 },
-];
-
-const PIE_DATA = [
-  { name: 'Video Consult', value: 45, color: '#2563eb' },
-  { name: 'In-Person', value: 35, color: '#06b6d4' },
-  { name: 'Phone', value: 20, color: '#a855f7' },
-];
-
-const PENDING_DOCTORS = [
-  { id: 'd1', name: 'Dr. Amina Bello', specialty: 'Cardiology', hospital: 'Lagos General', docs: '3/3', submitted: '2024-06-04T10:00:00Z' },
-  { id: 'd2', name: 'Dr. Felix Okafor', specialty: 'Pediatrics', hospital: 'Victoria Island Hospital', docs: '3/3', submitted: '2024-06-03T14:30:00Z' },
-  { id: 'd3', name: 'Dr. Grace Adekunle', specialty: 'Dermatology', hospital: 'Eko Medical Center', docs: '2/3', submitted: '2024-06-03T09:15:00Z' },
-];
-
-const RECENT_ACTIVITY = [
-  { id: 1, text: 'Dr. Sarah Eke approved by Admin', type: 'success', time: '5 min ago', icon: CheckCircle2 },
-  { id: 2, text: 'AI flagged prompt — high severity', type: 'error', time: '12 min ago', icon: AlertTriangle },
-  { id: 3, text: 'New hospital onboarding request', type: 'info', time: '25 min ago', icon: Building2 },
-  { id: 4, text: 'Dr. Musa Umar verification rejected', type: 'warning', time: '1 hr ago', icon: Shield },
-  { id: 5, text: '3 new appointment disputes filed', type: 'warning', time: '2 hr ago', icon: Calendar },
-];
+import type { AdminRole, DashboardStats, Doctor, Appointment, AdminAuditLog } from '@/types';
 
 const ACTIVITY_STYLES: Record<string, { bg: string; color: string }> = {
   success: { bg: '#f0fdf4', color: '#16a34a' },
@@ -56,6 +24,15 @@ const ACTIVITY_STYLES: Record<string, { bg: string; color: string }> = {
   info: { bg: '#eff6ff', color: '#2563eb' },
   warning: { bg: '#fffbeb', color: '#d97706' },
 };
+
+/** Picks an icon for an activity feed entry based on the audit action verb. */
+function ACTIVITY_ICON(action: string) {
+  if (action.startsWith('doctor.')) return CheckCircle2;
+  if (action.startsWith('ai.')) return AlertTriangle;
+  if (action.startsWith('incident.')) return Shield;
+  if (action.startsWith('broadcast.')) return Bot;
+  return Activity;
+}
 
 // Quick Access is now derived dynamically from NAV_SECTIONS based on role permissions.
 // See usage inside DashboardPage below.
@@ -65,9 +42,13 @@ export default function DashboardPage() {
   const admin = useAuthStore(s => s.admin);
   const adminRole: AdminRole = (admin?.role as AdminRole) || 'admin';
 
-  // Live platform KPIs from https://ominipulse.onrender.com/api/admin/dashboard
-  // (falls back to the demo figures when unreachable / cold-started).
+  // Live platform data from https://ominipulse.onrender.com/api — no fallback.
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [activity, setActivity] = useState<AdminAuditLog[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (adminRole === 'doctor') {
@@ -89,16 +70,102 @@ export default function DashboardPage() {
     }
   }, [router, adminRole]);
 
-  const permissions = ROLE_PERMISSIONS[adminRole] || [];
-  const hasPermission = (p: string) => permissions.includes(p as any);
+  // Load live KPIs, the doctor registry, this week's appointments, and the
+  // admin audit trail for the activity feed. Errors surface explicitly.
+  const loadDashboard = useCallback(async () => {
+    try {
+      const [s, docs, appts, audit] = await Promise.allSettled([
+        liveApi.getDashboardStats(),
+        liveApi.getDoctors(),
+        liveApi.getAppointments(),
+        liveApi.getAdminAuditLogs({ limit: 6 }),
+      ]);
+      if (s.status === 'fulfilled') setStats(s.value);
+      if (docs.status === 'fulfilled') setDoctors(docs.value);
+      if (appts.status === 'fulfilled') setAppointments(appts.value);
+      if (audit.status === 'fulfilled') setActivity(audit.value);
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    liveApi.getDashboardStats().then((s) => {
-      if (!cancelled && s) setStats(s);
-    });
-    return () => { cancelled = true; };
-  }, []);
+    void loadDashboard();
+  }, [loadDashboard]);
+
+  // Chart data: appointment volume for the last 7 days (live).
+  const CHART_DATA = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const buckets = new Map<string, { booked: number; completed: number }>();
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      buckets.set(d.toISOString().slice(0, 10), { booked: 0, completed: 0 });
+    }
+    for (const a of appointments) {
+      const key = a.scheduledAt.slice(0, 10);
+      const bucket = buckets.get(key);
+      if (!bucket) continue;
+      bucket.booked += 1;
+      if (a.status === 'completed') bucket.completed += 1;
+    }
+    return [...buckets.entries()].map(([date, v]) => ({
+      day: days[new Date(date).getUTCDay()],
+      booked: v.booked,
+      completed: v.completed,
+    }));
+  }, [appointments]);
+
+  // Pie data: appointment type distribution (live).
+  const PIE_DATA = useMemo(() => {
+    const counts = { video: 0, in_person: 0, phone: 0 };
+    let total = 0;
+    for (const a of appointments) {
+      if (a.type in counts) { counts[a.type as keyof typeof counts] += 1; total += 1; }
+    }
+    if (total === 0) return [];
+    return [
+      { name: 'Video Consult', value: Math.round((counts.video / total) * 100), color: '#2563eb' },
+      { name: 'In-Person', value: Math.round((counts.in_person / total) * 100), color: '#06b6d4' },
+      { name: 'Phone', value: Math.round((counts.phone / total) * 100), color: '#a855f7' },
+    ];
+  }, [appointments]);
+
+  // Pending doctor verifications (live, most recent first).
+  const PENDING_DOCTORS = useMemo(
+    () =>
+      doctors
+        .filter((d) => d.verificationStatus === 'pending')
+        .slice(0, 5)
+        .map((d) => ({
+          id: d.id,
+          name: `Dr. ${d.firstName} ${d.lastName}`,
+          specialty: d.specialization,
+          hospital: d.hospital ?? 'Independent Practice',
+          submitted: d.createdAt,
+        })),
+    [doctors]
+  );
+
+  // Recent activity from the hash-chained admin audit trail (live).
+  const RECENT_ACTIVITY = useMemo(
+    () =>
+      activity.map((l, i) => ({
+        id: l.id,
+        text: `${l.actorName ?? 'System'} - ${l.action.replace(/_/g, ' ')}${l.targetType ? ` (${l.targetType})` : ''}`,
+        type: l.status === 'failure' ? 'error' : i % 3 === 1 ? 'info' : 'success',
+        time: timeAgo(l.createdAt),
+        icon: ACTIVITY_ICON(l.action),
+      })),
+    [activity]
+  );
+
+  const permissions = ROLE_PERMISSIONS[adminRole] || [];
+  const hasPermission = (p: string) => permissions.includes(p as any);
 
   const ICON_MAP: Record<string, any> = {
     Stethoscope, Building2, Pill, Calendar, Bot, BarChart3,
@@ -163,6 +230,42 @@ export default function DashboardPage() {
           Welcome back, {admin?.firstName || 'Admin'}. Here&apos;s your operational overview.
         </p>
       </div>
+
+      {/* Live data connection state */}
+      {isLoading && (
+        <div style={{
+          background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af',
+          borderRadius: 10, padding: '14px 16px', fontSize: 13, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <RefreshCw size={15} className="animate-spin" />
+          Loading live platform data…
+        </div>
+      )}
+      {loadError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+          padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <AlertTriangle size={15} style={{ color: '#dc2626', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#b91c1c' }}>
+              Failed to load live platform data
+            </p>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#dc2626' }}>
+              {loadError} — check your connection and role, then retry.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm btn-secondary"
+            onClick={() => { setIsLoading(true); void loadDashboard(); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <RefreshCw size={12} /> Retry
+          </button>
+        </div>
+      )}
 
       {/* ── KPI Stat Cards ───────────────────────────────────────── */}
       {/* Live values from /api/admin/dashboard; demo values while loading/offline */}
@@ -272,9 +375,9 @@ export default function DashboardPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {[
-              { label: 'Active Consultations', value: '24', color: '#0f6e6e' },
-              { label: 'Doctors Online', value: '186', color: '#2563eb' },
-              { label: 'Patients in Queue', value: '12', color: '#7c3aed' },
+              { label: 'Total Appointments', value: stats ? String(stats.totalAppointments) : '—', color: '#0f6e6e' },
+              { label: 'Registered Doctors', value: stats ? String(stats.activeUsers) : '—', color: '#2563eb' },
+              { label: 'AI Flags', value: stats ? String(stats.flaggedAIPrompts) : '—', color: '#7c3aed' },
             ].map((item) => (
               <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <p style={{ fontSize: 13, color: '#64748b' }}>{item.label}</p>
@@ -386,13 +489,18 @@ export default function DashboardPage() {
                   <th>Doctor</th>
                   <th>Specialty</th>
                   <th>Hospital</th>
-                  <th>Docs</th>
                   <th>Submitted</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody>
-                {PENDING_DOCTORS.map((doc) => (
+                {PENDING_DOCTORS.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: '24px 0' }}>
+                      No pending doctor verifications.
+                    </td>
+                  </tr>
+                ) : PENDING_DOCTORS.map((doc) => (
                   <tr key={doc.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -406,14 +514,6 @@ export default function DashboardPage() {
                     </td>
                     <td><span className="badge badge-info">{doc.specialty}</span></td>
                     <td>{doc.hospital}</td>
-                    <td>
-                      <span style={{
-                        fontSize: 12, fontWeight: 500,
-                        color: doc.docs === '3/3' ? '#16a34a' : '#d97706',
-                      }}>
-                        {doc.docs}
-                      </span>
-                    </td>
                     <td style={{ fontSize: 12, color: '#9ca3af' }}>{timeAgo(doc.submitted)}</td>
                     <td>
                       <Link href="/dashboard/doctors" className="btn btn-sm btn-primary" style={{ textDecoration: 'none' }}>
@@ -436,7 +536,11 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div>
-            {RECENT_ACTIVITY.map((item) => {
+            {RECENT_ACTIVITY.length === 0 ? (
+              <p style={{ fontSize: 13, color: '#9ca3af', textAlign: 'center', padding: '16px 0' }}>
+                No recent administrative activity.
+              </p>
+            ) : RECENT_ACTIVITY.map((item) => {
               const s = ACTIVITY_STYLES[item.type];
               return (
                 <div key={item.id} className="activity-item">
