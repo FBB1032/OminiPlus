@@ -24,6 +24,8 @@ function optional(name, fallback = undefined) {
   return value === undefined || value === '' ? fallback : value;
 }
 
+const corsOrigins = optional('CORS_ORIGINS', '');
+
 const config = {
   env: optional('NODE_ENV', 'development'),
   port: Number(optional('PORT', 8080)),
@@ -38,11 +40,11 @@ const config = {
   // ─── CORS ──────────────────────────────────────────────────────────────────
   cors: {
     // Comma-separated list of allowed origins; "*" allows all (dev only)
-    origins: optional('CORS_ORIGINS', 'http://localhost:3000,http://localhost:8081,http://localhost:19006')
+    origins: corsOrigins
       .split(',')
       .map((o) => o.trim())
       .filter(Boolean),
-    allowAll: optional('CORS_ORIGINS', '') === '*',
+    allowAll: corsOrigins === '*' || corsOrigins === undefined,
   },
 
   // ─── Rate limits ───────────────────────────────────────────────────────────

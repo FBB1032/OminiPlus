@@ -708,3 +708,48 @@ drop policy if exists payments_admin_write on public.payment_transactions;
 create policy payments_admin_write on public.payment_transactions
   for all to authenticated
   using (public.is_admin()) with check (public.is_admin());
+
+-- ─── DOCUMENTS ────────────────────────────────────────────────────────────────
+-- Patients can CRUD their own documents; doctors can CRUD their own;
+-- admins have full access.
+
+drop policy if exists documents_select on public.documents;
+create policy documents_select on public.documents
+  for select to authenticated
+  using (
+    profile_type = 'patient' and profile_id = auth.uid()
+    or profile_type = 'doctor' and profile_id = auth.uid()
+    or public.is_admin()
+  );
+
+drop policy if exists documents_insert on public.documents;
+create policy documents_insert on public.documents
+  for insert to authenticated
+  with check (
+    profile_type = 'patient' and profile_id = auth.uid()
+    or profile_type = 'doctor' and profile_id = auth.uid()
+    or public.is_admin()
+  );
+
+drop policy if exists documents_update on public.documents;
+create policy documents_update on public.documents
+  for update to authenticated
+  using (
+    profile_type = 'patient' and profile_id = auth.uid()
+    or profile_type = 'doctor' and profile_id = auth.uid()
+    or public.is_admin()
+  )
+  with check (
+    profile_type = 'patient' and profile_id = auth.uid()
+    or profile_type = 'doctor' and profile_id = auth.uid()
+    or public.is_admin()
+  );
+
+drop policy if exists documents_delete on public.documents;
+create policy documents_delete on public.documents
+  for delete to authenticated
+  using (
+    profile_type = 'patient' and profile_id = auth.uid()
+    or profile_type = 'doctor' and profile_id = auth.uid()
+    or public.is_admin()
+  );

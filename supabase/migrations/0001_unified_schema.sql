@@ -70,7 +70,11 @@ do $$ begin
 exception when duplicate_object then null; end $$;
 
 do $$ begin
-  create type public.audit_action as enum ('view', 'download', 'edit', 'delete', 'share');
+  create type public.audit_action as enum (
+    'view', 'download', 'edit', 'delete', 'share',
+    'patient_created', 'doctor_created', 'user_approved', 'user_rejected',
+    'user_updated', 'user_deactivated', 'user_deleted'
+  );
 exception when duplicate_object then null; end $$;
 
 do $$ begin
@@ -79,7 +83,8 @@ exception when duplicate_object then null; end $$;
 
 do $$ begin
   create type public.record_category as enum (
-    'lab_report', 'prescription', 'medical_history', 'vitals', 'ai_chat'
+    'lab_report', 'prescription', 'medical_history', 'vitals', 'ai_chat',
+    'patient_profile', 'doctor_profile'
   );
 exception when duplicate_object then null; end $$;
 
@@ -651,6 +656,33 @@ create table if not exists public.payment_transactions (
   refunded_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+-- ─── DOCUMENTS (patient + doctor uploaded files) ───────────────────────────────────────────
+--
+-- Stores metadata for all documents uploaded by patients and doctors.
+-- Each document is associated with a profile (patient or doctor) and has
+-- a status that controls super-admin visibility.
+--
+
+create table if not exists public.documents (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null,
+  profile_type public.user_role not null check (profile_type in ('patient', 'doctor')),
+  doc_type text not null check (doc_type in (
+    'gov_id', 'medical_license', 'selfie', 'passport_photo', 'national_id',
+    'specialty_certificate', 'employment_letter', 'other'
+  )),
+  file_name text not null,
+  file_path text not null,
+  mime_type text not null,
+  upload_date timestamptz not null default now(),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_documents_profile on public.documents(profile_id, profile_type, status);
+create index if not exists idx_documents_upload on public.documents(upload_date desc);
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- updated_at maintenance trigger

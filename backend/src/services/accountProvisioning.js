@@ -20,10 +20,35 @@ const { ApiError } = require('../middleware/errors');
 const SELF_SIGNUP_ROLES = new Set(['patient', 'doctor']);
 
 /**
+ * Log an audit entry for account creation/events.
+ * Uses the log_audit_entry function which is safe to call from the service role.
+ */
+async function logAccountCreation({ req, userId, role, fullName, action }) {
+  try {
+    const entry = {
+      p_patient_id: role === 'patient' ? userId : null,
+      p_actor_id: userId,
+      p_action: action,
+      p_record_id: userId,
+      p_record_name: fullName,
+      p_record_category: role === 'patient' ? 'patient_profile' : 'doctor_profile',
+      p_ip_address: req?.ip ?? null,
+      p_device: (req?.headers?.['user-agent'] ?? '').slice(0, 200) || null,
+    };
+    const { data, error } = await adminClient.rpc('log_audit_entry', entry);
+    if (error) {
+      logger.warn('audit log creation warning', { userId, error: error.message });
+    }
+  } catch (err) {
+    logger.warn('audit log creation exception', { userId, message: err.message });
+  }
+}
+
+/**
  * Create a new account end-to-end.
  * @param {object} opts
  * @param {object} opts.payload  { email, password, firstName, lastName, role, phone? }
- * @param {object} [opts.req]    Express request (for error logging)
+ * @param {object} [opts.req]    Express request (for error logging and audit)
  * @returns {Promise<{user: object}>} the created GoTrue user
  */
 async function registerAccount({ payload, req }) {
@@ -59,9 +84,7 @@ async function registerAccount({ payload, req }) {
 
   const userId = created.user.id;
 
-  // 2. Apply the role-aware activation policy to the profiles row that the
-  //    on_auth_user_created trigger inserted (0005 pins role='patient', so
-  //    the server sets the real role here — clients can never claim it).
+  // 2. Apply the role-aware activation policy to the profiles row
   const isPatient = role === 'patient';
   const { error: profileError } = await adminClient
     .from('profiles')
@@ -82,13 +105,20 @@ async function registerAccount({ payload, req }) {
 
   // 3. Seed the role-specific profile row (patient_profiles / doctor_profiles
   //    minimal stubs so downstream screens have a row to build on).
+  //    Must succeed — the system must avoid creating an authentication account
+  //    without its corresponding database profile, or vice versa.
   if (isPatient) {
     const { error: patientErr } = await adminClient
       .from('patient_profiles')
       .upsert({ profile_id: userId }, { onConflict: 'profile_id' });
     if (patientErr) {
-      logger.warn('patient profile seed failed', { userId, message: patientErr.message });
+      logger.error('patient profile seed failed', { userId, message: patientErr.message });
+      // Rollback: delete the GoTrue user since the profile could not be created
+      await adminClient.auth.admin.deleteUser(userId);
+      throw new ApiError(500, 'profile_activation_failed', 'Account creation failed — patient profile could not be created. Contact support.');
     }
+    // Log patient creation audit trail
+    await logAccountCreation({ req, userId, role: 'patient', fullName: `${firstName} ${lastName}`, action: 'patient_created' });
   } else {
     const { error: doctorErr } = await adminClient
       .from('doctor_profiles')
@@ -101,12 +131,17 @@ async function registerAccount({ payload, req }) {
         { onConflict: 'profile_id' }
       );
     if (doctorErr) {
-      logger.warn('doctor profile seed failed', { userId, message: doctorErr.message });
+      logger.error('doctor profile seed failed', { userId, message: doctorErr.message });
+      // Rollback: delete the GoTrue user since the profile could not be created
+      await adminClient.auth.admin.deleteUser(userId);
+      throw new ApiError(500, 'profile_activation_failed', 'Account creation failed — doctor profile could not be created. Contact support.');
     }
+    // Log doctor creation audit trail
+    await logAccountCreation({ req, userId, role: 'doctor', fullName: `${firstName} ${lastName}`, action: 'doctor_created' });
   }
 
   logger.info('account registered', { userId, role, immediateActivation: isPatient });
   return { user: { ...created.user, role, verification_status: isPatient ? 'approved' : 'pending' } };
 }
 
-module.exports = { registerAccount };
+module.exports = { registerAccount, logAccountCreation };

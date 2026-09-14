@@ -368,18 +368,21 @@ security definer set search_path = public
 as $$
 declare
   v_actor public.profiles%rowtype;
-  v_patient public.patient_profiles%rowtype;
+  v_patient public.patient_profiles%rowtype default 'Unknown'::public.patient_profiles;
   v_id uuid;
 begin
   select * into v_actor from public.profiles where id = p_actor_id;
-  select * into v_patient from public.patient_profiles where id = p_patient_id;
+
+  if p_patient_id is not null then
+    select * into v_patient from public.patient_profiles where id = p_patient_id;
+  end if;
 
   insert into public.audit_logs (
     patient_id, patient_name, actor_id, actor_name, actor_role,
     action, record_id, record_name, record_category, ip_address, device
   ) values (
     p_patient_id,
-    coalesce(v_patient.first_name || ' ' || v_patient.last_name, 'Unknown'),
+    case when p_patient_id is not null then coalesce(v_patient.first_name || ' ' || v_patient.last_name, 'Unknown') else 'Unknown' end,
     p_actor_id,
     coalesce(v_actor.first_name || ' ' || v_actor.last_name, 'System'),
     case v_actor.role
